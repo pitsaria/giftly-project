@@ -2,6 +2,7 @@
 // api/services/ProductService.php
 
 require_once 'config/database.php';
+require_once __DIR__ . '/AuthHelper.php';
 
 class ProductService {
     private $conn;
@@ -136,14 +137,19 @@ public function getAll($params) {
         }
     }
     
+    // 📚 GET CATEGORIES
+    public function getCategories() {
+        $result = $this->conn->query("SELECT * FROM categories ORDER BY name ASC");
+        $categories = [];
+        while ($row = $result->fetch_assoc()) {
+            $categories[] = $row;
+        }
+        sendSuccess(['categories' => $categories]);
+    }
+
     // Helper: Check if user is admin
     private function isAdmin($headers) {
-        $token = $headers['Authorization'] ?? '';
-        if (empty($token)) return false;
-        
-        // Simple check (in production, verify JWT token)
-        session_start();
-        return isset($_SESSION['role']) && $_SESSION['role'] == 'admin';
+        return AuthHelper::resolveIsAdmin($this->conn, $headers);
     }
 }
 ?>

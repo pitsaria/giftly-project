@@ -2,6 +2,7 @@
 // api/services/AuthService.php
 
 require_once 'config/database.php';
+require_once __DIR__ . '/AuthHelper.php';
 
 class AuthService {
     private $conn;
@@ -32,10 +33,10 @@ class AuthService {
             sendError('Incorrect password', 401);
         }
         
-        // Generate token (JWT or simple session token)
-        $token = bin2hex(random_bytes(32));
-        
-        // Store token in database or session
+        // Generate a Bearer token for standalone clients (mobile app)
+        $token = AuthHelper::issueToken($this->conn, $user['id']);
+
+        // Website still relies on the session
         session_start();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
@@ -87,26 +88,29 @@ class AuthService {
     }
     
     // 🚪 LOGOUT
-    public function logout() {
-        session_start();
+    public function logout($headers = []) {
+        AuthHelper::revokeToken($this->conn, $headers);
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         session_destroy();
         sendSuccess(null, 'Logged out successfully');
     }
-    
-    // ✅ VERIFY TOKEN
+
+    // ✅ VERIFY TOKEN / SESSION
     public function verify($headers) {
-        $token = $headers['Authorization'] ?? '';
-        if (empty($token)) {
-            sendError('No token provided', 401);
+        $user_id = AuthHelper::resolveUserId($this->conn, $headers);
+        if (!$user_id) {
+            sendError('Invalid or expired session', 401);
         }
-        
-        // Verify token logic (simplified)
-        session_start();
-        if (isset($_SESSION['user_id'])) {
-            sendSuccess(['authenticated' => true, 'user_id' => $_SESSION['user_id']]);
-        } else {
-            sendError('Invalid or expired token', 401);
+
+        $result = $this->conn->query("SELECT id, name, email, role FROM users WHERE id = $user_id");
+        if (!$result || $result->num_rows == 0) {
+            sendError('User not found', 404);
         }
+
+        sendSuccess(['authenticated' => true, 'user' => $result->fetch_assoc()]);
     }
 }
 ?>

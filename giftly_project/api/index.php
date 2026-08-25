@@ -36,7 +36,7 @@ switch($path) {
         require_once 'services/AuthService.php';
         $auth = new AuthService($conn);
         if ($method == 'POST') {
-            $auth->logout();
+            $auth->logout($headers);
         } else {
             sendError('Method not allowed', 405);
         }
@@ -76,6 +76,16 @@ switch($path) {
             $product->delete($_GET['id'], $headers);
         } else {
             sendError('Missing product ID or method not allowed', 400);
+        }
+        break;
+
+    case 'categories':
+        require_once 'services/ProductService.php';
+        $product = new ProductService($conn);
+        if ($method == 'GET') {
+            $product->getCategories();
+        } else {
+            sendError('Method not allowed', 405);
         }
         break;
 
@@ -164,6 +174,73 @@ case 'cart/verify-stock':
             $order->cancelOrder($_GET['id'], $headers);
         } else {
             sendError('Missing order ID', 400);
+        }
+        break;
+
+    // === WISHLIST SERVICE ===
+    case 'wishlist':
+        require_once 'services/WishlistService.php';
+        $wishlist = new WishlistService($conn);
+        if ($method == 'GET') {
+            $wishlist->getWishlist($headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'wishlist/toggle':
+        require_once 'services/WishlistService.php';
+        $wishlist = new WishlistService($conn);
+        if ($method == 'POST') {
+            $wishlist->toggle($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    // === ADDRESS SERVICE ===
+    case 'addresses':
+        require_once 'services/AddressService.php';
+        $addressSvc = new AddressService($conn);
+        if ($method == 'GET') {
+            $addressSvc->getAll($headers);
+        } elseif ($method == 'POST') {
+            $addressSvc->create($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'addresses/single':
+        require_once 'services/AddressService.php';
+        $addressSvc = new AddressService($conn);
+        if ($method == 'DELETE' && isset($_GET['id'])) {
+            $addressSvc->delete($_GET['id'], $headers);
+        } else {
+            sendError('Missing address ID or method not allowed', 400);
+        }
+        break;
+
+    // === PROFILE SERVICE ===
+    case 'profile':
+        require_once 'services/ProfileService.php';
+        $profileSvc = new ProfileService($conn);
+        if ($method == 'GET') {
+            $profileSvc->getProfile($headers);
+        } elseif ($method == 'PUT') {
+            $profileSvc->updateProfile($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'profile/picture':
+        require_once 'services/ProfileService.php';
+        $profileSvc = new ProfileService($conn);
+        if ($method == 'POST') {
+            $profileSvc->uploadPicture($headers);
+        } else {
+            sendError('Method not allowed', 405);
         }
         break;
 

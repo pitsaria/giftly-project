@@ -2,6 +2,7 @@
 // api/services/OrderService.php
 
 require_once 'config/database.php';
+require_once __DIR__ . '/AuthHelper.php';
 
 class OrderService {
     private $conn;
@@ -67,18 +68,19 @@ class OrderService {
         $gift_message = $input['gift_message'] ?? '';
         $recipient_name = $input['recipient_name'] ?? null;
         $recipient_phone = $input['recipient_phone'] ?? null;
-        
+        $sender_phone = $input['sender_phone'] ?? null;
+
         // Calculate shipping
         $shipping_fee = ($total_amount < 300) ? 50 : 0;
         $grand_total = $total_amount + $shipping_fee;
-        
+
         // Insert order
-        $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city, 
-                                    payment_method, delivery_date, delivery_time, gift_message, 
-                                    recipient_name, recipient_phone) 
-                VALUES ($user_id, $grand_total, 'pending', '$fullname', '$address', '$city', 
-                        '$payment_method', '$delivery_date', '$delivery_time', '$gift_message', 
-                        '$recipient_name', '$recipient_phone')";
+        $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city,
+                                    payment_method, delivery_date, delivery_time, gift_message,
+                                    recipient_name, recipient_phone, sender_phone)
+                VALUES ($user_id, $grand_total, 'pending', '$fullname', '$address', '$city',
+                        '$payment_method', '$delivery_date', '$delivery_time', '$gift_message',
+                        '$recipient_name', '$recipient_phone', '$sender_phone')";
         
         if ($this->conn->query($sql)) {
             $order_id = $this->conn->insert_id;
@@ -143,13 +145,9 @@ class OrderService {
         }
     }
     
-    // Helper: Get user ID from token
+    // Helper: Get user ID from Bearer token (mobile) or session (website)
     private function getUserId($headers) {
-        $token = $headers['Authorization'] ?? '';
-        if (empty($token)) return null;
-        
-        session_start();
-        return $_SESSION['user_id'] ?? null;
+        return AuthHelper::resolveUserId($this->conn, $headers);
     }
 }
 ?>

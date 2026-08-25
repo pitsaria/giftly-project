@@ -2,6 +2,7 @@
 // api/services/CartService.php
 
 require_once 'config/database.php';
+require_once __DIR__ . '/AuthHelper.php';
 
 class CartService {
     private $conn;
@@ -228,25 +229,9 @@ class CartService {
         ]);
     }
     
-    // Helper: Get user ID from session (FIXED)
+    // Helper: Get user ID from Bearer token (mobile) or session (website)
     private function getUserId($headers) {
-        // Check if session is already started
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        // Return user_id from session
-        if (isset($_SESSION['user_id'])) {
-            return $_SESSION['user_id'];
-        }
-        
-        // Try Authorization header as fallback
-        $token = $headers['Authorization'] ?? '';
-        if (!empty($token)) {
-            // You can implement token validation here if needed
-        }
-        
-        return null;
+        return AuthHelper::resolveUserId($this->conn, $headers);
     }
 }
 ?>
