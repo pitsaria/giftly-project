@@ -42,7 +42,7 @@ if (isset($_POST['register'])) {
     $fullname = $firstname . ' ' . $lastname;
 
     // ✅ TRY API FIRST
-    $api_url = 'http://localhost/giftly_project/api/index.php?route=auth/register';
+    $api_url = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api/index.php?route=auth/register';
     
     $data = json_encode([
         'name' => $fullname,

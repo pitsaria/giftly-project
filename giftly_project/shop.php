@@ -656,7 +656,7 @@ function isInWishlist($product_id, $wishlist_ids) {
    <div class="product-grid">
        <?php
    // ✅ FETCH PRODUCTS FROM API (Oldest first)
-$api_url = 'http://localhost/giftly_project/api/index.php?route=products&order=asc';
+$api_url = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api/index.php?route=products&order=asc';
 if (!empty($search)) {
     $api_url .= '&search=' . urlencode($search);
 }
