@@ -130,10 +130,21 @@ export class CheckoutPage implements OnInit {
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipient_phone: this.deliveryType === 'recipient' ? this.recipientPhone : undefined,
       });
+      this.orderSvc.lastOrder.set({
+        orderId,
+        total: this.grandTotal(),
+        paymentMethod: this.paymentMethod,
+        deliveryDate: this.deliveryDate,
+        deliveryTime: this.deliveryTime,
+        address: this.address,
+        city: this.city,
+        recipientName: this.deliveryType === 'recipient' ? this.recipientName : undefined,
+        recipientPhone: this.deliveryType === 'recipient' ? this.recipientPhone : undefined,
+        giftMessage: this.giftMessage || undefined,
+      });
       this.cart.selectedCartIds.set([]);
       await this.cart.getCart();
-      await this.toast('Order placed successfully!');
-      this.router.navigateByUrl(`/tabs/profile?tab=orders`);
+      this.router.navigateByUrl('/order-confirmation');
     } catch {
       await this.toast('Failed to place order. Please try again.');
     } finally {

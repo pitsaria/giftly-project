@@ -1,0 +1,38 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Order Confirmation</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding" *ngIf="order">
+  <div class="success-card">
+    <div class="success-badge">
+      <ion-icon name="checkmark-outline"></ion-icon>
+    </div>
+    <h1>Order Placed! 🎉</h1>
+    <p class="subtitle">Thank you for your purchase. We'll start preparing your order right away.</p>
+
+    <div class="details-box">
+      <div class="row"><span>Order ID</span><strong>#{{ order.orderId }}</strong></div>
+      <div class="row"><span>Total Paid</span><strong>₱{{ order.total | number: '1.2-2' }}</strong></div>
+      <div class="row"><span>Payment Method</span><strong>{{ order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Card' }}</strong></div>
+      <div class="row"><span>Delivery Date</span><strong>{{ order.deliveryDate | date: 'mediumDate' }}</strong></div>
+      <div class="row"><span>Delivery Time</span><strong>{{ order.deliveryTime }}</strong></div>
+      <div class="row"><span>Shipping Address</span><strong>{{ order.address }}, {{ order.city }}</strong></div>
+      <div class="row" *ngIf="order.recipientName">
+        <span>Recipient</span>
+        <strong>{{ order.recipientName }}<span *ngIf="order.recipientPhone"> ({{ order.recipientPhone }})</span></strong>
+      </div>
+      <div class="gift-message" *ngIf="order.giftMessage">
+        <div class="label"><ion-icon name="heart-outline"></ion-icon> Gift Message</div>
+        <p>{{ order.giftMessage }}</p>
+      </div>
+    </div>
+
+    <ion-button expand="block" class="giftly-btn-primary" (click)="viewOrders()">
+      <ion-icon slot="start" name="bag-outline"></ion-icon>
+      View My Orders
+    </ion-button>
+    <ion-button expand="block" fill="outline" (click)="continueShopping()">Continue Shopping</ion-button>
+  </div>
+</ion-content>

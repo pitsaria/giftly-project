@@ -1,0 +1,85 @@
+.success-card {
+  text-align: center;
+  padding-top: 20px;
+}
+
+.success-badge {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  color: #2e7d32;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 20px;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 24px;
+}
+
+.details-box {
+  background: #fafafa;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: left;
+  margin-bottom: 24px;
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+
+    span {
+      color: #888;
+    }
+
+    strong {
+      color: #222;
+      text-align: right;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .gift-message {
+    padding-top: 12px;
+
+    .label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ff8ba7;
+      margin-bottom: 6px;
+    }
+
+    p {
+      font-size: 14px;
+      color: #555;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+ion-button {
+  margin-bottom: 12px;
+}

@@ -1,7 +1,20 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { Order } from './models';
+
+export interface OrderConfirmation {
+  orderId: number;
+  total: number;
+  paymentMethod: string;
+  deliveryDate: string;
+  deliveryTime: string;
+  address: string;
+  city: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  giftMessage?: string;
+}
 
 export interface CreateOrderPayload {
   selected_ids: number[];
@@ -20,6 +33,10 @@ export interface CreateOrderPayload {
 @Injectable({ providedIn: 'root' })
 export class OrderService {
   private api = inject(ApiService);
+
+  // Holds the just-placed order's details for the confirmation screen,
+  // mirrors the inline "Order Placed!" card in checkout_selected.php.
+  readonly lastOrder = signal<OrderConfirmation | null>(null);
 
   async getOrders(): Promise<Order[]> {
     const res = await firstValueFrom(this.api.get<{ orders: Order[] }>('orders'));
