@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -41,6 +41,8 @@ type Tab = 'settings' | 'addresses' | 'orders' | 'wishlist';
 
 // Mirrors giftly_project/profile.php's sidebar-tab structure (Settings /
 // Addresses / Order History / Wishlist), condensed into one segmented page.
+// Fetched state lives in signals — guaranteed to trigger a re-render on
+// write, unlike plain fields mutated inside an async continuation.
 @Component({
   selector: 'app-profile',
   templateUrl: 'profile.page.html',
@@ -74,17 +76,18 @@ export class ProfilePage implements OnInit {
   private toastCtrl = inject(ToastController);
 
   readonly uploadsUrl = environment.uploadsUrl;
-  tab: Tab = 'settings';
-  loading = false;
-  saving = false;
-  error: string | null = null;
-  slowLoad = false;
+  readonly tab = signal<Tab>('settings');
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly slowLoad = signal(false);
   private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
+  private loadToken = 0;
 
-  profile: Profile | null = null;
-  addresses: Address[] = [];
-  orders: Order[] = [];
-  wishlist: WishlistData | null = null;
+  readonly profile = signal<Profile | null>(null);
+  readonly addresses = signal<Address[]>([]);
+  readonly orders = signal<Order[]>([]);
+  readonly wishlist = signal<WishlistData | null>(null);
 
   showAddAddress = false;
   newAddress: NewAddress = { label: '', address: '', city: '', province: '', zip: '' };
@@ -113,50 +116,59 @@ export class ProfilePage implements OnInit {
   async switchTab(value: string | number | undefined): Promise<void> {
     if (!value) return;
     const tab = value as Tab;
-    this.tab = tab;
+    this.tab.set(tab);
     await this.loadTab(tab, false);
   }
 
   async retryTab(): Promise<void> {
-    await this.loadTab(this.tab, true);
+    await this.loadTab(this.tab(), true);
   }
 
   private async loadTab(tab: Tab, forceReload: boolean): Promise<void> {
-    this.loading = true;
-    this.error = null;
-    this.slowLoad = false;
+    const token = ++this.loadToken;
+
+    this.loading.set(true);
+    this.error.set(null);
+    this.slowLoad.set(false);
     clearTimeout(this.slowLoadTimer);
     this.slowLoadTimer = setTimeout(() => {
-      this.slowLoad = true;
+      if (token === this.loadToken) {
+        this.slowLoad.set(true);
+      }
     }, 6000);
 
     try {
-      if (tab === 'settings' && (forceReload || !this.profile)) {
-        this.profile = await this.profileSvc.getProfile();
+      if (tab === 'settings' && (forceReload || !this.profile())) {
+        this.profile.set(await this.profileSvc.getProfile());
       } else if (tab === 'addresses') {
-        this.addresses = await this.addressSvc.getAll();
+        this.addresses.set(await this.addressSvc.getAll());
       } else if (tab === 'orders') {
-        this.orders = await this.orderSvc.getOrders();
+        this.orders.set(await this.orderSvc.getOrders());
       } else if (tab === 'wishlist') {
-        this.wishlist = await this.wishlistSvc.getWishlist();
+        this.wishlist.set(await this.wishlistSvc.getWishlist());
       }
+      if (token !== this.loadToken) return;
     } catch (err) {
-      this.error = describeError(err);
+      if (token !== this.loadToken) return;
+      this.error.set(describeError(err));
     } finally {
-      clearTimeout(this.slowLoadTimer);
-      this.loading = false;
+      if (token === this.loadToken) {
+        clearTimeout(this.slowLoadTimer);
+        this.loading.set(false);
+      }
     }
   }
 
   async saveProfile(): Promise<void> {
-    if (!this.profile) return;
-    this.saving = true;
+    const profile = this.profile();
+    if (!profile) return;
+    this.saving.set(true);
     try {
       await this.profileSvc.updateProfile({
-        firstname: this.profile.firstname,
-        lastname: this.profile.lastname,
-        email: this.profile.email,
-        phone: this.profile.phone,
+        firstname: profile.firstname,
+        lastname: profile.lastname,
+        email: profile.email,
+        phone: profile.phone,
         current_password: this.currentPassword || undefined,
         new_password: this.newPassword || undefined,
       });
@@ -166,7 +178,7 @@ export class ProfilePage implements OnInit {
     } catch (err) {
       await this.toast(describeError(err));
     } finally {
-      this.saving = false;
+      this.saving.set(false);
     }
   }
 
@@ -179,7 +191,7 @@ export class ProfilePage implements OnInit {
       await this.addressSvc.create(this.newAddress);
       this.newAddress = { label: '', address: '', city: '', province: '', zip: '' };
       this.showAddAddress = false;
-      this.addresses = await this.addressSvc.getAll();
+      this.addresses.set(await this.addressSvc.getAll());
     } catch {
       await this.toast('Could not save this address. Please try again.');
     }
@@ -197,7 +209,7 @@ export class ProfilePage implements OnInit {
           handler: async () => {
             try {
               await this.addressSvc.remove(id);
-              this.addresses = await this.addressSvc.getAll();
+              this.addresses.set(await this.addressSvc.getAll());
             } catch {
               await this.toast('Could not delete this address. Please try again.');
             }
@@ -219,7 +231,7 @@ export class ProfilePage implements OnInit {
           handler: async () => {
             try {
               await this.orderSvc.cancelOrder(order.id);
-              this.orders = await this.orderSvc.getOrders();
+              this.orders.set(await this.orderSvc.getOrders());
             } catch {
               await this.toast('Could not cancel this order.');
             }
@@ -233,7 +245,7 @@ export class ProfilePage implements OnInit {
   async toggleWishlist(productId: number): Promise<void> {
     try {
       await this.wishlistSvc.toggle(productId);
-      this.wishlist = await this.wishlistSvc.getWishlist();
+      this.wishlist.set(await this.wishlistSvc.getWishlist());
     } catch {
       await this.toast('Could not update your wishlist. Please try again.');
     }
@@ -250,7 +262,7 @@ export class ProfilePage implements OnInit {
 
   async logout(): Promise<void> {
     await this.auth.logout();
-    this.profile = null;
+    this.profile.set(null);
     this.router.navigateByUrl('/tabs/home');
   }
 

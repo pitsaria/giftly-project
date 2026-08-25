@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -26,6 +26,8 @@ import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 
 // Mirrors giftly_project/checkout_selected.php.
+// Fetched state lives in signals — guaranteed to trigger a re-render on
+// write, unlike plain fields mutated inside an async continuation.
 @Component({
   selector: 'app-checkout',
   templateUrl: 'checkout.page.html',
@@ -54,13 +56,14 @@ export class CheckoutPage implements OnInit {
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
 
-  addresses: Address[] = [];
-  cartItems: CartItem[] = [];
-  submitting = false;
-  loading = true;
-  error: string | null = null;
-  slowLoad = false;
+  readonly addresses = signal<Address[]>([]);
+  readonly cartItems = signal<CartItem[]>([]);
+  readonly submitting = signal(false);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly slowLoad = signal(false);
   private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
+  private loadToken = 0;
 
   fullname = this.auth.user()?.name ?? '';
   addressId: number | null = null;
@@ -84,34 +87,43 @@ export class CheckoutPage implements OnInit {
   }
 
   async load(): Promise<void> {
-    this.loading = true;
-    this.error = null;
-    this.slowLoad = false;
+    const token = ++this.loadToken;
+
+    this.loading.set(true);
+    this.error.set(null);
+    this.slowLoad.set(false);
     clearTimeout(this.slowLoadTimer);
     this.slowLoadTimer = setTimeout(() => {
-      this.slowLoad = true;
+      if (token === this.loadToken) {
+        this.slowLoad.set(true);
+      }
     }, 6000);
 
     try {
       const [addresses, cart] = await Promise.all([this.addressSvc.getAll(), this.cart.getCart()]);
-      this.addresses = addresses;
-      const selectedIds = new Set(this.cart.selectedCartIds());
-      this.cartItems = cart.items.filter((i) => selectedIds.has(i.cart_id));
+      if (token !== this.loadToken) return;
 
-      if (this.addresses.length) {
-        this.selectAddress(this.addresses[0].id);
+      this.addresses.set(addresses);
+      const selectedIds = new Set(this.cart.selectedCartIds());
+      this.cartItems.set(cart.items.filter((i) => selectedIds.has(i.cart_id)));
+
+      if (addresses.length) {
+        this.selectAddress(addresses[0].id);
       }
     } catch (err) {
-      this.error = describeError(err);
+      if (token !== this.loadToken) return;
+      this.error.set(describeError(err));
     } finally {
-      clearTimeout(this.slowLoadTimer);
-      this.loading = false;
+      if (token === this.loadToken) {
+        clearTimeout(this.slowLoadTimer);
+        this.loading.set(false);
+      }
     }
   }
 
   selectAddress(id: number): void {
     this.addressId = id;
-    const found = this.addresses.find((a) => a.id === id);
+    const found = this.addresses().find((a) => a.id === id);
     if (found) {
       this.address = found.address;
       this.city = found.city;
@@ -119,7 +131,7 @@ export class CheckoutPage implements OnInit {
   }
 
   total(): number {
-    return this.cartItems.reduce((sum, i) => sum + i.subtotal, 0);
+    return this.cartItems().reduce((sum, i) => sum + i.subtotal, 0);
   }
 
   shippingFee(): number {
@@ -136,15 +148,16 @@ export class CheckoutPage implements OnInit {
       await this.toast('Please fill in your name and delivery address.');
       return;
     }
-    if (this.cartItems.length === 0) {
+    const cartItems = this.cartItems();
+    if (cartItems.length === 0) {
       await this.toast('No items selected for checkout.');
       return;
     }
 
-    this.submitting = true;
+    this.submitting.set(true);
     try {
       const orderId = await this.orderSvc.createOrder({
-        selected_ids: this.cartItems.map((i) => i.cart_id),
+        selected_ids: cartItems.map((i) => i.cart_id),
         fullname: this.fullname,
         address: this.address,
         city: this.city,
@@ -174,7 +187,7 @@ export class CheckoutPage implements OnInit {
     } catch (err) {
       await this.toast(describeError(err));
     } finally {
-      this.submitting = false;
+      this.submitting.set(false);
     }
   }
 

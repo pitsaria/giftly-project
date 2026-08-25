@@ -5,24 +5,24 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <div class="ion-text-center loading-state" *ngIf="loading">
+  <div class="ion-text-center loading-state" *ngIf="loading()">
     <ion-spinner name="crescent"></ion-spinner>
-    <p *ngIf="!slowLoad">Loading checkout...</p>
-    <p *ngIf="slowLoad">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
+    <p *ngIf="!slowLoad()">Loading checkout...</p>
+    <p *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
   </div>
 
-  <div class="error-state" *ngIf="!loading && error">
-    <p>{{ error }}</p>
+  <div class="error-state" *ngIf="!loading() && error()">
+    <p>{{ error() }}</p>
     <ion-button fill="outline" (click)="load()">Try Again</ion-button>
   </div>
 
-  <ng-container *ngIf="!loading && !error">
+  <ng-container *ngIf="!loading() && !error()">
   <h2 class="section-title"><ion-icon name="person-outline"></ion-icon> Delivery Details</h2>
 
   <ion-input label="Full Name" labelPlacement="stacked" fill="outline" [(ngModel)]="fullname" class="field"></ion-input>
 
   <ion-select
-    *ngIf="addresses.length"
+    *ngIf="addresses().length"
     label="Saved Address"
     labelPlacement="stacked"
     fill="outline"
@@ -30,7 +30,7 @@
     (ionChange)="selectAddress($event.detail.value)"
     class="field"
   >
-    <ion-select-option *ngFor="let a of addresses" [value]="a.id">
+    <ion-select-option *ngFor="let a of addresses()" [value]="a.id">
       {{ a.label }} — {{ a.address }}, {{ a.city }}
     </ion-select-option>
   </ion-select>
@@ -73,8 +73,8 @@
     <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
   </div>
 
-  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting" (click)="placeOrder()">
-    {{ submitting ? 'Placing Order...' : 'Place Order' }}
+  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting()" (click)="placeOrder()">
+    {{ submitting() ? 'Placing Order...' : 'Place Order' }}
   </ion-button>
   </ng-container>
 </ion-content>

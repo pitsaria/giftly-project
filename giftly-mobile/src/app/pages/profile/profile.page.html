@@ -14,7 +14,7 @@
   </div>
 
   <ng-container *ngIf="auth.isLoggedIn()">
-    <ion-segment [(ngModel)]="tab" (ionChange)="switchTab($event.detail.value)" scrollable>
+    <ion-segment [value]="tab()" (ionChange)="switchTab($event.detail.value)" scrollable>
       <ion-segment-button value="settings">
         <ion-icon name="person-outline"></ion-icon>
         <ion-label>Settings</ion-label>
@@ -33,37 +33,37 @@
       </ion-segment-button>
     </ion-segment>
 
-    <div class="ion-text-center loading-spinner" *ngIf="loading">
+    <div class="ion-text-center loading-spinner" *ngIf="loading()">
       <ion-spinner name="crescent"></ion-spinner>
-      <p *ngIf="!slowLoad">Loading...</p>
-      <p *ngIf="slowLoad">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
+      <p *ngIf="!slowLoad()">Loading...</p>
+      <p *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
     </div>
 
-    <div class="error-state" *ngIf="!loading && error">
-      <p>{{ error }}</p>
+    <div class="error-state" *ngIf="!loading() && error()">
+      <p>{{ error() }}</p>
       <ion-button fill="outline" (click)="retryTab()">Try Again</ion-button>
     </div>
 
     <!-- SETTINGS -->
-    <div class="tab-panel" *ngIf="tab === 'settings' && profile && !loading && !error">
+    <div class="tab-panel" *ngIf="tab() === 'settings' && profile() && !loading() && !error()">
       <div class="field-row">
-        <ion-input label="First Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.firstname" class="field"></ion-input>
-        <ion-input label="Last Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.lastname" class="field"></ion-input>
+        <ion-input label="First Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.firstname" class="field"></ion-input>
+        <ion-input label="Last Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.lastname" class="field"></ion-input>
       </div>
-      <ion-input type="email" label="Email" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.email" class="field"></ion-input>
-      <ion-input type="tel" label="Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.phone" class="field"></ion-input>
+      <ion-input type="email" label="Email" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.email" class="field"></ion-input>
+      <ion-input type="tel" label="Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.phone" class="field"></ion-input>
 
       <h3>Change Password (optional)</h3>
       <ion-input type="password" label="Current Password" labelPlacement="stacked" fill="outline" [(ngModel)]="currentPassword" class="field"></ion-input>
       <ion-input type="password" label="New Password" labelPlacement="stacked" fill="outline" [(ngModel)]="newPassword" class="field"></ion-input>
 
-      <ion-button expand="block" class="giftly-btn-primary" [disabled]="saving" (click)="saveProfile()">
-        {{ saving ? 'Saving...' : 'Save Changes' }}
+      <ion-button expand="block" class="giftly-btn-primary" [disabled]="saving()" (click)="saveProfile()">
+        {{ saving() ? 'Saving...' : 'Save Changes' }}
       </ion-button>
 
       <div class="stats-row">
-        <div class="stat"><strong>{{ profile.order_count }}</strong><span>Orders</span></div>
-        <div class="stat"><strong>{{ profile.address_count }}</strong><span>Addresses</span></div>
+        <div class="stat"><strong>{{ profile()!.order_count }}</strong><span>Orders</span></div>
+        <div class="stat"><strong>{{ profile()!.address_count }}</strong><span>Addresses</span></div>
       </div>
 
       <ion-button expand="block" fill="outline" color="danger" (click)="logout()">
@@ -73,7 +73,7 @@
     </div>
 
     <!-- ADDRESSES -->
-    <div class="tab-panel" *ngIf="tab === 'addresses' && !loading && !error">
+    <div class="tab-panel" *ngIf="tab() === 'addresses' && !loading() && !error()">
       <ion-button expand="block" fill="outline" (click)="showAddAddress = !showAddAddress">
         {{ showAddAddress ? 'Cancel' : '+ Add New Address' }}
       </ion-button>
@@ -89,7 +89,7 @@
         <ion-button expand="block" class="giftly-btn-primary" (click)="addAddress()">Save Address</ion-button>
       </div>
 
-      <div class="address-card" *ngFor="let a of addresses">
+      <div class="address-card" *ngFor="let a of addresses()">
         <div class="info">
           <h4>{{ a.label }}</h4>
           <p>{{ a.address }}, {{ a.city }}, {{ a.province }} {{ a.zip }}</p>
@@ -98,12 +98,12 @@
           <ion-icon name="trash-outline"></ion-icon>
         </button>
       </div>
-      <p class="empty-msg" *ngIf="!addresses.length">You haven't added any addresses yet.</p>
+      <p class="empty-msg" *ngIf="!addresses().length">You haven't added any addresses yet.</p>
     </div>
 
     <!-- ORDERS -->
-    <div class="tab-panel" *ngIf="tab === 'orders' && !loading && !error">
-      <div class="order-card" *ngFor="let o of orders">
+    <div class="tab-panel" *ngIf="tab() === 'orders' && !loading() && !error()">
+      <div class="order-card" *ngFor="let o of orders()">
         <div class="order-head">
           <span>Order #{{ o.id }}</span>
           <span class="status" [class]="'status-' + o.status">{{ o.status }}</span>
@@ -119,13 +119,13 @@
           Cancel Order
         </ion-button>
       </div>
-      <p class="empty-msg" *ngIf="!orders.length">No orders yet.</p>
+      <p class="empty-msg" *ngIf="!orders().length">No orders yet.</p>
     </div>
 
     <!-- WISHLIST -->
-    <div class="tab-panel" *ngIf="tab === 'wishlist' && wishlist && !loading && !error">
+    <div class="tab-panel" *ngIf="tab() === 'wishlist' && wishlist() && !loading() && !error()">
       <div class="wishlist-grid">
-        <div class="wishlist-item" *ngFor="let p of [...wishlist.in_stock, ...wishlist.out_of_stock]">
+        <div class="wishlist-item" *ngFor="let p of [...wishlist()!.in_stock, ...wishlist()!.out_of_stock]">
           <img [src]="uploadsUrl + '/' + p.image" [alt]="p.name" />
           <div class="w-name">{{ p.name }}</div>
           <div class="w-price">₱{{ p.price }}</div>
@@ -135,7 +135,7 @@
           </div>
         </div>
       </div>
-      <p class="empty-msg" *ngIf="!wishlist.total">Your wishlist is empty.</p>
+      <p class="empty-msg" *ngIf="!wishlist()!.total">Your wishlist is empty.</p>
     </div>
   </ng-container>
 </ion-content>

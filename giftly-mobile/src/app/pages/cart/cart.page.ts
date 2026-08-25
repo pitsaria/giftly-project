@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -22,6 +22,9 @@ import { describeError } from '../../core/http-error';
 import { environment } from '../../../environments/environment';
 
 // Mirrors giftly_project/cart.php.
+// State is held in signals rather than plain fields: signal writes always
+// schedule a re-render regardless of zone.js/zoneless configuration, which
+// plain property mutation inside an async continuation is not guaranteed to.
 @Component({
   selector: 'app-cart',
   templateUrl: 'cart.page.html',
@@ -46,12 +49,13 @@ export class CartPage implements OnInit {
   private alertCtrl = inject(AlertController);
 
   readonly uploadsUrl = environment.uploadsUrl;
-  items: CartItem[] = [];
-  selected = new Set<number>();
-  loading = true;
-  error: string | null = null;
-  slowLoad = false;
+  readonly items = signal<CartItem[]>([]);
+  readonly selected = signal<Set<number>>(new Set());
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly slowLoad = signal(false);
   private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
+  private loadToken = 0;
 
   constructor() {
     addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline });
@@ -66,51 +70,68 @@ export class CartPage implements OnInit {
   }
 
   async refresh(): Promise<void> {
-    this.loading = true;
-    this.error = null;
-    this.slowLoad = false;
+    // Guards against two overlapping refresh() calls (e.g. ngOnInit and
+    // ionViewWillEnter firing close together) stomping on each other's
+    // loading/timer state.
+    const token = ++this.loadToken;
+
+    this.loading.set(true);
+    this.error.set(null);
+    this.slowLoad.set(false);
     clearTimeout(this.slowLoadTimer);
     this.slowLoadTimer = setTimeout(() => {
-      this.slowLoad = true;
+      if (token === this.loadToken) {
+        this.slowLoad.set(true);
+      }
     }, 6000);
 
     try {
       const cart = await this.cart.getCart();
-      this.items = cart.items;
+      if (token !== this.loadToken) return;
+      this.items.set(cart.items);
       // Keep previously selected items selected if still in the cart.
-      const validIds = new Set(this.items.map((i) => i.cart_id));
-      this.selected = new Set([...this.selected].filter((id) => validIds.has(id)));
+      const validIds = new Set(cart.items.map((i) => i.cart_id));
+      this.selected.update((prev) => new Set([...prev].filter((id) => validIds.has(id))));
     } catch (err) {
-      this.error = describeError(err);
+      if (token !== this.loadToken) return;
+      this.error.set(describeError(err));
     } finally {
-      clearTimeout(this.slowLoadTimer);
-      this.loading = false;
+      if (token === this.loadToken) {
+        clearTimeout(this.slowLoadTimer);
+        this.loading.set(false);
+      }
     }
   }
 
   toggleSelect(cartId: number): void {
-    if (this.selected.has(cartId)) {
-      this.selected.delete(cartId);
-    } else {
-      this.selected.add(cartId);
-    }
+    this.selected.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(cartId)) {
+        next.delete(cartId);
+      } else {
+        next.add(cartId);
+      }
+      return next;
+    });
   }
 
   allSelected(): boolean {
-    return this.items.length > 0 && this.selected.size === this.items.length;
+    const items = this.items();
+    return items.length > 0 && this.selected().size === items.length;
   }
 
   toggleSelectAll(): void {
     if (this.allSelected()) {
-      this.selected.clear();
+      this.selected.set(new Set());
     } else {
-      this.selected = new Set(this.items.map((i) => i.cart_id));
+      this.selected.set(new Set(this.items().map((i) => i.cart_id)));
     }
   }
 
   selectedTotal(): number {
-    return this.items
-      .filter((i) => this.selected.has(i.cart_id))
+    const selected = this.selected();
+    return this.items()
+      .filter((i) => selected.has(i.cart_id))
       .reduce((sum, i) => sum + i.subtotal, 0);
   }
 
@@ -144,7 +165,8 @@ export class CartPage implements OnInit {
   }
 
   async checkout(): Promise<void> {
-    if (this.selected.size === 0) {
+    const selectedIds = [...this.selected()];
+    if (selectedIds.length === 0) {
       const toast = await this.toastCtrl.create({
         message: 'Select at least one item to checkout',
         duration: 1800,
@@ -153,7 +175,7 @@ export class CartPage implements OnInit {
       return;
     }
 
-    const result = await this.cart.verifyStock([...this.selected]);
+    const result = await this.cart.verifyStock(selectedIds);
     if (!result.can_proceed) {
       await this.refresh();
       const toast = await this.toastCtrl.create({
@@ -164,7 +186,7 @@ export class CartPage implements OnInit {
       return;
     }
 
-    this.cart.selectedCartIds.set([...this.selected]);
+    this.cart.selectedCartIds.set(selectedIds);
     this.router.navigateByUrl('/checkout');
   }
 }

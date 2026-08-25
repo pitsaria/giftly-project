@@ -5,31 +5,31 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <div class="ion-text-center loading-state" *ngIf="loading">
+  <div class="ion-text-center loading-state" *ngIf="loading()">
     <ion-spinner name="crescent"></ion-spinner>
-    <p *ngIf="!slowLoad">Loading your cart...</p>
-    <p *ngIf="slowLoad">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
+    <p *ngIf="!slowLoad()">Loading your cart...</p>
+    <p *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
   </div>
 
-  <div class="empty-state" *ngIf="!loading && error">
+  <div class="empty-state" *ngIf="!loading() && error()">
     <ion-icon name="bag-handle-outline"></ion-icon>
-    <p>{{ error }}</p>
+    <p>{{ error() }}</p>
     <ion-button fill="outline" (click)="refresh()">Try Again</ion-button>
   </div>
 
-  <div class="empty-state" *ngIf="!loading && !error && items.length === 0">
+  <div class="empty-state" *ngIf="!loading() && !error() && items().length === 0">
     <ion-icon name="bag-handle-outline"></ion-icon>
     <p>Your cart is empty.</p>
   </div>
 
-  <div class="cart-list" *ngIf="!loading && !error && items.length">
+  <div class="cart-list" *ngIf="!loading() && !error() && items().length">
     <div class="select-all-row">
       <ion-checkbox [checked]="allSelected()" (ionChange)="toggleSelectAll()"></ion-checkbox>
       <span>Select all</span>
     </div>
 
-    <div class="cart-item" *ngFor="let item of items">
-      <ion-checkbox [checked]="selected.has(item.cart_id)" (ionChange)="toggleSelect(item.cart_id)"></ion-checkbox>
+    <div class="cart-item" *ngFor="let item of items()">
+      <ion-checkbox [checked]="selected().has(item.cart_id)" (ionChange)="toggleSelect(item.cart_id)"></ion-checkbox>
       <img [src]="uploadsUrl + '/' + item.image" [alt]="item.name" />
       <div class="item-info">
         <div class="item-name">{{ item.name }}</div>
@@ -49,7 +49,7 @@
   </div>
 </ion-content>
 
-<ion-footer *ngIf="items.length">
+<ion-footer *ngIf="items().length">
   <div class="checkout-bar">
     <div class="total">
       <span>Total</span>
