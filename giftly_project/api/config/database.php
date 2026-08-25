@@ -12,13 +12,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-// Database connection
-$host = 'localhost';
-$user = 'root';
-$password = '';
-$database = 'giftly_db';
+// Database connection (PostgreSQL, e.g. Render Postgres)
+require_once __DIR__ . '/../../db_pg_compat.php';
 
-$conn = new mysqli($host, $user, $password, $database);
+$databaseUrl = getenv('DATABASE_URL');
+$sslmode = getenv('DB_SSLMODE') ?: null;
+if ($databaseUrl) {
+    $parts = parse_url($databaseUrl);
+    $host = $parts['host'];
+    $port = $parts['port'] ?? 5432;
+    $user = $parts['user'];
+    $password = $parts['pass'] ?? '';
+    $database = ltrim($parts['path'], '/');
+    if (!$sslmode && !empty($parts['query'])) {
+        parse_str($parts['query'], $query);
+        $sslmode = $query['sslmode'] ?? null;
+    }
+} else {
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $port = getenv('DB_PORT') ?: 5432;
+    $user = getenv('DB_USER') ?: 'postgres';
+    $password = getenv('DB_PASS') ?: '';
+    $database = getenv('DB_NAME') ?: 'giftly_db';
+}
+
+$conn = new PgCompatMysqli($host, $user, $password, $database, $port, $sslmode);
 
 if ($conn->connect_error) {
     die(json_encode(['error' => 'Database connection failed: ' . $conn->connect_error]));
