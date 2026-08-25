@@ -9,7 +9,7 @@
 <ion-content [fullscreen]="true">
   <div class="hero-scroller">
     <div class="hero-slide" *ngFor="let slide of slides" [style.background]="slide.gradient">
-      <img [src]="slide.image" [alt]="slide.title" class="hero-image" />
+      <img [src]="slide.image" [alt]="slide.title" class="hero-image" width="220" height="220" />
       <h1>{{ slide.title }} <span>{{ slide.highlight }}</span></h1>
       <p>{{ slide.subtitle }}</p>
       <ion-button class="giftly-btn-primary" (click)="goToShop()">
