@@ -14,6 +14,7 @@ import {
   IonInfiniteScrollContent,
   IonSpinner,
   ModalController,
+  ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { heart, heartOutline, addCircle } from 'ionicons/icons';
@@ -52,6 +53,7 @@ export class ShopPage implements OnInit {
   wishlist = inject(WishlistService);
   auth = inject(AuthService);
   private modalCtrl = inject(ModalController);
+  private toastCtrl = inject(ToastController);
 
   readonly uploadsUrl = environment.uploadsUrl;
 
@@ -119,14 +121,38 @@ export class ShopPage implements OnInit {
 
   async toggleWishlist(product: Product, ev: Event): Promise<void> {
     ev.stopPropagation();
-    if (!this.auth.isLoggedIn()) return;
-    await this.wishlist.toggle(product.id);
+    if (!this.auth.isLoggedIn()) {
+      await this.toast('Please log in to use your wishlist');
+      return;
+    }
+    try {
+      await this.wishlist.toggle(product.id);
+    } catch {
+      await this.toast('Could not update your wishlist. Please try again.');
+    }
   }
 
   async quickAdd(product: Product, ev: Event): Promise<void> {
     ev.stopPropagation();
-    if (!this.auth.isLoggedIn() || product.quantity <= 0) return;
-    await this.cart.addToCart(product.id, 1);
+    if (!this.auth.isLoggedIn()) {
+      await this.toast('Please log in to add items to your cart');
+      return;
+    }
+    if (product.quantity <= 0) {
+      await this.toast('This item is out of stock');
+      return;
+    }
+    try {
+      await this.cart.addToCart(product.id, 1);
+      await this.toast(`Added ${product.name} to cart`);
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? 'Could not add to cart. Please try again.');
+    }
+  }
+
+  private async toast(message: string): Promise<void> {
+    const t = await this.toastCtrl.create({ message, duration: 1800, position: 'bottom' });
+    await t.present();
   }
 
   async openProduct(product: Product): Promise<void> {
