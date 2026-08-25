@@ -1,0 +1,60 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Shop</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      [(ngModel)]="search"
+      (ionInput)="onSearch()"
+      placeholder="Search products..."
+      debounce="400"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="category-row">
+    <ion-chip [outline]="selectedCategory !== null" [color]="selectedCategory === null ? 'primary' : undefined" (click)="selectCategory(null)">
+      <ion-label>All Items</ion-label>
+    </ion-chip>
+    <ion-chip
+      *ngFor="let cat of categories"
+      [outline]="selectedCategory !== cat.id"
+      [color]="selectedCategory === cat.id ? 'primary' : undefined"
+      (click)="selectCategory(cat.id)"
+    >
+      <ion-label>{{ cat.name }}</ion-label>
+    </ion-chip>
+  </div>
+
+  <div class="product-grid" *ngIf="products.length; else emptyState">
+    <div class="product-card" *ngFor="let product of products" (click)="openProduct(product)">
+      <div class="image-wrap">
+        <img [src]="uploadsUrl + '/' + product.image" [alt]="product.name" />
+        <button class="heart-btn" [class.active]="isWishlisted(product)" (click)="toggleWishlist(product, $event)">
+          <ion-icon [name]="isWishlisted(product) ? 'heart' : 'heart-outline'"></ion-icon>
+        </button>
+        <div class="out-of-stock-ribbon" *ngIf="product.quantity <= 0">Out of Stock</div>
+      </div>
+      <div class="p-name">{{ product.name }}</div>
+      <div class="p-price">₱{{ product.price }}</div>
+      <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
+        <ion-icon name="add-circle"></ion-icon>
+      </button>
+    </div>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty-state" *ngIf="!loading">
+      <p>No products found.</p>
+    </div>
+  </ng-template>
+
+  <div class="ion-text-center" *ngIf="loading">
+    <ion-spinner name="crescent"></ion-spinner>
+  </div>
+
+  <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="page >= totalPages">
+    <ion-infinite-scroll-content loadingSpinner="crescent"></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+</ion-content>

@@ -1,0 +1,30 @@
+.brand {
+  text-align: center;
+  margin: 20px 0 30px;
+
+  img {
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.switch-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+
+  a {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+  }
+}

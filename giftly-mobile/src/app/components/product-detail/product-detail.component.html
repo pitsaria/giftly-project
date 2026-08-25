@@ -1,0 +1,42 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Product Details</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="product-image-wrap">
+    <img [src]="uploadsUrl + '/' + product.image" [alt]="product.name" class="product-image" />
+    <button class="heart-btn" [class.active]="isWishlisted()" (click)="toggleWishlist()">
+      <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
+    </button>
+    <div class="out-of-stock-ribbon" *ngIf="!inStock()">Out of Stock</div>
+  </div>
+
+  <h1>{{ product.name }}</h1>
+  <div class="price">₱{{ product.price }}</div>
+  <p class="description">{{ product.description }}</p>
+
+  <div class="quantity-row" *ngIf="inStock()">
+    <span>Quantity</span>
+    <div class="stepper">
+      <button (click)="decrease()"><ion-icon name="remove-outline"></ion-icon></button>
+      <span>{{ quantity() }}</span>
+      <button (click)="increase()"><ion-icon name="add-outline"></ion-icon></button>
+    </div>
+  </div>
+
+  <ion-button
+    expand="block"
+    class="giftly-btn-primary"
+    [disabled]="!inStock() || adding()"
+    (click)="addToCart()"
+  >
+    {{ inStock() ? 'Add to Cart' : 'Out of Stock' }}
+  </ion-button>
+</ion-content>

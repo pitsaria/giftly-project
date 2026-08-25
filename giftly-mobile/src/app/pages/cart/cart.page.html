@@ -1,0 +1,48 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>My Cart</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="empty-state" *ngIf="!loading && items.length === 0">
+    <ion-icon name="bag-handle-outline"></ion-icon>
+    <p>Your cart is empty.</p>
+  </div>
+
+  <div class="cart-list" *ngIf="items.length">
+    <div class="select-all-row">
+      <ion-checkbox [checked]="allSelected()" (ionChange)="toggleSelectAll()"></ion-checkbox>
+      <span>Select all</span>
+    </div>
+
+    <div class="cart-item" *ngFor="let item of items">
+      <ion-checkbox [checked]="selected.has(item.cart_id)" (ionChange)="toggleSelect(item.cart_id)"></ion-checkbox>
+      <img [src]="uploadsUrl + '/' + item.image" [alt]="item.name" />
+      <div class="item-info">
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-price">₱{{ item.price }}</div>
+        <div class="stepper">
+          <button (click)="decrease(item)"><ion-icon name="remove-outline"></ion-icon></button>
+          <span>{{ item.quantity }}</span>
+          <button (click)="increase(item)" [disabled]="item.quantity >= item.stock">
+            <ion-icon name="add-outline"></ion-icon>
+          </button>
+        </div>
+      </div>
+      <button class="remove-btn" (click)="remove(item)">
+        <ion-icon name="trash-outline"></ion-icon>
+      </button>
+    </div>
+  </div>
+</ion-content>
+
+<ion-footer *ngIf="items.length">
+  <div class="checkout-bar">
+    <div class="total">
+      <span>Total</span>
+      <strong>₱{{ selectedTotal() | number: '1.2-2' }}</strong>
+    </div>
+    <ion-button class="giftly-btn-primary" (click)="checkout()">Checkout</ion-button>
+  </div>
+</ion-footer>

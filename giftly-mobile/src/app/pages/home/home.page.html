@@ -1,0 +1,28 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      <img src="assets/giftly/giftly-logo.png" alt="Giftly" class="brand-logo" />
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="hero-scroller">
+    <div class="hero-slide" *ngFor="let slide of slides" [style.background]="slide.gradient">
+      <img [src]="slide.image" [alt]="slide.title" class="hero-image" />
+      <h1>{{ slide.title }} <span>{{ slide.highlight }}</span></h1>
+      <p>{{ slide.subtitle }}</p>
+      <ion-button class="giftly-btn-primary" (click)="goToShop()">
+        Shop Now
+        <ion-icon slot="end" name="arrow-forward-outline"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+
+  <div class="section">
+    <ion-icon name="gift-outline" class="section-icon"></ion-icon>
+    <h2>Gifts for every moment</h2>
+    <p>Plushies, keychains, phone charms, hair accessories, and chocolates — browse the full collection and find something meaningful.</p>
+    <ion-button expand="block" class="giftly-btn-primary" (click)="goToShop()">Browse the Shop</ion-button>
+  </div>
+</ion-content>

@@ -1,0 +1,53 @@
+// Giftly brand theme — mirrors giftly_project/header.php's palette
+// (primary pink #ff8ba7, gradient partner #FEA5B6, pill-shaped rounded UI).
+
+:root {
+  --ion-font-family: 'Poppins', sans-serif;
+
+  /** primary — matches .btn-nav-login / .nav-links a:hover **/
+  --ion-color-primary: #ff8ba7;
+  --ion-color-primary-rgb: 255, 139, 167;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #e07a92;
+  --ion-color-primary-tint: #ff96af;
+
+  /** secondary — matches the gradient partner #FEA5B6 **/
+  --ion-color-secondary: #fea5b6;
+  --ion-color-secondary-rgb: 254, 165, 182;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #e0919f;
+  --ion-color-secondary-tint: #feaebd;
+
+  /** tertiary — matches .p-price / dark text accents **/
+  --ion-color-tertiary: #222222;
+  --ion-color-tertiary-rgb: 34, 34, 34;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #1e1e1e;
+  --ion-color-tertiary-tint: #383838;
+
+  /** danger — matches .btn-danger **/
+  --ion-color-danger: #d32f2f;
+  --ion-color-danger-rgb: 211, 47, 47;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #ba2929;
+  --ion-color-danger-tint: #d74444;
+
+  --ion-background-color: #fcfcfc;
+  --ion-background-color-rgb: 252, 252, 252;
+  --ion-text-color: #333333;
+  --ion-text-color-rgb: 51, 51, 51;
+
+  --ion-toolbar-background: #fcfcfc;
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+
+  // Custom tokens used across the app for the pink gradient buttons the
+  // website uses everywhere (.btn-nav-login, .btn-save, .checkout-btn, ...).
+  --giftly-gradient: linear-gradient(135deg, #fea5b6 0%, #ff8ba7 100%);
+  --giftly-pill-radius: 50px;
+  --giftly-card-radius: 20px;
+}

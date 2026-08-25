@@ -1,0 +1,74 @@
+.brand-logo {
+  height: 32px;
+}
+
+.hero-scroller {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 0;
+}
+
+.hero-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  padding: 24px 20px 32px;
+  text-align: center;
+  border-radius: 0 0 32px 32px;
+
+  .hero-image {
+    max-width: 220px;
+    max-height: 220px;
+    object-fit: contain;
+    margin: 0 auto 16px;
+    display: block;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 10px;
+
+    span {
+      color: var(--ion-color-primary);
+    }
+  }
+
+  p {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  ion-button {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+}
+
+.section {
+  text-align: center;
+  padding: 30px 24px 50px;
+
+  .section-icon {
+    font-size: 42px;
+    color: var(--ion-color-primary);
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #222;
+  }
+
+  p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+}

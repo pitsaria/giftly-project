@@ -1,0 +1,67 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Checkout</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <h2 class="section-title"><ion-icon name="person-outline"></ion-icon> Delivery Details</h2>
+
+  <ion-input label="Full Name" labelPlacement="stacked" fill="outline" [(ngModel)]="fullname" class="field"></ion-input>
+
+  <ion-select
+    *ngIf="addresses.length"
+    label="Saved Address"
+    labelPlacement="stacked"
+    fill="outline"
+    [(ngModel)]="addressId"
+    (ionChange)="selectAddress($event.detail.value)"
+    class="field"
+  >
+    <ion-select-option *ngFor="let a of addresses" [value]="a.id">
+      {{ a.label }} — {{ a.address }}, {{ a.city }}
+    </ion-select-option>
+  </ion-select>
+
+  <ion-input label="Street Address" labelPlacement="stacked" fill="outline" [(ngModel)]="address" class="field"></ion-input>
+  <ion-input label="City" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
+  <ion-input label="Sender Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="senderPhone" class="field"></ion-input>
+
+  <div class="toggle-row">
+    <button [class.active]="deliveryType === 'me'" (click)="deliveryType = 'me'">For Me</button>
+    <button [class.active]="deliveryType === 'recipient'" (click)="deliveryType = 'recipient'">For Someone Else</button>
+  </div>
+
+  <ng-container *ngIf="deliveryType === 'recipient'">
+    <ion-input label="Recipient Name" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientName" class="field"></ion-input>
+    <ion-input label="Recipient Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientPhone" class="field"></ion-input>
+  </ng-container>
+
+  <div class="field-row">
+    <ion-input type="date" label="Delivery Date" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
+    <ion-input type="time" label="Delivery Time" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
+  </div>
+
+  <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Message</h2>
+  <ion-textarea placeholder="Add a personal note (optional)" fill="outline" [(ngModel)]="giftMessage" class="field" [autoGrow]="true"></ion-textarea>
+
+  <h2 class="section-title"><ion-icon name="card-outline"></ion-icon> Payment Method</h2>
+  <div class="payment-row">
+    <button [class.active]="paymentMethod === 'cod'" (click)="paymentMethod = 'cod'">
+      <ion-icon name="cash-outline"></ion-icon> Cash on Delivery
+    </button>
+    <button [class.active]="paymentMethod === 'card'" (click)="paymentMethod = 'card'">
+      <ion-icon name="card-outline"></ion-icon> Card
+    </button>
+  </div>
+
+  <div class="summary">
+    <div class="row"><span>Subtotal</span><span>₱{{ total() | number: '1.2-2' }}</span></div>
+    <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
+    <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
+  </div>
+
+  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting" (click)="placeOrder()">
+    {{ submitting ? 'Placing Order...' : 'Place Order' }}
+  </ion-button>
+</ion-content>

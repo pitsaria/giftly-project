@@ -1,0 +1,7 @@
+{
+  "name": "giftly-mobile",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}

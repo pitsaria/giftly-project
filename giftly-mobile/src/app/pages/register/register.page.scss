@@ -1,0 +1,39 @@
+.brand {
+  text-align: center;
+  margin: 16px 0 24px;
+
+  img {
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+
+  .field {
+    flex: 1;
+  }
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.switch-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+
+  a {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+  }
+}

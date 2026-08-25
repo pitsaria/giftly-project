@@ -1,0 +1,38 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Log In</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="brand">
+    <img src="assets/giftly/giftly-logo.png" alt="Giftly" />
+    <p>Welcome back! Log in to continue.</p>
+  </div>
+
+  <ion-input
+    type="email"
+    label="Email"
+    labelPlacement="stacked"
+    fill="outline"
+    [(ngModel)]="email"
+    class="field"
+  ></ion-input>
+
+  <ion-input
+    type="password"
+    label="Password"
+    labelPlacement="stacked"
+    fill="outline"
+    [(ngModel)]="password"
+    class="field"
+  ></ion-input>
+
+  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting" (click)="login()">
+    {{ submitting ? 'Logging in...' : 'Login' }}
+  </ion-button>
+
+  <p class="switch-link">
+    Don't have an account? <a routerLink="/register">Sign up</a>
+  </p>
+</ion-content>
