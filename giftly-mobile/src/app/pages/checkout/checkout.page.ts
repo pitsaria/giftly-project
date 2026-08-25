@@ -13,6 +13,7 @@ import {
   IonTextarea,
   IonSelect,
   IonSelectOption,
+  IonSpinner,
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -22,6 +23,7 @@ import { AddressService } from '../../core/address.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService } from '../../core/order.service';
 import { AuthService } from '../../core/auth.service';
+import { describeError } from '../../core/http-error';
 
 // Mirrors giftly_project/checkout_selected.php.
 @Component({
@@ -41,6 +43,7 @@ import { AuthService } from '../../core/auth.service';
     IonTextarea,
     IonSelect,
     IonSelectOption,
+    IonSpinner,
   ],
 })
 export class CheckoutPage implements OnInit {
@@ -54,6 +57,10 @@ export class CheckoutPage implements OnInit {
   addresses: Address[] = [];
   cartItems: CartItem[] = [];
   submitting = false;
+  loading = true;
+  error: string | null = null;
+  slowLoad = false;
+  private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
 
   fullname = this.auth.user()?.name ?? '';
   addressId: number | null = null;
@@ -73,13 +80,32 @@ export class CheckoutPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const [addresses, cart] = await Promise.all([this.addressSvc.getAll(), this.cart.getCart()]);
-    this.addresses = addresses;
-    const selectedIds = new Set(this.cart.selectedCartIds());
-    this.cartItems = cart.items.filter((i) => selectedIds.has(i.cart_id));
+    await this.load();
+  }
 
-    if (this.addresses.length) {
-      this.selectAddress(this.addresses[0].id);
+  async load(): Promise<void> {
+    this.loading = true;
+    this.error = null;
+    this.slowLoad = false;
+    clearTimeout(this.slowLoadTimer);
+    this.slowLoadTimer = setTimeout(() => {
+      this.slowLoad = true;
+    }, 6000);
+
+    try {
+      const [addresses, cart] = await Promise.all([this.addressSvc.getAll(), this.cart.getCart()]);
+      this.addresses = addresses;
+      const selectedIds = new Set(this.cart.selectedCartIds());
+      this.cartItems = cart.items.filter((i) => selectedIds.has(i.cart_id));
+
+      if (this.addresses.length) {
+        this.selectAddress(this.addresses[0].id);
+      }
+    } catch (err) {
+      this.error = describeError(err);
+    } finally {
+      clearTimeout(this.slowLoadTimer);
+      this.loading = false;
     }
   }
 
@@ -145,8 +171,8 @@ export class CheckoutPage implements OnInit {
       this.cart.selectedCartIds.set([]);
       await this.cart.getCart();
       this.router.navigateByUrl('/order-confirmation');
-    } catch {
-      await this.toast('Failed to place order. Please try again.');
+    } catch (err) {
+      await this.toast(describeError(err));
     } finally {
       this.submitting = false;
     }

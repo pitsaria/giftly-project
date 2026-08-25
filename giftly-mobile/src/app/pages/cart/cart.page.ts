@@ -18,6 +18,7 @@ import { addIcons } from 'ionicons';
 import { removeOutline, addOutline, trashOutline, bagHandleOutline } from 'ionicons/icons';
 import { CartItem } from '../../core/models';
 import { CartService } from '../../core/cart.service';
+import { describeError } from '../../core/http-error';
 import { environment } from '../../../environments/environment';
 
 // Mirrors giftly_project/cart.php.
@@ -49,6 +50,8 @@ export class CartPage implements OnInit {
   selected = new Set<number>();
   loading = true;
   error: string | null = null;
+  slowLoad = false;
+  private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline });
@@ -65,15 +68,22 @@ export class CartPage implements OnInit {
   async refresh(): Promise<void> {
     this.loading = true;
     this.error = null;
+    this.slowLoad = false;
+    clearTimeout(this.slowLoadTimer);
+    this.slowLoadTimer = setTimeout(() => {
+      this.slowLoad = true;
+    }, 6000);
+
     try {
       const cart = await this.cart.getCart();
       this.items = cart.items;
       // Keep previously selected items selected if still in the cart.
       const validIds = new Set(this.items.map((i) => i.cart_id));
       this.selected = new Set([...this.selected].filter((id) => validIds.has(id)));
-    } catch {
-      this.error = 'Could not load your cart. The server may still be starting up — please try again.';
+    } catch (err) {
+      this.error = describeError(err);
     } finally {
+      clearTimeout(this.slowLoadTimer);
       this.loading = false;
     }
   }

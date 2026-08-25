@@ -35,7 +35,8 @@
 
     <div class="ion-text-center loading-spinner" *ngIf="loading">
       <ion-spinner name="crescent"></ion-spinner>
-      <p>Loading...</p>
+      <p *ngIf="!slowLoad">Loading...</p>
+      <p *ngIf="slowLoad">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
     </div>
 
     <div class="error-state" *ngIf="!loading && error">

@@ -28,6 +28,7 @@ import {
   logOutOutline,
 } from 'ionicons/icons';
 import { Address, Order, Profile, WishlistData } from '../../core/models';
+import { describeError } from '../../core/http-error';
 import { AuthService } from '../../core/auth.service';
 import { ProfileService } from '../../core/profile.service';
 import { AddressService, NewAddress } from '../../core/address.service';
@@ -77,6 +78,8 @@ export class ProfilePage implements OnInit {
   loading = false;
   saving = false;
   error: string | null = null;
+  slowLoad = false;
+  private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
 
   profile: Profile | null = null;
   addresses: Address[] = [];
@@ -121,6 +124,12 @@ export class ProfilePage implements OnInit {
   private async loadTab(tab: Tab, forceReload: boolean): Promise<void> {
     this.loading = true;
     this.error = null;
+    this.slowLoad = false;
+    clearTimeout(this.slowLoadTimer);
+    this.slowLoadTimer = setTimeout(() => {
+      this.slowLoad = true;
+    }, 6000);
+
     try {
       if (tab === 'settings' && (forceReload || !this.profile)) {
         this.profile = await this.profileSvc.getProfile();
@@ -131,9 +140,10 @@ export class ProfilePage implements OnInit {
       } else if (tab === 'wishlist') {
         this.wishlist = await this.wishlistSvc.getWishlist();
       }
-    } catch {
-      this.error = 'Could not load this. The server may still be starting up — please try again.';
+    } catch (err) {
+      this.error = describeError(err);
     } finally {
+      clearTimeout(this.slowLoadTimer);
       this.loading = false;
     }
   }
@@ -153,8 +163,8 @@ export class ProfilePage implements OnInit {
       this.currentPassword = '';
       this.newPassword = '';
       await this.toast('Profile updated successfully!');
-    } catch (err: any) {
-      await this.toast(err?.error?.error ?? 'Failed to update profile. Please try again.');
+    } catch (err) {
+      await this.toast(describeError(err));
     } finally {
       this.saving = false;
     }
