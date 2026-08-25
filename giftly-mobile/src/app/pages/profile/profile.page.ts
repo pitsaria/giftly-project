@@ -75,6 +75,8 @@ export class ProfilePage implements OnInit {
   readonly uploadsUrl = environment.uploadsUrl;
   tab: Tab = 'settings';
   loading = false;
+  saving = false;
+  error: string | null = null;
 
   profile: Profile | null = null;
   addresses: Address[] = [];
@@ -101,7 +103,7 @@ export class ProfilePage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     if (this.auth.isLoggedIn()) {
-      await this.switchTab('settings');
+      await this.loadTab('settings', false);
     }
   }
 
@@ -109,9 +111,18 @@ export class ProfilePage implements OnInit {
     if (!value) return;
     const tab = value as Tab;
     this.tab = tab;
+    await this.loadTab(tab, false);
+  }
+
+  async retryTab(): Promise<void> {
+    await this.loadTab(this.tab, true);
+  }
+
+  private async loadTab(tab: Tab, forceReload: boolean): Promise<void> {
     this.loading = true;
+    this.error = null;
     try {
-      if (tab === 'settings' && !this.profile) {
+      if (tab === 'settings' && (forceReload || !this.profile)) {
         this.profile = await this.profileSvc.getProfile();
       } else if (tab === 'addresses') {
         this.addresses = await this.addressSvc.getAll();
@@ -120,6 +131,8 @@ export class ProfilePage implements OnInit {
       } else if (tab === 'wishlist') {
         this.wishlist = await this.wishlistSvc.getWishlist();
       }
+    } catch {
+      this.error = 'Could not load this. The server may still be starting up — please try again.';
     } finally {
       this.loading = false;
     }
@@ -127,7 +140,7 @@ export class ProfilePage implements OnInit {
 
   async saveProfile(): Promise<void> {
     if (!this.profile) return;
-    this.loading = true;
+    this.saving = true;
     try {
       await this.profileSvc.updateProfile({
         firstname: this.profile.firstname,
@@ -141,9 +154,9 @@ export class ProfilePage implements OnInit {
       this.newPassword = '';
       await this.toast('Profile updated successfully!');
     } catch (err: any) {
-      await this.toast(err?.error?.error ?? 'Failed to update profile.');
+      await this.toast(err?.error?.error ?? 'Failed to update profile. Please try again.');
     } finally {
-      this.loading = false;
+      this.saving = false;
     }
   }
 
@@ -152,10 +165,14 @@ export class ProfilePage implements OnInit {
       await this.toast('Please fill in all address fields.');
       return;
     }
-    await this.addressSvc.create(this.newAddress);
-    this.newAddress = { label: '', address: '', city: '', province: '', zip: '' };
-    this.showAddAddress = false;
-    this.addresses = await this.addressSvc.getAll();
+    try {
+      await this.addressSvc.create(this.newAddress);
+      this.newAddress = { label: '', address: '', city: '', province: '', zip: '' };
+      this.showAddAddress = false;
+      this.addresses = await this.addressSvc.getAll();
+    } catch {
+      await this.toast('Could not save this address. Please try again.');
+    }
   }
 
   async deleteAddress(id: number): Promise<void> {
@@ -168,8 +185,12 @@ export class ProfilePage implements OnInit {
           text: 'Delete',
           role: 'destructive',
           handler: async () => {
-            await this.addressSvc.remove(id);
-            this.addresses = await this.addressSvc.getAll();
+            try {
+              await this.addressSvc.remove(id);
+              this.addresses = await this.addressSvc.getAll();
+            } catch {
+              await this.toast('Could not delete this address. Please try again.');
+            }
           },
         },
       ],
@@ -200,13 +221,21 @@ export class ProfilePage implements OnInit {
   }
 
   async toggleWishlist(productId: number): Promise<void> {
-    await this.wishlistSvc.toggle(productId);
-    this.wishlist = await this.wishlistSvc.getWishlist();
+    try {
+      await this.wishlistSvc.toggle(productId);
+      this.wishlist = await this.wishlistSvc.getWishlist();
+    } catch {
+      await this.toast('Could not update your wishlist. Please try again.');
+    }
   }
 
   async addWishlistItemToCart(productId: number): Promise<void> {
-    await this.cart.addToCart(productId, 1);
-    await this.toast('Added to cart');
+    try {
+      await this.cart.addToCart(productId, 1);
+      await this.toast('Added to cart');
+    } catch {
+      await this.toast('Could not add to cart. Please try again.');
+    }
   }
 
   async logout(): Promise<void> {

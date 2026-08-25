@@ -10,6 +10,7 @@ import {
   IonCheckbox,
   IonIcon,
   IonButton,
+  IonSpinner,
   ToastController,
   AlertController,
 } from '@ionic/angular';
@@ -24,7 +25,18 @@ import { environment } from '../../../environments/environment';
   selector: 'app-cart',
   templateUrl: 'cart.page.html',
   styleUrls: ['cart.page.scss'],
-  imports: [CommonModule, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter, IonCheckbox, IonIcon, IonButton],
+  imports: [
+    CommonModule,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonFooter,
+    IonCheckbox,
+    IonIcon,
+    IonButton,
+    IonSpinner,
+  ],
 })
 export class CartPage implements OnInit {
   private cart = inject(CartService);
@@ -36,6 +48,7 @@ export class CartPage implements OnInit {
   items: CartItem[] = [];
   selected = new Set<number>();
   loading = true;
+  error: string | null = null;
 
   constructor() {
     addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline });
@@ -51,12 +64,15 @@ export class CartPage implements OnInit {
 
   async refresh(): Promise<void> {
     this.loading = true;
+    this.error = null;
     try {
       const cart = await this.cart.getCart();
       this.items = cart.items;
       // Keep previously selected items selected if still in the cart.
       const validIds = new Set(this.items.map((i) => i.cart_id));
       this.selected = new Set([...this.selected].filter((id) => validIds.has(id)));
+    } catch {
+      this.error = 'Could not load your cart. The server may still be starting up — please try again.';
     } finally {
       this.loading = false;
     }

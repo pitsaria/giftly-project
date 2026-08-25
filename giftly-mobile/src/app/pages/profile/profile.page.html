@@ -35,10 +35,16 @@
 
     <div class="ion-text-center loading-spinner" *ngIf="loading">
       <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading...</p>
+    </div>
+
+    <div class="error-state" *ngIf="!loading && error">
+      <p>{{ error }}</p>
+      <ion-button fill="outline" (click)="retryTab()">Try Again</ion-button>
     </div>
 
     <!-- SETTINGS -->
-    <div class="tab-panel" *ngIf="tab === 'settings' && profile && !loading">
+    <div class="tab-panel" *ngIf="tab === 'settings' && profile && !loading && !error">
       <div class="field-row">
         <ion-input label="First Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.firstname" class="field"></ion-input>
         <ion-input label="Last Name" labelPlacement="stacked" fill="outline" [(ngModel)]="profile.lastname" class="field"></ion-input>
@@ -50,7 +56,9 @@
       <ion-input type="password" label="Current Password" labelPlacement="stacked" fill="outline" [(ngModel)]="currentPassword" class="field"></ion-input>
       <ion-input type="password" label="New Password" labelPlacement="stacked" fill="outline" [(ngModel)]="newPassword" class="field"></ion-input>
 
-      <ion-button expand="block" class="giftly-btn-primary" (click)="saveProfile()">Save Changes</ion-button>
+      <ion-button expand="block" class="giftly-btn-primary" [disabled]="saving" (click)="saveProfile()">
+        {{ saving ? 'Saving...' : 'Save Changes' }}
+      </ion-button>
 
       <div class="stats-row">
         <div class="stat"><strong>{{ profile.order_count }}</strong><span>Orders</span></div>
@@ -64,7 +72,7 @@
     </div>
 
     <!-- ADDRESSES -->
-    <div class="tab-panel" *ngIf="tab === 'addresses' && !loading">
+    <div class="tab-panel" *ngIf="tab === 'addresses' && !loading && !error">
       <ion-button expand="block" fill="outline" (click)="showAddAddress = !showAddAddress">
         {{ showAddAddress ? 'Cancel' : '+ Add New Address' }}
       </ion-button>
@@ -93,7 +101,7 @@
     </div>
 
     <!-- ORDERS -->
-    <div class="tab-panel" *ngIf="tab === 'orders' && !loading">
+    <div class="tab-panel" *ngIf="tab === 'orders' && !loading && !error">
       <div class="order-card" *ngFor="let o of orders">
         <div class="order-head">
           <span>Order #{{ o.id }}</span>
@@ -114,7 +122,7 @@
     </div>
 
     <!-- WISHLIST -->
-    <div class="tab-panel" *ngIf="tab === 'wishlist' && wishlist && !loading">
+    <div class="tab-panel" *ngIf="tab === 'wishlist' && wishlist && !loading && !error">
       <div class="wishlist-grid">
         <div class="wishlist-item" *ngFor="let p of [...wishlist.in_stock, ...wishlist.out_of_stock]">
           <img [src]="uploadsUrl + '/' + p.image" [alt]="p.name" />

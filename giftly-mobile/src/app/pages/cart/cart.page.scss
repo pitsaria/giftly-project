@@ -1,3 +1,19 @@
+.loading-state {
+  padding: 100px 20px;
+  color: #888;
+
+  ion-spinner {
+    width: 40px;
+    height: 40px;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin-top: 12px;
+    font-size: 14px;
+  }
+}
+
 .empty-state {
   text-align: center;
   padding: 100px 20px;
@@ -7,6 +23,10 @@
     font-size: 50px;
     color: #ddd;
     margin-bottom: 12px;
+  }
+
+  ion-button {
+    margin-top: 16px;
   }
 }
 

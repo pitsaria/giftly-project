@@ -5,12 +5,23 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <div class="empty-state" *ngIf="!loading && items.length === 0">
+  <div class="ion-text-center loading-state" *ngIf="loading">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading your cart...</p>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && error">
+    <ion-icon name="bag-handle-outline"></ion-icon>
+    <p>{{ error }}</p>
+    <ion-button fill="outline" (click)="refresh()">Try Again</ion-button>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !error && items.length === 0">
     <ion-icon name="bag-handle-outline"></ion-icon>
     <p>Your cart is empty.</p>
   </div>
 
-  <div class="cart-list" *ngIf="items.length">
+  <div class="cart-list" *ngIf="!loading && !error && items.length">
     <div class="select-all-row">
       <ion-checkbox [checked]="allSelected()" (ionChange)="toggleSelectAll()"></ion-checkbox>
       <span>Select all</span>
