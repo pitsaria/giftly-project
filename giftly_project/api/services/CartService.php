@@ -19,9 +19,11 @@ class CartService {
             return;
         }
         
-        $sql = "SELECT c.id as cart_id, c.quantity, p.* 
-                FROM carts c 
-                JOIN products p ON c.product_id = p.id 
+        $sql = "SELECT c.id as cart_id, c.quantity,
+                       p.id, p.name, p.description, p.price, p.image, p.category_id,
+                       p.quantity as stock
+                FROM carts c
+                JOIN products p ON c.product_id = p.id
                 WHERE c.user_id = $user_id";
         
         $result = $this->conn->query($sql);
