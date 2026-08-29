@@ -23,14 +23,6 @@ $owners = [
     ['name' => 'Gabriel Edpao',   'role' => 'Head of Curation',        'bio' => 'Hunts down the small-batch makers behind our favourite finds.'],
     ['name' => 'Rachelle Dilig',  'role' => 'Customer Happiness',      'bio' => 'The voice on the other end of every message — and every thank-you note.'],
 ];
-
-$milestones = [
-    ['year' => '2021', 'title' => 'A kitchen-table idea',   'text' => 'One badly-wrapped gift sent overseas — and the belief that the wrapping matters as much as what\'s inside.'],
-    ['year' => '2022', 'title' => 'Our first little shop',  'text' => 'A tiny studio storefront where we hand-tied every box and wrote every card ourselves.'],
-    ['year' => '2023', 'title' => 'Giftly goes online',     'text' => 'The website launched so anyone could send a curated box across the country in a few clicks.'],
-    ['year' => '2024', 'title' => 'Build-a-Box arrives',    'text' => 'The tool that lets customers choose exactly what goes inside their box.'],
-    ['year' => '2026', 'title' => 'Still cherishing moments','text' => 'Thousands of boxes later, run by the same rule we started with.'],
-];
 ?>
 
 <style>
@@ -47,15 +39,6 @@ $milestones = [
     .ab-section-head { text-align: center; margin-bottom: 44px; }
     .ab-section-head h2 { font-size: 28px; font-weight: 700; color: #222; margin-bottom: 8px; }
     .ab-section-head p { font-size: 15px; color: #999; }
-
-    /* STORY */
-    .ab-story-lead { max-width: 680px; margin: 0 auto 40px; text-align: center; font-size: 16px; color: #666; line-height: 1.85; }
-    .ab-story-lead strong { color: #222; font-weight: 600; }
-    .ab-milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-    .ab-ms { background: #fff; border: 1px solid #f2f2f2; border-radius: 20px; padding: 22px 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
-    .ab-ms .yr { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #ff8ba7; background: #fff0f5; padding: 3px 12px; border-radius: 50px; margin-bottom: 12px; }
-    .ab-ms h3 { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 6px; }
-    .ab-ms p { font-size: 13.5px; color: #888; line-height: 1.6; }
 
     /* STORE GALLERY */
     .ab-gallery { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 150px; gap: 16px; }
@@ -107,28 +90,6 @@ $milestones = [
         <span class="kicker">Our Story</span>
         <h1>Wrapped with intention,<br>sent with <span>love</span>.</h1>
         <p>Giftly began with one badly-wrapped present and a simple conviction: the way a gift arrives is part of the gift. Today we're a small team building boxes we'd be proud to receive ourselves.</p>
-    </div>
-
-    <!-- STORY -->
-    <div class="ab-section">
-        <div class="ab-section-head">
-            <h2>How we got here</h2>
-        </div>
-        <p class="ab-story-lead">
-            Giftly started with one gift that arrived looking like a mess. We were sure the
-            <strong>way a gift shows up</strong> is part of the gift itself — so we began wrapping,
-            tying and hand-writing boxes we'd be proud to receive ourselves. A few years on,
-            that's still the whole idea.
-        </p>
-        <div class="ab-milestones">
-            <?php foreach ($milestones as $m): ?>
-                <div class="ab-ms">
-                    <span class="yr"><?php echo htmlspecialchars($m['year']); ?></span>
-                    <h3><?php echo htmlspecialchars($m['title']); ?></h3>
-                    <p><?php echo htmlspecialchars($m['text']); ?></p>
-                </div>
-            <?php endforeach; ?>
-        </div>
     </div>
 
     <!-- STORE -->
