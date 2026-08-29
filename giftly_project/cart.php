@@ -682,8 +682,15 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
             <div class="gb-info">
                 <div class="nm"><?php echo htmlspecialchars($box['size_name']); ?></div>
                 <div class="meta"><?php echo $d['item_count']; ?> / <?php echo $box['max_items']; ?> items</div>
-                <?php if (trim($box['letter']) !== ''): ?>
-                    <div class="gb-letter">“<?php echo htmlspecialchars(mb_strimwidth($box['letter'], 0, 110, '…')); ?>”</div>
+                <?php
+                $gb_styles = bab_card_styles();
+                $gb_skey = bab_card_style_key($box['card_style'] ?? 'simple');
+                $gb_has_letter = trim($box['letter']) !== '';
+                if ($gb_has_letter || $gb_skey !== 'simple'): ?>
+                    <div class="gb-letter">
+                        <span style="font-style:normal;font-weight:600;color:#ff8ba7;"><?php echo $gb_styles[$gb_skey]['emoji'] . ' ' . htmlspecialchars($gb_styles[$gb_skey]['label']); ?> card</span>
+                        <?php if ($gb_has_letter): ?> — “<?php echo htmlspecialchars(mb_strimwidth($box['letter'], 0, 90, '…')); ?>”<?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
 

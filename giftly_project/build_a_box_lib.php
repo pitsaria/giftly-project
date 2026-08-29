@@ -24,8 +24,13 @@ if (!function_exists('bab_ensure_schema')) {
         $check = $conn->query("SELECT to_regclass('public.box_items') AS t");
         $row = $check ? $check->fetch_assoc() : null;
         if ($row && !empty($row['t'])) {
-            $_SESSION['bab_schema_ok'] = true;
-            return;
+            // tables exist — make sure later-added columns are present too
+            $col = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                                 WHERE table_name = 'boxes' AND column_name = 'card_style'");
+            if ($col && $col->num_rows > 0) {
+                $_SESSION['bab_schema_ok'] = true;
+                return;
+            }
         }
 
         // --- Tables ---------------------------------------------------------
@@ -54,12 +59,15 @@ if (!function_exists('bab_ensure_schema')) {
                 user_id     INTEGER NOT NULL,
                 box_size_id INTEGER NOT NULL REFERENCES box_sizes(id),
                 letter      TEXT NOT NULL DEFAULT '',
+                card_style  VARCHAR(30) NOT NULL DEFAULT 'simple',
                 status      VARCHAR(20) NOT NULL DEFAULT 'saved'
                             CHECK (status IN ('saved','in_cart','ordered')),
                 created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         ");
+        // for databases where 'boxes' predates card_style
+        $conn->query("ALTER TABLE boxes ADD COLUMN IF NOT EXISTS card_style VARCHAR(30) NOT NULL DEFAULT 'simple'");
 
         $conn->query("
             CREATE TABLE IF NOT EXISTS box_items (
@@ -87,6 +95,28 @@ if (!function_exists('bab_ensure_schema')) {
         ");
 
         $_SESSION['bab_schema_ok'] = true;
+    }
+
+    /**
+     * Letter card styles. Keyed by the value stored in boxes.card_style.
+     * 'simple' is the default and adds nothing to the order's gift message.
+     */
+    function bab_card_styles() {
+        return [
+            'simple'    => ['label' => 'Simple note',      'emoji' => '✉️'],
+            'birthday'  => ['label' => 'Birthday',         'emoji' => '🎂'],
+            'valentine' => ['label' => "Valentine's",      'emoji' => '💗'],
+            'thank_you' => ['label' => 'Thank you',        'emoji' => '🙏'],
+            'congrats'  => ['label' => 'Congratulations',  'emoji' => '🎉'],
+            'holiday'   => ['label' => 'Holiday',          'emoji' => '🎄'],
+            'get_well'  => ['label' => 'Get well soon',    'emoji' => '🌷'],
+        ];
+    }
+
+    /** Normalise an incoming card_style to a known key ('simple' fallback). */
+    function bab_card_style_key($key) {
+        $styles = bab_card_styles();
+        return isset($styles[$key]) ? $key : 'simple';
     }
 
     /** All box sizes ordered for display. Returns list of assoc rows. */

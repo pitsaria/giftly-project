@@ -15,11 +15,12 @@ $sizes = bab_box_sizes($conn);
 $cat_result = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 
 /* --- initial client state (JSON) --- */
-$initial = ['boxId' => 0, 'sizeId' => 0, 'letter' => '', 'items' => []];
+$initial = ['boxId' => 0, 'sizeId' => 0, 'letter' => '', 'cardStyle' => 'simple', 'items' => []];
 if ($edit_box) {
-    $initial['boxId']  = intval($edit_box['box']['id']);
-    $initial['sizeId'] = intval($edit_box['box']['box_size_id']);
-    $initial['letter'] = $edit_box['box']['letter'];
+    $initial['boxId']     = intval($edit_box['box']['id']);
+    $initial['sizeId']    = intval($edit_box['box']['box_size_id']);
+    $initial['letter']    = $edit_box['box']['letter'];
+    $initial['cardStyle'] = bab_card_style_key($edit_box['box']['card_style'] ?? 'simple');
     foreach ($edit_box['items'] as $it) {
         if ($it['unavailable'] === 'removed') continue;
         $initial['items'][] = [
@@ -150,21 +151,56 @@ if ($edit_box) {
     }
     .bab-chosen-bar button:hover { background: #ff8ba7; color: #fff; }
 
-    /* --- LETTER (collapsible) --- */
-    .bab-letter-card { background: #fff; border-radius: 22px; padding: 20px 24px; border: 1px solid #f0f0f0; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-top: 28px; }
-    .bab-letter-head { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
-    .bab-letter-head .badge { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
-    .bab-letter-head h2 { font-size: 17px; font-weight: 700; color: #222; margin: 0; flex: 1; }
-    .bab-letter-head .hint { font-size: 12px; color: #999; font-weight: 400; }
-    .bab-letter-head .caret { color: #bbb; transition: transform 0.2s; }
-    .bab-letter-card.open .bab-letter-head .caret { transform: rotate(180deg); }
-    .bab-letter-body { display: none; margin-top: 16px; }
-    .bab-letter-card.open .bab-letter-body { display: block; }
-    .bab-letter-card textarea {
+    /* --- TOOLBAR: search + view toggle --- */
+    .bab-toolbar { display: flex; gap: 10px; align-items: stretch; margin-bottom: 14px; flex-wrap: wrap; }
+    .bab-toolbar .bab-search { flex: 1; margin-bottom: 0; }
+    .bab-view-toggle { display: flex; gap: 3px; background: #f3f3f3; border-radius: 50px; padding: 3px; flex-shrink: 0; }
+    .bab-view-toggle button { border: none; background: none; width: 36px; border-radius: 50px; color: #999; cursor: pointer; font-size: 13px; transition: 0.15s; }
+    .bab-view-toggle button.active { background: #fff; color: #ff8ba7; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+    /* --- LIST VIEW --- */
+    .bab-prod-grid.list-view { display: flex; flex-direction: column; gap: 8px; }
+    .bab-prod-grid.list-view .bab-prod-card { flex-direction: row; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 14px; }
+    .bab-prod-grid.list-view .bab-prod-img { width: 52px; height: 52px; margin-bottom: 0; flex-shrink: 0; border-radius: 10px; }
+    .bab-prod-grid.list-view .bab-prod-name { margin-bottom: 0; flex: 1; font-size: 13.5px; }
+    .bab-prod-grid.list-view .bab-prod-price { margin-bottom: 0; margin-right: 6px; white-space: nowrap; font-size: 12.5px; }
+    .bab-prod-grid.list-view .foot { margin-top: 0; width: 150px; flex-shrink: 0; }
+    @media (max-width: 520px) { .bab-prod-grid.list-view .foot { width: 118px; } }
+
+    /* --- LETTER TRIGGER (in panel) --- */
+    .bab-letter-trigger {
+        width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 12px 14px; margin: 6px 0 14px; border: 1.5px dashed #ffc9d8; border-radius: 14px;
+        background: #fff; color: #ff8ba7; font-family: 'Poppins'; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s;
+    }
+    .bab-letter-trigger:hover { background: #fff0f5; }
+    .bab-letter-trigger.set { border-style: solid; border-color: #eee; color: #444; background: #fafafa; }
+    .bab-letter-trigger .lt-caret { color: #ccc; font-size: 11px; flex-shrink: 0; }
+    .bab-letter-trigger .lt-left { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* --- LETTER MODAL --- */
+    .bab-letter-modal {
+        background: #fff; border-radius: 24px; padding: 26px; max-width: 440px; width: 100%;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18); animation: babUp 0.3s ease; max-height: 88vh; overflow-y: auto;
+    }
+    .lm-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .lm-head h3 { font-size: 18px; font-weight: 700; color: #222; display: flex; align-items: center; gap: 8px; }
+    .lm-head h3 i { color: #ff8ba7; }
+    .lm-x { border: none; background: none; font-size: 24px; color: #999; cursor: pointer; line-height: 1; }
+    .lm-label { display: block; font-size: 11px; font-weight: 700; color: #888; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .lm-styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .lm-style { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 3px; border: 1.5px solid #eee; border-radius: 14px; background: #fff; cursor: pointer; transition: 0.15s; font-family: 'Poppins'; }
+    .lm-style:hover { border-color: #ffc1cc; }
+    .lm-style.active { border-color: #ff8ba7; background: #fff0f5; box-shadow: 0 0 0 3px rgba(255,139,167,0.12); }
+    .lm-style .emo { font-size: 20px; line-height: 1; }
+    .lm-style .lbl { font-size: 10px; font-weight: 600; color: #555; text-align: center; line-height: 1.2; }
+    .bab-letter-modal textarea {
         width: 100%; min-height: 120px; border: 1.5px solid #eee; border-radius: 14px; padding: 14px 16px;
         font-family: 'Poppins'; font-size: 14px; resize: vertical; outline: none; background: #fafafa;
     }
-    .bab-letter-card textarea:focus { border-color: #ffc1cc; background: #fff; }
+    .bab-letter-modal textarea:focus { border-color: #ffc1cc; background: #fff; }
+    .lm-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .lm-actions .bab-btn { flex: 1; }
     .bab-char { text-align: right; font-size: 12px; color: #999; margin-top: 6px; }
 
     /* --- RIGHT PANEL --- */
@@ -282,9 +318,15 @@ if ($edit_box) {
         <div class="bab-left bab-locked" id="leftCol">
             <!-- STEP 2 -->
             <h2 class="bab-section-title"><span class="badge">2</span> Choose items for your box</h2>
-            <div class="bab-search">
-                <input type="text" id="babSearch" placeholder="Search gifts..." onkeydown="if(event.key==='Enter'){babResetAndLoad();}">
-                <button onclick="babResetAndLoad()">Search</button>
+            <div class="bab-toolbar">
+                <div class="bab-search">
+                    <input type="text" id="babSearch" placeholder="Search gifts..." onkeydown="if(event.key==='Enter'){babResetAndLoad();}">
+                    <button onclick="babResetAndLoad()">Search</button>
+                </div>
+                <div class="bab-view-toggle" title="Change layout">
+                    <button data-view="grid" class="active" onclick="babSetView('grid')" aria-label="Grid view"><i class="fas fa-th-large"></i></button>
+                    <button data-view="list" onclick="babSetView('list')" aria-label="List view"><i class="fas fa-list"></i></button>
+                </div>
             </div>
             <div class="bab-chips" id="babChips">
                 <button class="bab-chip active" data-cat="0" onclick="babPickCat(this)">All Items</button>
@@ -296,20 +338,6 @@ if ($edit_box) {
                 <div class="bab-empty">Choose a box size to see gifts that fit.</div>
             </div>
             <div class="bab-pager" id="babPager"></div>
-
-            <!-- STEP 3 -->
-            <div class="bab-letter-card" id="babLetterCard">
-                <div class="bab-letter-head" onclick="babToggleLetter()">
-                    <span class="badge">3</span>
-                    <h2>Write your letter <span class="hint">(optional)</span></h2>
-                    <i class="fas fa-chevron-down caret"></i>
-                </div>
-                <div class="bab-letter-body">
-                    <p style="font-size:13px;color:#888;margin-bottom:12px;">This message is tucked into the box for the recipient.</p>
-                    <textarea id="babLetter" maxlength="1000" placeholder="Dear ..." oninput="babLetterInput()"></textarea>
-                    <div class="bab-char"><span id="babChar">0</span> / 1000</div>
-                </div>
-            </div>
         </div>
 
         <!-- RIGHT PANEL -->
@@ -323,6 +351,11 @@ if ($edit_box) {
 
                 <ul class="bab-items" id="panelItems"></ul>
                 <div class="bab-panel-empty" id="panelEmpty"><i class="fas fa-gift"></i>Your box is empty — add some gifts!</div>
+
+                <button type="button" class="bab-letter-trigger" id="letterTrigger" onclick="babOpenLetter()">
+                    <span class="lt-left"><i class="fas fa-plus" id="ltIcon"></i> <span id="ltText">Add a letter</span></span>
+                    <i class="fas fa-chevron-right lt-caret"></i>
+                </button>
 
                 <div class="bab-totrow grand"><span>Total</span><span id="panelTotal">PHP 0.00</span></div>
 
@@ -352,6 +385,35 @@ if ($edit_box) {
     </div>
 </div>
 
+<!-- letter modal -->
+<div class="bab-modal-overlay" id="babLetterModal" onclick="if(event.target===this)babCloseLetter()">
+    <div class="bab-letter-modal">
+        <div class="lm-head">
+            <h3><i class="fas fa-envelope-open-text"></i> Your letter</h3>
+            <button class="lm-x" onclick="babCloseLetter()" aria-label="Close">&times;</button>
+        </div>
+
+        <label class="lm-label">Card style</label>
+        <div class="lm-styles" id="lmStyles">
+            <?php foreach (bab_card_styles() as $k => $s): ?>
+                <button type="button" class="lm-style" data-style="<?php echo $k; ?>" onclick="babPickCardStyle('<?php echo $k; ?>')">
+                    <span class="emo"><?php echo $s['emoji']; ?></span>
+                    <span class="lbl"><?php echo htmlspecialchars($s['label']); ?></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
+
+        <label class="lm-label">Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#999;">(optional)</span></label>
+        <textarea id="babLetterText" maxlength="1000" placeholder="Dear ..." oninput="babLetterCount()"></textarea>
+        <div class="bab-char"><span id="babChar">0</span> / 1000</div>
+
+        <div class="lm-actions">
+            <button type="button" class="bab-btn ghost" onclick="babCloseLetter()">Cancel</button>
+            <button type="button" class="bab-btn primary" onclick="babSaveLetter()"><i class="fas fa-check"></i> Save letter</button>
+        </div>
+    </div>
+</div>
+
 <div class="bab-toast" id="babToast"></div>
 
 <script>
@@ -359,6 +421,8 @@ const BAB = {
     loggedIn: <?php echo $logged_in ? 'true' : 'false'; ?>,
     editing: <?php echo $edit_box ? 'true' : 'false'; ?>,
     state: <?php echo json_encode($initial, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>,
+    cardStyles: <?php echo json_encode(bab_card_styles(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>,
+    view: 'grid',
     page: 1,
     totalPages: 1,
     lastSnapshot: '',
@@ -366,6 +430,7 @@ const BAB = {
     pendingNav: null,
     eligibleIds: null
 };
+if (!BAB.state.cardStyle) BAB.state.cardStyle = 'simple';
 BAB.lastSnapshot = JSON.stringify(BAB.state);
 
 /* ---------- helpers ---------- */
@@ -416,9 +481,8 @@ function babRestoreDraft() {
             babResetAndLoad();
         }
     }
-    document.getElementById('babLetter').value = BAB.state.letter || '';
-    babLetterCount();
-    if ((BAB.state.letter || '').trim()) document.getElementById('babLetterCard').classList.add('open');
+    if (!BAB.state.cardStyle) BAB.state.cardStyle = 'simple';
+    babRenderLetterTrigger();
     babRender();
     BAB.lastSnapshot = babSnapshot();
     BAB.dirty = false;
@@ -484,8 +548,58 @@ function babChangeSize() {
     document.getElementById('sizeSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function babToggleLetter() {
-    document.getElementById('babLetterCard').classList.toggle('open');
+/* ---------- product view toggle ---------- */
+function babSetView(v) {
+    BAB.view = v;
+    document.getElementById('prodGrid').classList.toggle('list-view', v === 'list');
+    document.querySelectorAll('.bab-view-toggle button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    try { localStorage.setItem('giftly_bab_view', v); } catch (e) {}
+}
+
+/* ---------- letter modal ---------- */
+function babOpenLetter() {
+    document.getElementById('babLetterText').value = BAB.state.letter || '';
+    babLetterCount();
+    babPickCardStyle(BAB.state.cardStyle || 'simple', true);
+    document.getElementById('babLetterModal').style.display = 'flex';
+}
+function babCloseLetter() {
+    document.getElementById('babLetterModal').style.display = 'none';
+}
+function babPickCardStyle(key, silent) {
+    BAB._pendingStyle = key;
+    document.querySelectorAll('#lmStyles .lm-style').forEach(b => b.classList.toggle('active', b.dataset.style === key));
+}
+function babSaveLetter() {
+    BAB.state.letter = document.getElementById('babLetterText').value.trim();
+    BAB.state.cardStyle = BAB._pendingStyle || 'simple';
+    babCloseLetter();
+    babMarkDirty();
+    babRenderLetterTrigger();
+    babToast('Letter saved');
+}
+function babLetterCount() {
+    const el = document.getElementById('babLetterText');
+    document.getElementById('babChar').textContent = el ? el.value.length : 0;
+}
+function babRenderLetterTrigger() {
+    const trg = document.getElementById('letterTrigger');
+    const icon = document.getElementById('ltIcon');
+    const txt = document.getElementById('ltText');
+    const st = BAB.cardStyles[BAB.state.cardStyle] || BAB.cardStyles.simple;
+    const hasLetter = (BAB.state.letter || '').trim().length > 0;
+    const styled = BAB.state.cardStyle && BAB.state.cardStyle !== 'simple';
+    if (hasLetter || styled) {
+        trg.classList.add('set');
+        icon.className = 'fas fa-envelope';
+        txt.textContent = st.emoji + ' ' + st.label + (hasLetter ? ' card · written' : ' card');
+        document.getElementById('stepInd3').classList.add('done');
+    } else {
+        trg.classList.remove('set');
+        icon.className = 'fas fa-plus';
+        txt.textContent = 'Add a letter';
+        document.getElementById('stepInd3').classList.remove('done');
+    }
 }
 
 function babPruneForSize(newMax) {
@@ -648,19 +762,6 @@ function babRemove(pid) {
     babMarkDirty(); babRender(); babSyncGridButtons();
 }
 
-/* ---------- letter ---------- */
-function babLetterInput() {
-    BAB.state.letter = document.getElementById('babLetter').value;
-    babLetterCount();
-    babMarkDirty();
-    if (BAB.state.letter.trim().length) {
-        document.getElementById('stepInd3').classList.add('done');
-    } else {
-        document.getElementById('stepInd3').classList.remove('done');
-    }
-}
-function babLetterCount() { document.getElementById('babChar').textContent = document.getElementById('babLetter').value.length; }
-
 /* ---------- render ---------- */
 function babRender() {
     const count = babCount();
@@ -715,6 +816,7 @@ function babSubmit(mode) {
     payload.append('box_id', BAB.state.boxId || 0);
     payload.append('size_id', BAB.state.sizeId);
     payload.append('letter', BAB.state.letter || '');
+    payload.append('card_style', BAB.state.cardStyle || 'simple');
     payload.append('status', status);
     payload.append('items', JSON.stringify(BAB.state.items.map(i => ({ product_id: i.product_id, quantity: i.qty }))));
 
@@ -772,6 +874,7 @@ function babLeaveModalSave() {
     payload.append('box_id', BAB.state.boxId || 0);
     payload.append('size_id', BAB.state.sizeId);
     payload.append('letter', BAB.state.letter || '');
+    payload.append('card_style', BAB.state.cardStyle || 'simple');
     payload.append('status', 'saved');
     payload.append('items', JSON.stringify(BAB.state.items.map(i => ({ product_id: i.product_id, quantity: i.qty }))));
     fetch('box_actions.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: payload })
@@ -805,13 +908,16 @@ document.addEventListener('click', function (e) {
 
 /* ---------- init ---------- */
 (function init() {
+    // restore saved product-layout preference
+    try {
+        const v = localStorage.getItem('giftly_bab_view');
+        if (v === 'list' || v === 'grid') babSetView(v);
+    } catch (e) {}
+
     if (BAB.editing && BAB.state.sizeId) {
         const card = babFindSizeCard(BAB.state.sizeId);
         if (card) card.classList.add('selected');
         babUnlock();
-        document.getElementById('babLetter').value = BAB.state.letter || '';
-        babLetterCount();
-        if ((BAB.state.letter || '').trim()) document.getElementById('babLetterCard').classList.add('open');
         babResetAndLoad();
     } else {
         try {
@@ -824,6 +930,7 @@ document.addEventListener('click', function (e) {
             }
         } catch (e) {}
     }
+    babRenderLetterTrigger();
     babRender();
 })();
 </script>

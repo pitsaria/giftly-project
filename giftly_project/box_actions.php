@@ -50,6 +50,7 @@ if ($action === 'save') {
     $box_id  = isset($_POST['box_id']) ? intval($_POST['box_id']) : 0;
     $size_id = isset($_POST['size_id']) ? intval($_POST['size_id']) : 0;
     $letter  = isset($_POST['letter']) ? trim($_POST['letter']) : '';
+    $card    = bab_card_style_key($_POST['card_style'] ?? 'simple');
     $status  = (isset($_POST['status']) && $_POST['status'] === 'in_cart') ? 'in_cart' : 'saved';
     $raw     = isset($_POST['items']) ? json_decode($_POST['items'], true) : null;
 
@@ -111,13 +112,13 @@ if ($action === 'save') {
             $owns = $conn->query("SELECT id FROM boxes WHERE id = $box_id AND user_id = $user_id");
             if (!$owns || $owns->num_rows === 0) throw new Exception('Box not found.');
             $conn->query("UPDATE boxes
-                          SET box_size_id = $size_id, letter = '$letter_esc',
+                          SET box_size_id = $size_id, letter = '$letter_esc', card_style = '$card',
                               status = '$status', updated_at = CURRENT_TIMESTAMP
                           WHERE id = $box_id AND user_id = $user_id");
             $conn->query("DELETE FROM box_items WHERE box_id = $box_id");
         } else {
-            $conn->query("INSERT INTO boxes (user_id, box_size_id, letter, status)
-                          VALUES ($user_id, $size_id, '$letter_esc', '$status')");
+            $conn->query("INSERT INTO boxes (user_id, box_size_id, letter, card_style, status)
+                          VALUES ($user_id, $size_id, '$letter_esc', '$card', '$status')");
             $box_id = intval($conn->insert_id);
             if ($box_id <= 0) {
                 $q = $conn->query("SELECT id FROM boxes WHERE user_id = $user_id

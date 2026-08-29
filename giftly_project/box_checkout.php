@@ -61,9 +61,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $delivery_time  = mysqli_real_escape_string($conn, $_POST['delivery_time']);
         $delivery_type  = isset($_POST['delivery_type']) ? $_POST['delivery_type'] : 'me';
 
-        // The box letter is the gift message
-        $letter_res = $conn->query("SELECT letter FROM boxes WHERE id = $box_id AND user_id = $user_id");
-        $gift_message = mysqli_real_escape_string($conn, $letter_res->fetch_assoc()['letter'] ?? '');
+        // The box letter (with its card style) becomes the order's gift message
+        $lr = $conn->query("SELECT letter, card_style FROM boxes WHERE id = $box_id AND user_id = $user_id");
+        $lrow = $lr ? $lr->fetch_assoc() : [];
+        $letter_txt = trim($lrow['letter'] ?? '');
+        $styles = bab_card_styles();
+        $skey = bab_card_style_key($lrow['card_style'] ?? 'simple');
+        $gm = $letter_txt;
+        if ($skey !== 'simple') {
+            $hdr = $styles[$skey]['emoji'] . ' ' . $styles[$skey]['label'] . ' card';
+            $gm = $letter_txt === '' ? $hdr : $hdr . "\n\n" . $letter_txt;
+        }
+        $gift_message = mysqli_real_escape_string($conn, $gm);
 
         if ($delivery_type === 'recipient') {
             $recipient       = isset($_POST['recipient_name']) ? mysqli_real_escape_string($conn, $_POST['recipient_name']) : '';
@@ -373,11 +382,18 @@ unset($_SESSION['box_checkout_error']);
                 </div>
             <?php endforeach; ?>
 
-            <?php if (trim($data['box']['letter']) !== ''): ?>
+            <?php
+            $co_styles = bab_card_styles();
+            $co_skey = bab_card_style_key($data['box']['card_style'] ?? 'simple');
+            $co_has_letter = trim($data['box']['letter']) !== '';
+            if ($co_has_letter || $co_skey !== 'simple'): ?>
                 <div style="font-size:12px;color:#888;margin-top:12px;font-weight:600;">
-                    <i class="fas fa-heart" style="color:#ff8ba7;"></i> Your letter
+                    <i class="fas fa-heart" style="color:#ff8ba7;"></i>
+                    <?php echo $co_styles[$co_skey]['emoji'] . ' ' . htmlspecialchars($co_styles[$co_skey]['label']); ?> card
                 </div>
-                <div class="co-letter"><?php echo htmlspecialchars($data['box']['letter']); ?></div>
+                <?php if ($co_has_letter): ?>
+                    <div class="co-letter"><?php echo htmlspecialchars($data['box']['letter']); ?></div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <div class="co-tot">

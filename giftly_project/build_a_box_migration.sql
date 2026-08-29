@@ -25,11 +25,13 @@ CREATE TABLE IF NOT EXISTS boxes (
     user_id     INTEGER NOT NULL,
     box_size_id INTEGER NOT NULL REFERENCES box_sizes(id),
     letter      TEXT NOT NULL DEFAULT '',
+    card_style  VARCHAR(30) NOT NULL DEFAULT 'simple',
     status      VARCHAR(20) NOT NULL DEFAULT 'saved'
                 CHECK (status IN ('saved','in_cart','ordered')),
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE boxes ADD COLUMN IF NOT EXISTS card_style VARCHAR(30) NOT NULL DEFAULT 'simple';
 
 CREATE TABLE IF NOT EXISTS box_items (
     id         SERIAL PRIMARY KEY,
