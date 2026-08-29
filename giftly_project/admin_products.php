@@ -714,6 +714,9 @@ case 'quantity_max':
 case 'box_sizes':
     $error_msg = 'Please select at least one box size for the product.';
     break;
+case 'category':
+    $error_msg = 'Please select a category.';
+    break;
                 default: $error_msg = 'An error occurred. Please try again.';
             }
             echo $error_msg;
@@ -742,8 +745,8 @@ case 'box_sizes':
                         $cat_name = $cat_row['name'];
                     }
                 }
-                $cat_display = !empty($cat_name) ? '<span class="card-cat-badge">'.$cat_name.'</span>' : '';
                 $tkey = catalog_type_key($row['product_type'] ?? 'catalog');
+                $cat_display = ($tkey === 'catalog' && !empty($cat_name)) ? '<span class="card-cat-badge">'.$cat_name.'</span>' : '';
                 $type_display = $tkey !== 'catalog'
                     ? '<span class="card-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$tkey]).'</span>'
                     : '';
@@ -810,6 +813,10 @@ case 'box_sizes':
                                 $cat_name = $cat_row['name'];
                             }
                         }
+                        $ltkey = catalog_type_key($row['product_type'] ?? 'catalog');
+                        $ltype_badge = $ltkey !== 'catalog'
+                            ? '<span class="prod-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$ltkey]).'</span>'
+                            : '<span class="prod-cat-badge">'.$cat_name.'</span>';
                         echo '
                         <tr class="search-item">
                             <td><img src="uploads/'.$row['image'].'" class="prod-thumb"></td>
@@ -817,7 +824,7 @@ case 'box_sizes':
                                 <span class="search-name prod-name-cell">'.$row['name'].'</span>
                                 <span class="prod-desc-cell">'.(strlen($row['description']) > 0 ? substr($row['description'], 0, 50).'...' : 'No description').'</span>
                             </td>
-                            <td><span class="prod-cat-badge">'.$cat_name.'</span>'.(catalog_type_key($row['product_type'] ?? 'catalog') !== 'catalog' ? ' <span class="prod-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[catalog_type_key($row['product_type'] ?? 'catalog')]).'</span>' : '').'</td>
+                            <td>'.$ltype_badge.'</td>
                             <td><span class="'.$stock_class.'">'.$stock_status.'</span></td>
                             <td><span class="prod-price">PHP '.number_format($row['price'], 2).'</span></td>
                             <td>
@@ -903,6 +910,7 @@ case 'box_sizes':
             <label class="modal-label">Stock Quantity</label>
             <input type="number" name="quantity" id="edit_quantity" class="modal-input" min="0" required>
             
+            <div id="edit_category_group">
             <label class="modal-label">Category</label>
             <select name="category_id" id="edit_category_id" class="modal-input">
                 <option value="">Select a category</option>
@@ -914,6 +922,7 @@ case 'box_sizes':
                 }
                 ?>
             </select>
+            </div>
 
             <div id="edit_box_sizes_group">
             <label class="modal-label">Allowed Box Sizes</label>
@@ -940,11 +949,16 @@ case 'box_sizes':
 
 <script>
     function toggleEditBoxSizes() {
-        var t = document.getElementById('edit_product_type').value;
+        var isShop = document.getElementById('edit_product_type').value === 'catalog';
+
         var grp = document.getElementById('edit_box_sizes_group');
-        var show = (t === 'catalog');
-        grp.style.display = show ? '' : 'none';
-        grp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !show; });
+        grp.style.display = isShop ? '' : 'none';
+        grp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !isShop; });
+
+        var catGrp = document.getElementById('edit_category_group');
+        var catSel = document.getElementById('edit_category_id');
+        catGrp.style.display = isShop ? '' : 'none';
+        catSel.disabled = !isShop;
     }
 
     function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType) {

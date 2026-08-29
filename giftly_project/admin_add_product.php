@@ -10,8 +10,16 @@ if (isset($_POST['add_product'])) {
     $desc = mysqli_real_escape_string($conn, $_POST['description']);
     $price = floatval($_POST['price']); // Convert to float
     $quantity = intval($_POST['quantity']); // Convert to integer
-    $category_id = $_POST['category_id'];
     $product_type = catalog_type_key($_POST['product_type'] ?? 'catalog');
+    // Categories apply to shop products only; pre-made boxes/baskets use 0.
+    $category_id = ($product_type === 'catalog') ? intval($_POST['category_id'] ?? 0) : 0;
+
+    // 🚨 VALIDATION: shop products need a category
+    if ($product_type === 'catalog' && $category_id <= 0) {
+        $_SESSION['product_error'] = "Please select a category.";
+        header("Location: admin_add_product.php");
+        exit();
+    }
 
     // 🚨 VALIDATION: regular shop products must be usable in at least one box size
     $box_size_ids = isset($_POST['box_sizes']) && is_array($_POST['box_sizes'])
@@ -199,8 +207,8 @@ include 'admin_header.php';
     </div>
 </div>
             
-            <!-- DYNAMIC CATEGORY DROPDOWN -->
-            <div class="admin-form-group">
+            <!-- DYNAMIC CATEGORY DROPDOWN (shop products only) -->
+            <div class="admin-form-group" id="categoryGroup">
                 <label for="category_id">Category</label>
                 <select id="category_id" name="category_id" class="admin-input" required>
                     <option value="">Select a category</option>
@@ -255,11 +263,17 @@ include 'admin_header.php';
 
 <script>
     function toggleBoxSizes() {
-        var t = document.getElementById('product_type').value;
-        var grp = document.getElementById('boxSizesGroup');
-        var show = (t === 'catalog');
-        grp.style.display = show ? '' : 'none';
-        grp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !show; });
+        var isShop = document.getElementById('product_type').value === 'catalog';
+
+        var boxGrp = document.getElementById('boxSizesGroup');
+        boxGrp.style.display = isShop ? '' : 'none';
+        boxGrp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !isShop; });
+
+        var catGrp = document.getElementById('categoryGroup');
+        var catSel = document.getElementById('category_id');
+        catGrp.style.display = isShop ? '' : 'none';
+        catSel.required = isShop;
+        catSel.disabled = !isShop;
     }
     toggleBoxSizes();
 

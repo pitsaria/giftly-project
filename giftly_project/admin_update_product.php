@@ -24,8 +24,14 @@ if (isset($_POST['update_product'])) {
     $desc = $_POST['description'];
     $price = floatval($_POST['price']);
     $quantity = intval($_POST['quantity']);
-    $category_id = $_POST['category_id'];
     $product_type = catalog_type_key($_POST['product_type'] ?? 'catalog');
+    // Categories apply to shop products only; pre-made boxes/baskets use 0.
+    $category_id = ($product_type === 'catalog') ? intval($_POST['category_id'] ?? 0) : 0;
+    if ($product_type === 'catalog' && $category_id <= 0) {
+        $_SESSION['product_error'] = "Please select a category.";
+        header("Location: admin_products.php?error=category");
+        exit();
+    }
 
     // 🚨 VALIDATION: Check if price is negative
     if ($price < 0) {
