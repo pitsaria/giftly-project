@@ -167,16 +167,37 @@ if ($edit_box) {
     .bab-prod-grid.list-view .foot { margin-top: 0; width: 150px; flex-shrink: 0; }
     @media (max-width: 520px) { .bab-prod-grid.list-view .foot { width: 118px; } }
 
-    /* --- LETTER TRIGGER (in panel) --- */
+    /* --- LETTER TRIGGER (step 3, in panel) --- */
     .bab-letter-trigger {
-        width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-        padding: 12px 14px; margin: 6px 0 14px; border: 1.5px dashed #ffc9d8; border-radius: 14px;
-        background: #fff; color: #ff8ba7; font-family: 'Poppins'; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s;
+        width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+        padding: 14px 16px; margin: 10px 0 14px; border: 1.5px solid #ffd0dd; border-radius: 16px;
+        background: linear-gradient(135deg, #fff6f9 0%, #ffeef4 100%);
+        font-family: 'Poppins'; cursor: pointer; transition: 0.2s;
     }
-    .bab-letter-trigger:hover { background: #fff0f5; }
-    .bab-letter-trigger.set { border-style: solid; border-color: #eee; color: #444; background: #fafafa; }
-    .bab-letter-trigger .lt-caret { color: #ccc; font-size: 11px; flex-shrink: 0; }
-    .bab-letter-trigger .lt-left { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bab-letter-trigger:hover { border-color: #ff8ba7; box-shadow: 0 4px 14px rgba(255,139,167,0.16); }
+    .bab-letter-trigger .lt-badge {
+        width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+    }
+    .bab-letter-trigger .lt-body { flex: 1; min-width: 0; }
+    .bab-letter-trigger .lt-title { display: block; font-size: 13.5px; font-weight: 700; color: #222; }
+    .bab-letter-trigger .lt-sub { display: block; font-size: 11.5px; color: #999; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bab-letter-trigger .lt-cta {
+        flex-shrink: 0; font-size: 12px; font-weight: 700; color: #ff8ba7;
+        background: #fff; border: 1.5px solid #ffc1cc; border-radius: 50px; padding: 6px 15px;
+    }
+    .bab-letter-trigger:hover .lt-cta { background: #ff8ba7; color: #fff; border-color: #ff8ba7; }
+    .bab-letter-trigger.nudge { animation: babNudge 1.9s ease-in-out infinite; }
+    @keyframes babNudge {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255,139,167,0); }
+        50% { box-shadow: 0 0 0 6px rgba(255,139,167,0.13); }
+    }
+    .bab-letter-trigger.set { background: #f4faf5; border-color: #cfe9d4; }
+    .bab-letter-trigger.set .lt-badge { background: #e8f5e9; color: #2e7d32; }
+    .bab-letter-trigger.set .lt-cta { color: #2e7d32; border-color: #b6dfbb; }
+    .bab-letter-trigger.set:hover { border-color: #2e7d32; box-shadow: 0 4px 14px rgba(46,125,50,0.15); }
+    .bab-letter-trigger.set:hover .lt-cta { background: #2e7d32; color: #fff; border-color: #2e7d32; }
 
     /* --- LETTER MODAL --- */
     .bab-letter-modal {
@@ -353,8 +374,12 @@ if ($edit_box) {
                 <div class="bab-panel-empty" id="panelEmpty"><i class="fas fa-gift"></i>Your box is empty — add some gifts!</div>
 
                 <button type="button" class="bab-letter-trigger" id="letterTrigger" onclick="babOpenLetter()">
-                    <span class="lt-left"><i class="fas fa-plus" id="ltIcon"></i> <span id="ltText">Add a letter</span></span>
-                    <i class="fas fa-chevron-right lt-caret"></i>
+                    <span class="lt-badge" id="ltBadge">3</span>
+                    <span class="lt-body">
+                        <span class="lt-title" id="ltTitle">Step 3 &middot; Write a letter</span>
+                        <span class="lt-sub" id="ltSub">Add a note &amp; choose a card style</span>
+                    </span>
+                    <span class="lt-cta" id="ltCta">Write</span>
                 </button>
 
                 <div class="bab-totrow grand"><span>Total</span><span id="panelTotal">PHP 0.00</span></div>
@@ -584,21 +609,37 @@ function babLetterCount() {
 }
 function babRenderLetterTrigger() {
     const trg = document.getElementById('letterTrigger');
-    const icon = document.getElementById('ltIcon');
-    const txt = document.getElementById('ltText');
+    const badge = document.getElementById('ltBadge');
+    const title = document.getElementById('ltTitle');
+    const sub = document.getElementById('ltSub');
+    const cta = document.getElementById('ltCta');
+    const ind3 = document.getElementById('stepInd3');
     const st = BAB.cardStyles[BAB.state.cardStyle] || BAB.cardStyles.simple;
-    const hasLetter = (BAB.state.letter || '').trim().length > 0;
+    const letter = (BAB.state.letter || '').trim();
+    const hasLetter = letter.length > 0;
     const styled = BAB.state.cardStyle && BAB.state.cardStyle !== 'simple';
+
     if (hasLetter || styled) {
         trg.classList.add('set');
-        icon.className = 'fas fa-envelope';
-        txt.textContent = st.emoji + ' ' + st.label + (hasLetter ? ' card · written' : ' card');
-        document.getElementById('stepInd3').classList.add('done');
+        trg.classList.remove('nudge');
+        badge.innerHTML = '<i class="fas fa-check"></i>';
+        title.textContent = st.emoji + ' ' + st.label + ' card';
+        sub.textContent = hasLetter
+            ? '“' + letter.slice(0, 44) + (letter.length > 44 ? '…' : '') + '”'
+            : 'No message — tap to add one';
+        cta.textContent = 'Edit';
+        ind3.classList.add('done');
+        ind3.classList.remove('active');
     } else {
         trg.classList.remove('set');
-        icon.className = 'fas fa-plus';
-        txt.textContent = 'Add a letter';
-        document.getElementById('stepInd3').classList.remove('done');
+        badge.textContent = '3';
+        title.textContent = 'Step 3 · Write a letter';
+        sub.textContent = 'Add a note & choose a card style';
+        cta.textContent = 'Write';
+        ind3.classList.remove('done');
+        const nudge = BAB.state.items.length > 0;
+        trg.classList.toggle('nudge', nudge);
+        ind3.classList.toggle('active', nudge);
     }
 }
 
@@ -797,12 +838,17 @@ function babRender() {
     let subtotal = BAB.state.items.reduce((a, it) => a + it.price * it.qty, 0);
     document.getElementById('panelTotal').textContent = peso(subtotal);
 
-    document.getElementById('stepInd2').classList.toggle('done', count > 0);
+    if (BAB.state.sizeId) {
+        document.getElementById('stepInd2').classList.toggle('done', count > 0);
+        document.getElementById('stepInd2').classList.toggle('active', count === 0);
+    }
 
     const hasItems = BAB.state.items.length > 0;
     document.getElementById('btnSave').disabled = !hasItems;
     document.getElementById('btnCart').disabled = !hasItems;
     document.getElementById('btnCheckout').disabled = !hasItems;
+
+    babRenderLetterTrigger();
 }
 
 /* ---------- submit ---------- */
