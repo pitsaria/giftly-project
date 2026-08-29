@@ -333,7 +333,10 @@ $user_id = $_SESSION['user_id'];
 }
 
 /* --- CART TABS (Products vs Gift Boxes) --- */
-.cart-tabs { display: flex; justify-content: center; gap: 10px; max-width: 1100px; margin: 0 auto 30px; padding: 0 20px; }
+.cart-shell { padding-top: 130px; }
+.cart-shell .cart-wrapper { padding-top: 24px; }
+.cart-shell .gb-wrap { padding-top: 4px; }
+.cart-tabs { display: flex; justify-content: center; gap: 10px; max-width: 1100px; margin: 0 auto 26px; padding: 0 20px; }
 .cart-tab { padding: 10px 22px; border-radius: 50px; border: 1.5px solid #eee; background: #fff; color: #666; font-family: 'Poppins'; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
 .cart-tab:hover { border-color: #ffc1cc; color: #ff8ba7; }
 .cart-tab.active { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border-color: #FEA5B6; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.3); }
@@ -397,6 +400,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
 ?>
 
 <?php if ($bab_has_boxes): ?>
+<div class="cart-shell">
 <div class="cart-tabs">
     <button class="cart-tab active" data-tab="products" onclick="cartSwitchTab('products')">
         <i class="fas fa-shopping-bag"></i> Product Cart
@@ -705,7 +709,8 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
             Saved boxes live in <a href="profile.php?tab=boxes" style="color:#ff8ba7;">My Boxes</a>.
         </div>
     </div>
-</div>
+</div><!-- /#cartTabBoxes -->
+</div><!-- /.cart-shell -->
 <?php endif; ?>
 
 <script>

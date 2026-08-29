@@ -139,9 +139,9 @@ if ($action === 'save') {
     }
 
     bab_ok([
-        'box_id'  => $box_id,
-        'status'  => $status,
-        'message' => $status === 'in_cart' ? 'Box added to cart.' : 'Box saved.',
+        'box_id'     => $box_id,
+        'box_status' => $status,
+        'message'    => $status === 'in_cart' ? 'Box added to cart.' : 'Box saved.',
     ]);
 }
 
