@@ -629,10 +629,16 @@ function isInWishlist($product_id, $wishlist_ids) {
 .p-rating .rv-stars { font-size: 12px; }
 .p-rating span { color: #aaa; }
 
-/* --- MODAL: allow the reviews section to scroll --- */
-.modal-box { max-height: 92vh; }
-.modal-right { overflow-y: auto; }
+/* --- MODAL: reviews scroll on the right, image stays put --- */
+.modal-box { max-height: 90vh; }
+.modal-left { align-self: stretch; }
+.modal-right { max-height: 90vh; overflow-y: auto; }
 #modalReviews { width: 100%; }
+@media (max-width: 640px) {
+    .modal-box { overflow-y: auto; }
+    .modal-left { align-self: auto; }
+    .modal-right { max-height: none; overflow: visible; }
+}
 </style>
 
 <!-- 🎉 NEW PREMIUM TOAST ALERT -->

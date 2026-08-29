@@ -416,8 +416,12 @@ if ($result->num_rows > 0) {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'product_id=' + productId + '&rating=' + rating + '&comment=' + encodeURIComponent(comment)
         }).then(r => r.json()).then(d => {
-            if (d.status === 'success') { st.style.color = '#2e7d32'; st.textContent = 'Saved ✓'; btn.textContent = 'Update'; }
-            else { st.style.color = '#d32f2f'; st.textContent = d.message || 'Failed'; }
+            if (d.status === 'success') {
+                st.style.color = '#2e7d32'; st.textContent = 'Posted ✓';
+                btn.disabled = true; btn.style.opacity = 0.5; btn.style.cursor = 'default';
+                item.querySelector('textarea').readOnly = true;
+                item.querySelectorAll('.rvm-pick i').forEach(function (i) { i.style.pointerEvents = 'none'; });
+            } else { st.style.color = '#d32f2f'; st.textContent = d.message || 'Failed'; }
         }).catch(() => { st.style.color = '#d32f2f'; st.textContent = 'Network error'; });
     }
 </script>

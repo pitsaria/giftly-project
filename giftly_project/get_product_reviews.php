@@ -56,17 +56,27 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
         <?php endif; ?>
     </div>
 
-    <?php if ($eligible > 0): ?>
+    <?php if ($my_review): ?>
+        <div class="rv-form" style="background:#f4faf5;border-color:#cfe9d4;">
+            <h5 style="color:#2e7d32;"><i class="fas fa-circle-check"></i> Your review</h5>
+            <?php echo reviews_stars((int) $my_review['rating']); ?>
+            <?php if (trim($my_review['comment']) !== ''): ?>
+                <div style="font-size:13px;color:#555;line-height:1.6;margin-top:6px;">“<?php echo nl2br(htmlspecialchars($my_review['comment'])); ?>”</div>
+            <?php endif; ?>
+            <div style="font-size:11px;color:#9bbfa0;margin-top:6px;">Posted <?php echo date('M j, Y', strtotime($my_review['created_at'])); ?> · reviews can't be edited</div>
+        </div>
+    <?php elseif ($eligible > 0): ?>
         <div class="rv-form">
-            <h5><?php echo $my_review ? 'Edit your review' : 'Write a review'; ?></h5>
+            <h5>Write a review</h5>
+            <div style="font-size:11px;color:#c99;margin-bottom:8px;">You can only post this once — make it count.</div>
             <div class="rv-pick" id="rvPick">
                 <?php for ($i = 1; $i <= 5; $i++): ?>
-                    <i class="fas fa-star<?php echo ($my_review && (int) $my_review['rating'] >= $i) ? ' on' : ''; ?>" data-v="<?php echo $i; ?>"></i>
+                    <i class="fas fa-star" data-v="<?php echo $i; ?>"></i>
                 <?php endfor; ?>
             </div>
-            <input type="hidden" id="rvRating" value="<?php echo $my_review ? (int) $my_review['rating'] : 0; ?>">
-            <textarea id="rvComment" maxlength="1500" placeholder="Share an honest thought about this item…"><?php echo $my_review ? htmlspecialchars($my_review['comment']) : ''; ?></textarea>
-            <button type="button" onclick="rvSubmit()"><?php echo $my_review ? 'Update review' : 'Post review'; ?></button>
+            <input type="hidden" id="rvRating" value="0">
+            <textarea id="rvComment" maxlength="1500" placeholder="Share an honest thought about this item…"></textarea>
+            <button type="button" onclick="rvSubmit()">Post review</button>
             <div class="msg" id="rvMsg"></div>
         </div>
     <?php elseif ($logged_in): ?>

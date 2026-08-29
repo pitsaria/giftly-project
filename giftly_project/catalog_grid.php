@@ -152,9 +152,15 @@ if (isset($_SESSION['user_id'])) {
     .rv-stars { color: #ffb400; letter-spacing: 1px; }
     .ci-rating { font-size: 12px; margin-bottom: 8px; color: #999; }
     .ci-rating .rv-stars { font-size: 12px; }
-    .cat-modal-box { max-height: 92vh; }
-    .cat-modal-right { overflow-y: auto; }
+    .cat-modal-box { max-height: 90vh; }
+    .cat-modal-left { align-self: stretch; }
+    .cat-modal-right { max-height: 90vh; overflow-y: auto; }
     #modalReviews { width: 100%; }
+    @media (max-width: 640px) {
+        .cat-modal-box { overflow-y: auto; }
+        .cat-modal-left { align-self: auto; }
+        .cat-modal-right { max-height: none; overflow: visible; }
+    }
 </style>
 
 <div id="catToast" class="toast-alert">

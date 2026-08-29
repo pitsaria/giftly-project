@@ -34,24 +34,36 @@ if (!$items || $items->num_rows === 0) {
 while ($it = $items->fetch_assoc()) {
     $pid  = (int) $it['id'];
     $mine = reviews_user_review($conn, $user_id, $pid);
-    $rating = $mine ? (int) $mine['rating'] : 0;
     ?>
     <div class="rvm-item">
         <div class="prod">
             <img src="uploads/<?php echo htmlspecialchars($it['image']); ?>" alt="">
             <strong><?php echo htmlspecialchars($it['name']); ?></strong>
         </div>
-        <input type="hidden" class="rvm-rating" value="<?php echo $rating; ?>">
-        <div class="rvm-pick">
-            <?php for ($i = 1; $i <= 5; $i++): ?>
-                <i class="fas fa-star<?php echo $rating >= $i ? ' on' : ''; ?>" data-v="<?php echo $i; ?>"></i>
-            <?php endfor; ?>
-        </div>
-        <textarea maxlength="1500" placeholder="Optional — what did you think?"><?php echo $mine ? htmlspecialchars($mine['comment']) : ''; ?></textarea>
-        <div>
-            <button type="button" class="save" onclick="rvmSave(this, <?php echo $pid; ?>)"><?php echo $mine ? 'Update' : 'Post review'; ?></button>
-            <span class="st"></span>
-        </div>
+
+        <?php if ($mine): ?>
+            <div class="rvm-pick" style="color:#ddd;">
+                <?php for ($i = 1; $i <= 5; $i++): ?>
+                    <i class="fas fa-star<?php echo (int) $mine['rating'] >= $i ? ' on' : ''; ?>"></i>
+                <?php endfor; ?>
+            </div>
+            <?php if (trim($mine['comment']) !== ''): ?>
+                <div style="font-size:12.5px;color:#666;line-height:1.5;">“<?php echo htmlspecialchars($mine['comment']); ?>”</div>
+            <?php endif; ?>
+            <div style="font-size:11px;color:#2e7d32;margin-top:6px;"><i class="fas fa-circle-check"></i> Reviewed — this can't be changed.</div>
+        <?php else: ?>
+            <input type="hidden" class="rvm-rating" value="0">
+            <div class="rvm-pick">
+                <?php for ($i = 1; $i <= 5; $i++): ?>
+                    <i class="fas fa-star" data-v="<?php echo $i; ?>"></i>
+                <?php endfor; ?>
+            </div>
+            <textarea maxlength="1500" placeholder="Optional — what did you think?"></textarea>
+            <div>
+                <button type="button" class="save" onclick="rvmSave(this, <?php echo $pid; ?>)">Post review</button>
+                <span class="st"></span>
+            </div>
+        <?php endif; ?>
     </div>
     <?php
 }

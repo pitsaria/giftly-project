@@ -25,6 +25,12 @@ if ($product_id <= 0 || $rating < 1 || $rating > 5) {
 }
 $comment = mb_substr($comment, 0, 1500);
 
+// One review per customer per product — no editing once posted.
+if (reviews_user_review($conn, $user_id, $product_id)) {
+    echo json_encode(['status' => 'error', 'code' => 'already', 'message' => 'You\'ve already reviewed this item.']);
+    exit();
+}
+
 $order_id = reviews_eligible_order($conn, $user_id, $product_id);
 if ($order_id === 0) {
     echo json_encode(['status' => 'error', 'message' => 'You can only review items from an order you\'ve received.']);
@@ -36,12 +42,7 @@ $comment_esc = $conn->real_escape_string($comment);
 $conn->query("
     INSERT INTO product_reviews (product_id, user_id, order_id, rating, comment, status)
     VALUES ($product_id, $user_id, $order_id, $rating, '$comment_esc', 'published')
-    ON CONFLICT (product_id, user_id)
-    DO UPDATE SET rating = EXCLUDED.rating,
-                  comment = EXCLUDED.comment,
-                  order_id = EXCLUDED.order_id,
-                  status = 'published',
-                  updated_at = CURRENT_TIMESTAMP
+    ON CONFLICT (product_id, user_id) DO NOTHING
 ");
 
 $summary = reviews_summary($conn, $product_id);
