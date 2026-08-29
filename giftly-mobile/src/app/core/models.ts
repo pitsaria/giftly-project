@@ -84,6 +84,10 @@ export interface Order {
   delivery_date: string;
   delivery_time: string;
   items?: OrderItem[];
+  // Cancellation-request flow (admin must approve before an order is cancelled)
+  cancel_status?: 'none' | 'requested' | 'approved' | 'rejected';
+  cancel_reason?: string | null;
+  cancel_admin_note?: string | null;
 }
 
 export interface OrderItem {

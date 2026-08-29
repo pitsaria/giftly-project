@@ -130,18 +130,27 @@ class OrderService {
         sendSuccess($order_data);
     }
     
-    // ❌ CANCEL ORDER
-    public function cancelOrder($id, $headers) {
+    // ❌ REQUEST ORDER CANCELLATION (admin must approve)
+    public function cancelOrder($id, $input, $headers) {
         $user_id = $this->getUserId($headers);
         if (!$user_id) {
             sendError('Unauthorized', 401);
         }
-        
-        $sql = "UPDATE orders SET status = 'cancelled' WHERE id = $id AND user_id = $user_id AND status = 'pending'";
+
+        $id = intval($id);
+        $reason = is_array($input) && isset($input['reason']) ? trim($input['reason']) : '';
+        $reason = mb_substr($reason, 0, 1000);
+        $reason_esc = $this->conn->real_escape_string($reason !== '' ? $reason : 'Requested via app');
+
+        $sql = "UPDATE orders
+                SET cancel_status = 'requested', cancel_reason = '$reason_esc',
+                    cancel_requested_at = CURRENT_TIMESTAMP, cancel_reviewed_at = NULL, cancel_admin_note = NULL
+                WHERE id = $id AND user_id = $user_id
+                  AND status = 'pending' AND cancel_status IN ('none', 'rejected')";
         if ($this->conn->query($sql) && $this->conn->affected_rows > 0) {
-            sendSuccess(null, 'Order cancelled successfully');
+            sendSuccess(null, 'Cancellation request submitted. An admin will review it shortly.');
         } else {
-            sendError('Cannot cancel this order. Either it\'s already processed or you don\'t have permission.');
+            sendError('Cannot request cancellation for this order.');
         }
     }
     

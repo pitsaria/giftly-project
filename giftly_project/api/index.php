@@ -52,6 +52,26 @@ switch($path) {
         }
         break;
 
+    case 'auth/forgot-password':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->forgotPassword($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'auth/reset-password':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->resetPassword($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === PRODUCT SERVICE ===
     case 'products':
         require_once 'services/ProductService.php';
@@ -171,7 +191,7 @@ case 'cart/verify-stock':
         require_once 'services/OrderService.php';
         $order = new OrderService($conn);
         if ($method == 'PUT' && isset($_GET['id'])) {
-            $order->cancelOrder($_GET['id'], $headers);
+            $order->cancelOrder($_GET['id'], $input, $headers);
         } else {
             sendError('Missing order ID', 400);
         }

@@ -53,7 +53,8 @@ export class OrderService {
     return res.data.order_id;
   }
 
-  async cancelOrder(id: number): Promise<void> {
-    await firstValueFrom(this.api.put('orders/cancel', {}, { id }));
+  /** Submit a cancellation request (an admin approves it before the order is cancelled). */
+  async cancelOrder(id: number, reason = ''): Promise<void> {
+    await firstValueFrom(this.api.put('orders/cancel', { reason }, { id }));
   }
 }

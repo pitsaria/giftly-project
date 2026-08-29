@@ -37,15 +37,11 @@ $timeline = [
     .ab-wrap { max-width: 1100px; margin: 0 auto; padding: 130px 20px 0; }
 
     /* HERO */
-    .ab-hero { text-align: center; margin-bottom: 70px; position: relative; }
+    .ab-hero { text-align: center; margin-bottom: 70px; }
     .ab-hero .kicker { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ff8ba7; background: #fff0f5; padding: 6px 16px; border-radius: 50px; margin-bottom: 18px; }
     .ab-hero h1 { font-size: 42px; font-weight: 700; color: #222; line-height: 1.2; margin-bottom: 16px; }
     .ab-hero h1 span { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .ab-hero p { font-size: 16px; color: #888; max-width: 620px; margin: 0 auto; line-height: 1.7; }
-    .ab-hero .floaty { position: absolute; opacity: 0.5; pointer-events: none; }
-    .ab-hero .f1 { top: -10px; left: 4%; width: 70px; animation: abFloat 6s ease-in-out infinite; }
-    .ab-hero .f2 { bottom: -30px; right: 5%; width: 90px; animation: abFloat 7s ease-in-out infinite reverse; }
-    @keyframes abFloat { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
 
     .ab-section { margin-bottom: 80px; }
     .ab-section-head { text-align: center; margin-bottom: 44px; }
@@ -102,7 +98,6 @@ $timeline = [
         .ab-hero h1 { font-size: 32px; }
         .ab-gallery { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 130px; }
         .ab-shot:nth-child(1), .ab-shot:nth-child(4) { grid-column: span 2; grid-row: span 1; }
-        .ab-hero .floaty { display: none; }
     }
 </style>
 
@@ -110,8 +105,6 @@ $timeline = [
 
     <!-- HERO -->
     <div class="ab-hero">
-        <img src="giftbox.png" alt="" class="floaty f1">
-        <img src="occasion_box.png" alt="" class="floaty f2">
         <span class="kicker">Our Story</span>
         <h1>Wrapped with intention,<br>sent with <span>love</span>.</h1>
         <p>Giftly began with one badly-wrapped present and a simple conviction: the way a gift arrives is part of the gift. Today we're a small team building boxes we'd be proud to receive ourselves.</p>

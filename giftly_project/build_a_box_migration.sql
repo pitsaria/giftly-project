@@ -55,3 +55,24 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO product_box_sizes (product_id, box_size_id)
 SELECT p.id, b.id FROM products p CROSS JOIN box_sizes b
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+--  Order cancellation requests (admin approval flow)
+-- ============================================================
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_status VARCHAR(20) NOT NULL DEFAULT 'none';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_requested_at TIMESTAMP;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reviewed_at TIMESTAMP;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_admin_note TEXT;
+
+-- ============================================================
+--  Contact form submissions
+-- ============================================================
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id         SERIAL PRIMARY KEY,
+    name       VARCHAR(120) NOT NULL,
+    email      VARCHAR(160) NOT NULL,
+    subject    VARCHAR(160) NOT NULL DEFAULT '',
+    message    TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

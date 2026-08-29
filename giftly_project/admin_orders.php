@@ -1,5 +1,7 @@
 <?php
-include 'db_connect.php'; 
+include 'db_connect.php';
+include_once 'orders_lib.php';
+orders_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -16,6 +18,7 @@ if ($user_data['role'] !== 'admin') {
 
 // --- HANDLE STATUS UPDATE DIRECTLY IN THIS FILE ---
 $show_updated = false;
+$flash = null;
 if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_POST['status'])) {
     $order_id = intval($_POST['order_id']);
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
@@ -24,33 +27,59 @@ if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_
         $show_updated = true; // Show the banner right here
     }
 }
+
+// --- HANDLE CANCELLATION REVIEW ---
+if (isset($_POST['approve_cancel'])) {
+    $ok = orders_approve_cancel($conn, intval($_POST['order_id'] ?? 0));
+    $flash = $ok
+        ? ['ok', 'Cancellation approved — the order is cancelled and stock has been restored.']
+        : ['error', 'Could not approve this cancellation.'];
+}
+if (isset($_POST['reject_cancel'])) {
+    $ok = orders_reject_cancel($conn, intval($_POST['order_id'] ?? 0), $_POST['admin_note'] ?? '');
+    $flash = $ok
+        ? ['ok', 'Cancellation request declined — the order continues.']
+        : ['error', 'Could not decline this request.'];
+}
 // -------------------------------------------------
 
-include 'admin_header.php'; 
+include 'admin_header.php';
 
-$filter_status = isset($_GET['filter_status']) ? $_GET['filter_status'] : '';
-$filter_payment = isset($_GET['filter_payment']) ? $_GET['filter_payment'] : '';
-$filter_mode = isset($_GET['filter_mode']) ? $_GET['filter_mode'] : '';
+$pending_cancels = 0;
+$pc_res = $conn->query("SELECT COUNT(*) AS c FROM orders WHERE cancel_status = 'requested'");
+if ($pc_res) $pending_cancels = (int) $pc_res->fetch_assoc()['c'];
+
+$filter_status  = (isset($_GET['filter_status'])  && is_string($_GET['filter_status']))  ? preg_replace('/[^a-z_]/', '', $_GET['filter_status'])  : '';
+$filter_payment = (isset($_GET['filter_payment']) && is_string($_GET['filter_payment'])) ? preg_replace('/[^a-z]/', '', $_GET['filter_payment']) : '';
+$filter_mode    = (isset($_GET['filter_mode'])    && is_string($_GET['filter_mode']))    ? preg_replace('/[^a-z]/', '', $_GET['filter_mode'])    : '';
+
+// Shared WHERE fragment for the count + list
+$order_where = "";
+if ($filter_status === 'cancel_requested') {
+    $order_where .= " AND orders.cancel_status = 'requested'";
+} elseif (in_array($filter_status, ['pending', 'shipped', 'delivered', 'cancelled'], true)) {
+    $order_where .= " AND orders.status = '$filter_status'";
+}
+if (in_array($filter_payment, ['cod', 'card'], true)) {
+    $order_where .= " AND orders.payment_method = '$filter_payment'";
+}
+if ($filter_mode === 'me') {
+    $order_where .= " AND (orders.recipient_name IS NULL OR orders.recipient_name = '')";
+} elseif ($filter_mode === 'recipient') {
+    $order_where .= " AND orders.recipient_name IS NOT NULL AND orders.recipient_name != ''";
+}
 
 // --- PAGINATION LOGIC ---
 $limit = 20; // Orders per page
-$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
 
-// Count total orders for pagination (respecting filters)
-$count_sql = "SELECT COUNT(*) as total FROM orders JOIN users ON orders.user_id = users.id WHERE 1=1";
-if (!empty($filter_status)) { $count_sql .= " AND orders.status = '$filter_status'"; }
-if (!empty($filter_payment)) { $count_sql .= " AND orders.payment_method = '$filter_payment'"; }
-if (!empty($filter_mode)) {
-    if ($filter_mode == 'me') {
-        $count_sql .= " AND (orders.recipient_name IS NULL OR orders.recipient_name = '')";
-    } else {
-        $count_sql .= " AND orders.recipient_name IS NOT NULL AND orders.recipient_name != ''";
-    }
-}
-$count_res = $conn->query($count_sql);
-$total_rows = $count_res->fetch_assoc()['total'];
-$total_pages = ceil($total_rows / $limit);
+$count_res = $conn->query("SELECT COUNT(*) as total FROM orders JOIN users ON orders.user_id = users.id WHERE 1=1" . $order_where);
+$total_rows = $count_res ? (int) $count_res->fetch_assoc()['total'] : 0;
+$total_pages = max(1, (int) ceil($total_rows / $limit));
+if ($page > $total_pages) { $page = $total_pages; $offset = ($page - 1) * $limit; }
+$showing_from = $total_rows ? $offset + 1 : 0;
+$showing_to = min($offset + $limit, $total_rows);
 // ------------------------------------------------
 ?>
 
@@ -139,11 +168,26 @@ $total_pages = ceil($total_rows / $limit);
             <i class="fas fa-check-circle" style="margin-right: 8px;"></i> Order status updated successfully!
         </div>
         <script>
-            setTimeout(function(){ 
-                var e = document.getElementById('alertUpdated'); 
-                if(e) { e.style.opacity='0'; setTimeout(()=>e.style.display='none',500); } 
+            setTimeout(function(){
+                var e = document.getElementById('alertUpdated');
+                if(e) { e.style.opacity='0'; setTimeout(()=>e.style.display='none',500); }
             }, 3000);
         </script>
+    <?php endif; ?>
+
+    <?php if ($flash): ?>
+        <div class="alert-success" style="<?php echo $flash[0] === 'error' ? 'background:#fdeded;border-color:#ffc1cc;color:#d32f2f;' : ''; ?>">
+            <i class="fas fa-<?php echo $flash[0] === 'error' ? 'circle-exclamation' : 'check-circle'; ?>" style="margin-right:8px;"></i>
+            <?php echo htmlspecialchars($flash[1]); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($pending_cancels > 0 && $filter_status !== 'cancel_requested'): ?>
+        <div style="background:#fff8e1; border:1px solid #ffe0a3; color:#a5710d; padding:14px 20px; border-radius:16px; margin-bottom:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <i class="fas fa-hourglass-half"></i>
+            <strong><?php echo $pending_cancels; ?></strong> cancellation request<?php echo $pending_cancels === 1 ? '' : 's'; ?> waiting for your review.
+            <a href="admin_orders.php?filter_status=cancel_requested" style="margin-left:auto; background:#ff8ba7; color:#fff; padding:6px 16px; border-radius:50px; font-size:13px; font-weight:600; text-decoration:none;">Review now</a>
+        </div>
     <?php endif; ?>
 
     <!-- FILTER BAR -->
@@ -154,6 +198,8 @@ $total_pages = ceil($total_rows / $limit);
                 <option value="pending" <?php echo ($filter_status == 'pending') ? 'selected' : ''; ?>>Pending</option>
                 <option value="shipped" <?php echo ($filter_status == 'shipped') ? 'selected' : ''; ?>>Shipped</option>
                 <option value="delivered" <?php echo ($filter_status == 'delivered') ? 'selected' : ''; ?>>Delivered</option>
+                <option value="cancelled" <?php echo ($filter_status == 'cancelled') ? 'selected' : ''; ?>>Cancelled</option>
+                <option value="cancel_requested" <?php echo ($filter_status == 'cancel_requested') ? 'selected' : ''; ?>>⏳ Cancellation requested</option>
             </select>
             <select name="filter_payment" class="filter-select">
                 <option value="">All Payments</option>
@@ -188,28 +234,22 @@ $total_pages = ceil($total_rows / $limit);
             </thead>
             <tbody>
                 <?php
-                // --- MODIFIED SQL TO INCLUDE LIMIT AND OFFSET ---
-                $sql = "SELECT orders.*, users.name as customer_name FROM orders JOIN users ON orders.user_id = users.id WHERE 1=1";
-                if (!empty($filter_status)) { $sql .= " AND orders.status = '$filter_status'"; }
-                if (!empty($filter_payment)) { $sql .= " AND orders.payment_method = '$filter_payment'"; }
-                if (!empty($filter_mode)) {
-                    if ($filter_mode == 'me') {
-                        $sql .= " AND (orders.recipient_name IS NULL OR orders.recipient_name = '')";
-                    } else {
-                        $sql .= " AND orders.recipient_name IS NOT NULL AND orders.recipient_name != ''";
-                    }
-                }
-                $sql .= " ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
-                // ------------------------------------------------
-                
+                $sql = "SELECT orders.*, users.name as customer_name
+                        FROM orders JOIN users ON orders.user_id = users.id
+                        WHERE 1=1" . $order_where . "
+                        ORDER BY (orders.cancel_status = 'requested') DESC, created_at DESC
+                        LIMIT $limit OFFSET $offset";
+
                 $result = $conn->query($sql);
-                
-                if ($result->num_rows > 0) {
+
+                if ($result && $result->num_rows > 0) {
                     while($row = $result->fetch_assoc()) {
+                        $cs = $row['cancel_status'] ?? 'none';
                         $status_class = 'status-pending';
                         if($row['status'] == 'shipped') $status_class = 'status-shipped';
                         if($row['status'] == 'delivered') $status_class = 'status-delivered';
-                        
+                        $row_style = ($cs === 'requested') ? ' style="background:#fffdf5;"' : '';
+
                         $delivery_mode = '<span style="background: #e3f2fd; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #1976d2; white-space: nowrap; display: inline-block;">🏠 To Me</span>';
                         if(!empty($row['recipient_name'])) {
                             $delivery_mode = '<span style="background: #fff3e0; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #e65100; white-space: nowrap; display: inline-block;">🎁 To Recipient</span>';
@@ -229,10 +269,45 @@ $total_pages = ceil($total_rows / $limit);
                             }
                         }
 
+                        // --- STATUS CELL ---
+                        if ($cs === 'requested') {
+                            $status_cell = '<span class="status-badge" style="background:#fff8e1;color:#a5710d;">Cancellation requested</span>'
+                                . '<div style="margin-top:6px; font-size:11px; color:#999; white-space:normal; max-width:180px;">“'
+                                . htmlspecialchars($row['cancel_reason'] ?? '') . '”</div>';
+                        } elseif ($row['status'] === 'cancelled') {
+                            $status_cell = '<span class="status-badge" style="background:#f5f5f5;color:#999;text-decoration:line-through;">Cancelled</span>'
+                                . ($cs === 'approved' ? '<div style="margin-top:4px;font-size:11px;color:#aaa;">request approved</div>' : '');
+                        } else {
+                            $status_cell = '<form action="admin_orders.php" method="POST" style="margin:0; display:inline;">'
+                                . '<input type="hidden" name="order_id" value="'.$row['id'].'">'
+                                . '<input type="hidden" name="update_status_here" value="1">'
+                                . '<select name="status" class="status-select" onchange="this.form.submit()">'
+                                . '<option value="pending" '.($row['status'] == 'pending' ? 'selected' : '').'>Pending</option>'
+                                . '<option value="shipped" '.($row['status'] == 'shipped' ? 'selected' : '').'>Shipped</option>'
+                                . '<option value="delivered" '.($row['status'] == 'delivered' ? 'selected' : '').'>Delivered</option>'
+                                . '</select></form>';
+                            if ($cs === 'rejected') {
+                                $status_cell .= '<div style="margin-top:4px;font-size:11px;color:#d32f2f;">cancellation declined</div>';
+                            }
+                        }
+
+                        // --- ACTION CELL ---
+                        $action_cell = '<button class="btn-view-items" onclick="openModal('.$row['id'].')"><i class="fas fa-eye" style="margin-right:5px;"></i> View</button>';
+                        if ($cs === 'requested') {
+                            $action_cell = '<div style="display:flex;flex-direction:column;gap:6px;align-items:center;">'
+                                . '<form action="admin_orders.php" method="POST" style="margin:0;width:100%;">'
+                                . '<input type="hidden" name="order_id" value="'.$row['id'].'">'
+                                . '<button type="submit" name="approve_cancel" value="1" onclick="return confirm(\'Approve this cancellation? Stock will be restored.\')" style="width:100%;background:#e8f5e9;color:#2e7d32;border:none;padding:7px 12px;border-radius:30px;font-size:12px;font-weight:700;cursor:pointer;font-family:Poppins;">Approve</button>'
+                                . '</form>'
+                                . '<button type="button" onclick="openRejectModal('.$row['id'].')" style="width:100%;background:#fdeded;color:#d32f2f;border:none;padding:7px 12px;border-radius:30px;font-size:12px;font-weight:700;cursor:pointer;font-family:Poppins;">Decline</button>'
+                                . '<button class="btn-view-items" style="margin:0;" onclick="openModal('.$row['id'].')"><i class="fas fa-eye"></i></button>'
+                                . '</div>';
+                        }
+
                         echo '
-                        <tr class="search-row">
+                        <tr class="search-row"'.$row_style.'>
                             <td><strong>#'.$row['id'].'</strong></td>
-                            <td class="search-customer"><strong>'.$row['customer_name'].'</strong></td>
+                            <td class="search-customer"><strong>'.htmlspecialchars($row['customer_name']).'</strong></td>
                             <td>'.$thumbs.'</td>
                             <td style="font-size: 13px;">'.$address_summary.'</td>
                             <td class="search-price"><strong>PHP '.number_format($row['total_amount'], 2).'</strong></td>
@@ -240,22 +315,8 @@ $total_pages = ceil($total_rows / $limit);
                                 '.$delivery_mode.'
                                 <div style="margin-top: 4px; color: #888; font-size: 12px; white-space: nowrap;">'.ucfirst($row['payment_method']).'</div>
                             </td>
-                            <td>
-                                <form action="admin_orders.php" method="POST" style="margin:0; display:inline;">
-                                    <input type="hidden" name="order_id" value="'.$row['id'].'">
-                                    <input type="hidden" name="update_status_here" value="1">
-                                    <select name="status" class="status-select" onchange="this.form.submit()">
-                                        <option value="pending" '.($row['status'] == 'pending' ? 'selected' : '').'>Pending</option>
-                                        <option value="shipped" '.($row['status'] == 'shipped' ? 'selected' : '').'>Shipped</option>
-                                        <option value="delivered" '.($row['status'] == 'delivered' ? 'selected' : '').'>Delivered</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td style="text-align:center;">
-                                <button class="btn-view-items" onclick="openModal('.$row['id'].')">
-                                    <i class="fas fa-eye" style="margin-right: 5px;"></i> View
-                                </button>
-                            </td>
+                            <td>'.$status_cell.'</td>
+                            <td style="text-align:center;">'.$action_cell.'</td>
                         </tr>
                         ';
                     }
@@ -267,22 +328,35 @@ $total_pages = ceil($total_rows / $limit);
         </table>
     </div>
 
-    <!-- --- PAGINATION BUTTONS --- -->
+    <!-- --- PAGINATION --- -->
+    <?php
+    $qs = '&filter_status=' . urlencode($filter_status) . '&filter_payment=' . urlencode($filter_payment) . '&filter_mode=' . urlencode($filter_mode);
+    ?>
+    <div style="text-align:center; color:#999; font-size:13px; margin-top:24px;">
+        <?php if ($total_rows > 0): ?>
+            Showing <strong><?php echo $showing_from; ?>–<?php echo $showing_to; ?></strong> of <strong><?php echo $total_rows; ?></strong> order<?php echo $total_rows === 1 ? '' : 's'; ?>
+        <?php endif; ?>
+    </div>
+
     <?php if ($total_pages > 1): ?>
     <div class="pagination-wrapper">
-        <a href="admin_orders.php?page=<?php echo ($page > 1) ? $page - 1 : 1; ?>&filter_status=<?php echo $filter_status; ?>&filter_payment=<?php echo $filter_payment; ?>&filter_mode=<?php echo $filter_mode; ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
-            &larr; Previous
-        </a>
-
-        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-            <a href="admin_orders.php?page=<?php echo $i; ?>&filter_status=<?php echo $filter_status; ?>&filter_payment=<?php echo $filter_payment; ?>&filter_mode=<?php echo $filter_mode; ?>" class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
-                <?php echo $i; ?>
-            </a>
-        <?php endfor; ?>
-
-        <a href="admin_orders.php?page=<?php echo ($page < $total_pages) ? $page + 1 : $total_pages; ?>&filter_status=<?php echo $filter_status; ?>&filter_payment=<?php echo $filter_payment; ?>&filter_mode=<?php echo $filter_mode; ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
-            Next &rarr;
-        </a>
+        <a href="admin_orders.php?page=<?php echo max(1, $page - 1); ?><?php echo $qs; ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">&larr; Prev</a>
+        <?php
+        $start = max(1, $page - 2);
+        $end   = min($total_pages, $page + 2);
+        if ($start > 1) {
+            echo '<a href="admin_orders.php?page=1'.$qs.'" class="page-btn">1</a>';
+            if ($start > 2) echo '<span class="page-btn disabled" style="border:none;background:transparent;">…</span>';
+        }
+        for ($i = $start; $i <= $end; $i++) {
+            echo '<a href="admin_orders.php?page='.$i.$qs.'" class="page-btn '.($i == $page ? 'active' : '').'">'.$i.'</a>';
+        }
+        if ($end < $total_pages) {
+            if ($end < $total_pages - 1) echo '<span class="page-btn disabled" style="border:none;background:transparent;">…</span>';
+            echo '<a href="admin_orders.php?page='.$total_pages.$qs.'" class="page-btn">'.$total_pages.'</a>';
+        }
+        ?>
+        <a href="admin_orders.php?page=<?php echo min($total_pages, $page + 1); ?><?php echo $qs; ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">Next &rarr;</a>
     </div>
     <?php endif; ?>
 
@@ -297,7 +371,32 @@ $total_pages = ceil($total_rows / $limit);
     </div>
 </div>
 
+<!-- DECLINE CANCELLATION MODAL -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal-box" style="max-width: 420px;">
+        <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+        <h3 style="margin-bottom: 6px; color: #222;">Decline cancellation</h3>
+        <p style="font-size: 13.5px; color: #999; margin-bottom: 16px;">The order will continue. You can leave the customer a short note.</p>
+        <form action="admin_orders.php" method="POST">
+            <input type="hidden" name="order_id" id="rejectOrderId">
+            <input type="hidden" name="reject_cancel" value="1">
+            <textarea name="admin_note" maxlength="500" placeholder="e.g. This order has already been packed and dispatched." style="width:100%; min-height:90px; border:1.5px solid #eee; border-radius:14px; padding:12px 14px; font-family:'Poppins'; font-size:14px; resize:vertical; outline:none; background:#fafafa;"></textarea>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="button" onclick="closeRejectModal()" style="flex:1; padding:12px; border:none; border-radius:50px; background:#eaeaea; color:#555; font-weight:600; font-family:'Poppins'; cursor:pointer;">Cancel</button>
+                <button type="submit" style="flex:1; padding:12px; border:none; border-radius:50px; background:#d32f2f; color:#fff; font-weight:600; font-family:'Poppins'; cursor:pointer;">Decline request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    function openRejectModal(id) {
+        document.getElementById('rejectOrderId').value = id;
+        document.getElementById('rejectModal').style.display = 'flex';
+    }
+    function closeRejectModal() { document.getElementById('rejectModal').style.display = 'none'; }
+    document.getElementById('rejectModal').addEventListener('click', function (e) { if (e.target === this) closeRejectModal(); });
+
     function openModal(orderId) {
         fetch('get_order_items.php?order_id=' + orderId)
             .then(response => response.text())

@@ -1,17 +1,46 @@
 <?php
 $user_id = $_SESSION['user_id'];
+include_once 'orders_lib.php';
+orders_ensure_schema($conn);
 
-// --- HANDLE ORDER CANCELLATION - DIRECT DATABASE ---
-if (isset($_GET['cancel_order'])) {
-    $order_id = intval($_GET['cancel_order']);
-    
-    // ✅ DIRECT DATABASE - NO API
-    $conn->query("UPDATE orders SET status = 'cancelled' WHERE id = $order_id AND user_id = $user_id");
-    
-    // Redirect back
-    echo '<meta http-equiv="refresh" content="0; url=profile.php?tab=orders">';
+// --- HANDLE CANCELLATION REQUEST (shopper states a reason; admin approves) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_cancel'])) {
+    $order_id = intval($_POST['order_id'] ?? 0);
+    $choice   = trim($_POST['cancel_choice'] ?? '');
+    $text     = trim($_POST['cancel_text'] ?? '');
+
+    $valid_choices = orders_cancel_reasons();
+    if (!in_array($choice, $valid_choices, true)) {
+        $_SESSION['order_flash'] = ['type' => 'error', 'msg' => 'Please pick a reason for cancelling.'];
+        header('Location: profile.php?tab=orders');
+        exit();
+    }
+    if ($choice === 'Other' && $text === '') {
+        $_SESSION['order_flash'] = ['type' => 'error', 'msg' => 'Please describe your reason for cancelling.'];
+        header('Location: profile.php?tab=orders');
+        exit();
+    }
+
+    $reason = ($choice === 'Other') ? $text : ($choice . ($text !== '' ? ' — ' . $text : ''));
+    $reason_esc = $conn->real_escape_string(mb_substr($reason, 0, 1000));
+
+    // only pending orders that aren't already awaiting / granted a cancellation
+    $conn->query("UPDATE orders
+                  SET cancel_status = 'requested', cancel_reason = '$reason_esc',
+                      cancel_requested_at = CURRENT_TIMESTAMP, cancel_reviewed_at = NULL,
+                      cancel_admin_note = NULL
+                  WHERE id = $order_id AND user_id = $user_id
+                    AND status = 'pending' AND cancel_status IN ('none', 'rejected')");
+
+    $_SESSION['order_flash'] = $conn->affected_rows > 0
+        ? ['type' => 'ok', 'msg' => 'Cancellation request sent. We\'ll email you once an admin reviews it.']
+        : ['type' => 'error', 'msg' => 'This order can no longer be cancelled.'];
+    header('Location: profile.php?tab=orders');
     exit();
 }
+
+$order_flash = $_SESSION['order_flash'] ?? null;
+unset($_SESSION['order_flash']);
 
 // --- FETCH ALL ORDERS - DIRECT DATABASE ---
 $orders = [];
@@ -135,9 +164,42 @@ if ($result->num_rows > 0) {
         box-shadow: 0 4px 12px rgba(254, 165, 182, 0.2);
     }
     .btn-cancel-yes:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254, 165, 182, 0.4); }
+
+    .status-badge.cancel-req { background: #fff8e1; color: #a5710d; }
+    .cancel-note { display: block; font-size: 11px; color: #999; margin-top: 4px; }
+    .cancel-note.declined { color: #d32f2f; }
+    .btn-req-cancel { background: #fdeded; color: #d32f2f; border: none; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: 'Poppins'; }
+    .btn-req-cancel:hover { background: #d32f2f; color: #fff; }
+
+    .of-flash { padding: 12px 18px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; }
+    .of-flash.ok { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+    .of-flash.error { background: #fdeded; border: 1px solid #ffc1cc; color: #d32f2f; }
+
+    /* reason modal */
+    .rc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: none; justify-content: center; align-items: center; padding: 20px; }
+    .rc-box { background: #fff; border-radius: 28px; padding: 34px; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.18); animation: fadeUp 0.3s ease; max-height: 88vh; overflow-y: auto; }
+    .rc-box h3 { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .rc-box .sub { font-size: 13.5px; color: #999; margin-bottom: 20px; }
+    .rc-opt { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1.5px solid #eee; border-radius: 14px; margin-bottom: 8px; cursor: pointer; font-size: 14px; color: #444; transition: 0.15s; }
+    .rc-opt:hover { border-color: #ffc1cc; }
+    .rc-opt input { accent-color: #ff8ba7; width: 16px; height: 16px; }
+    .rc-opt.sel { border-color: #ff8ba7; background: #fff0f5; }
+    .rc-box textarea { width: 100%; min-height: 80px; border: 1.5px solid #eee; border-radius: 14px; padding: 12px 14px; font-family: 'Poppins'; font-size: 14px; resize: vertical; outline: none; background: #fafafa; margin-top: 6px; }
+    .rc-box textarea:focus { border-color: #ffc1cc; background: #fff; }
+    .rc-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .rc-actions button { flex: 1; padding: 13px; border: none; border-radius: 50px; font-family: 'Poppins'; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .rc-actions .keep { background: #eaeaea; color: #555; }
+    .rc-actions .submit { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; }
 </style>
 
 <div class="page-title">Order History</div>
+
+<?php if ($order_flash): ?>
+    <div class="of-flash <?php echo $order_flash['type'] === 'ok' ? 'ok' : 'error'; ?>">
+        <i class="fas fa-<?php echo $order_flash['type'] === 'ok' ? 'circle-check' : 'circle-exclamation'; ?>" style="margin-right:6px;"></i>
+        <?php echo htmlspecialchars($order_flash['msg']); ?>
+    </div>
+<?php endif; ?>
 
 <?php if (!empty($orders)): ?>
     <table class="order-table">
@@ -150,21 +212,41 @@ if ($result->num_rows > 0) {
                 <th>Action</th>
             </tr>
         </thead>
-                <tbody>
-            <?php foreach($orders as $row): 
+        <tbody>
+            <?php foreach($orders as $row):
                 $status_class = strtolower($row['status']);
-                $is_cancellable = ($row['status'] == 'pending');
+                $cs = $row['cancel_status'] ?? 'none';
+                $can_request = ($row['status'] === 'pending' && in_array($cs, ['none', 'rejected'], true));
             ?>
             <tr>
                 <td><strong>#<?php echo $row['id']; ?></strong></td>
                 <td><strong>PHP <?php echo number_format($row['total_amount'], 2); ?></strong></td>
-                <td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                <td>
+                    <?php if ($row['status'] === 'cancelled'): ?>
+                        <span class="status-badge cancelled">Cancelled</span>
+                        <?php if ($cs === 'approved'): ?><span class="cancel-note">Cancellation approved</span><?php endif; ?>
+                    <?php elseif ($cs === 'requested'): ?>
+                        <span class="status-badge cancel-req">Cancellation requested</span>
+                        <span class="cancel-note">Awaiting admin approval</span>
+                    <?php else: ?>
+                        <span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($row['status']); ?></span>
+                        <?php if ($cs === 'rejected'): ?>
+                            <span class="cancel-note declined">Cancellation declined<?php echo !empty($row['cancel_admin_note']) ? ' — ' . htmlspecialchars($row['cancel_admin_note']) : ''; ?></span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </td>
                 <td style="color: #888;"><?php echo date('F j, Y', strtotime($row['created_at'])); ?></td>
                 <td>
-                    <!-- Only View Button now -->
-                    <button class="btn-order-view" onclick="openOrderModal(<?php echo $row['id']; ?>)">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
+                    <div class="order-actions">
+                        <button class="btn-order-view" onclick="openOrderModal(<?php echo $row['id']; ?>)">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <?php if ($can_request): ?>
+                            <button class="btn-req-cancel" onclick="openReasonModal(<?php echo $row['id']; ?>)">
+                                <i class="fas fa-xmark"></i> Cancel
+                            </button>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -189,72 +271,60 @@ if ($result->num_rows > 0) {
     </div>
 </div>
 
-<!-- 🚨 ORDER CANCEL CONFIRMATION MODAL -->
-<div class="cancel-modal-overlay" id="cancelConfirmModal">
-    <div class="cancel-modal-box">
-        <div class="cancel-icon"><i class="fas fa-times-circle" style="background: #fdeded; padding: 15px; border-radius: 50%;"></i></div>
-        <div class="cancel-modal-title">Cancel this order?</div>
-        <div class="cancel-modal-sub" id="cancelModalMessage">Are you sure you want to cancel this order? This action cannot be undone.</div>
-        <div class="cancel-buttons">
-            <button class="btn-cancel-no" onclick="closeCancelModal()">Keep Order</button>
-            <button class="btn-cancel-yes" id="confirmCancelBtn">Yes, Cancel Order</button>
-        </div>
+<!-- CANCELLATION REASON MODAL -->
+<div class="rc-overlay" id="reasonModal">
+    <div class="rc-box">
+        <h3>Request order cancellation</h3>
+        <div class="sub">Tell us why — an admin will review and approve it. Your order stays active until then.</div>
+        <form method="POST" action="profile.php?tab=orders" id="reasonForm">
+            <input type="hidden" name="request_cancel" value="1">
+            <input type="hidden" name="order_id" id="rcOrderId" value="">
+            <?php foreach (orders_cancel_reasons() as $reason): ?>
+                <label class="rc-opt">
+                    <input type="radio" name="cancel_choice" value="<?php echo htmlspecialchars($reason); ?>" onchange="rcSync()">
+                    <span><?php echo htmlspecialchars($reason); ?></span>
+                </label>
+            <?php endforeach; ?>
+            <textarea name="cancel_text" id="rcText" maxlength="600" placeholder="Add more detail (required if you pick “Other”)"></textarea>
+            <div class="rc-actions">
+                <button type="button" class="keep" onclick="closeReasonModal()">Keep order</button>
+                <button type="submit" class="submit" id="rcSubmit" disabled>Submit request</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-    /* --- ORDER DETAILS MODAL CONTROLS --- */
-    let currentOrderId = 0;
-
+    /* --- ORDER DETAILS MODAL --- */
     function openOrderModal(orderId) {
-        currentOrderId = orderId;
         document.getElementById('orderModal').style.display = 'flex';
-        
-        // Fetch order details via AJAX
         fetch('get_order_details.php?order_id=' + orderId)
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('orderModalContent').innerHTML = data;
-            })
-            .catch(error => {
-                document.getElementById('orderModalContent').innerHTML = '<p style="color:#d32f2f; text-align:center;">Error loading order details.</p>';
-            });
+            .then(r => r.text())
+            .then(d => { document.getElementById('orderModalContent').innerHTML = d; })
+            .catch(() => { document.getElementById('orderModalContent').innerHTML = '<p style="color:#d32f2f; text-align:center;">Error loading order details.</p>'; });
     }
+    function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
+    document.getElementById('orderModal').addEventListener('click', function (e) { if (e.target === this) closeOrderModal(); });
 
-    function closeOrderModal() {
-        document.getElementById('orderModal').style.display = 'none';
-        currentOrderId = 0;
+    /* --- CANCELLATION REASON MODAL --- */
+    function openReasonModal(orderId) {
+        document.getElementById('rcOrderId').value = orderId;
+        document.getElementById('reasonForm').reset();
+        document.getElementById('rcOrderId').value = orderId;
+        rcSync();
+        document.getElementById('reasonModal').style.display = 'flex';
     }
+    function closeReasonModal() { document.getElementById('reasonModal').style.display = 'none'; }
+    // parent.openReasonModal is called from the details modal's Cancel button
+    function openCancelModal(orderId) { closeOrderModal(); openReasonModal(orderId); }
 
-    // Close modal when clicking outside
-    document.getElementById('orderModal').addEventListener('click', function(e) {
-        if (e.target === this) closeOrderModal();
-    });
-
-    /* --- ORDER CANCEL CONFIRMATION MODAL CONTROLS --- */
-    let cancelTargetId = 0;
-
-    function openCancelModal(orderId) {
-        cancelTargetId = orderId;
-        document.getElementById('cancelModalMessage').textContent = 
-            'Are you sure you want to cancel order #' + orderId + '? This action cannot be undone.';
-        document.getElementById('cancelConfirmModal').style.display = 'flex';
+    function rcSync() {
+        const picked = document.querySelector('#reasonForm input[name="cancel_choice"]:checked');
+        document.querySelectorAll('#reasonForm .rc-opt').forEach(o => o.classList.toggle('sel', o.querySelector('input').checked));
+        const isOther = picked && picked.value === 'Other';
+        const text = document.getElementById('rcText').value.trim();
+        document.getElementById('rcSubmit').disabled = !picked || (isOther && text === '');
     }
-
-    function closeCancelModal() {
-        document.getElementById('cancelConfirmModal').style.display = 'none';
-        cancelTargetId = 0;
-    }
-
-    document.getElementById('confirmCancelBtn').addEventListener('click', function() {
-        if(cancelTargetId > 0) {
-            // Redirect to the cancel URL
-            window.location.href = 'profile.php?tab=orders&cancel_order=' + cancelTargetId;
-        }
-    });
-
-    // Close modal when clicking outside the white box
-    document.getElementById('cancelConfirmModal').addEventListener('click', function(e) {
-        if (e.target === this) closeCancelModal();
-    });
+    document.getElementById('rcText').addEventListener('input', rcSync);
+    document.getElementById('reasonModal').addEventListener('click', function (e) { if (e.target === this) closeReasonModal(); });
 </script>

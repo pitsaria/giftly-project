@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include_once 'orders_lib.php';
+orders_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     exit('Unauthorized');
@@ -153,9 +155,31 @@ $items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN pro
     </tbody>
 </table>
 
-<!-- 🚨 CANCEL BUTTON - ONLY SHOW IF ORDER IS PENDING -->
-<?php if($order['status'] == 'pending'): ?>
+<?php
+$cs = $order['cancel_status'] ?? 'none';
+if ($order['status'] === 'cancelled' && $cs === 'approved'): ?>
+    <div style="margin-top:20px; background:#f5f5f5; border-radius:14px; padding:14px 16px; font-size:13px; color:#777;">
+        <i class="fas fa-circle-check" style="color:#2e7d32; margin-right:6px;"></i>
+        This order was cancelled — your request was approved by an admin.
+        <?php if (!empty($order['cancel_reason'])): ?>
+            <div style="margin-top:6px; color:#999;">Reason given: “<?php echo htmlspecialchars($order['cancel_reason']); ?>”</div>
+        <?php endif; ?>
+    </div>
+<?php elseif ($cs === 'requested'): ?>
+    <div style="margin-top:20px; background:#fff8e1; border:1px solid #ffe0a3; border-radius:14px; padding:14px 16px; font-size:13px; color:#a5710d;">
+        <i class="fas fa-hourglass-half" style="margin-right:6px;"></i>
+        Cancellation requested — waiting for an admin to review it.
+        <?php if (!empty($order['cancel_reason'])): ?>
+            <div style="margin-top:6px; color:#b98a3a;">Your reason: “<?php echo htmlspecialchars($order['cancel_reason']); ?>”</div>
+        <?php endif; ?>
+    </div>
+<?php elseif ($order['status'] === 'pending'): ?>
+    <?php if ($cs === 'rejected' && !empty($order['cancel_admin_note'])): ?>
+        <div style="margin-top:16px; background:#fdeded; border:1px solid #ffc1cc; border-radius:14px; padding:12px 16px; font-size:13px; color:#d32f2f;">
+            A previous cancellation request was declined: <?php echo htmlspecialchars($order['cancel_admin_note']); ?>
+        </div>
+    <?php endif; ?>
     <button class="modal-cancel-btn" onclick="parent.openCancelModal(<?php echo $order['id']; ?>)">
-        <i class="fas fa-times-circle"></i> Cancel Order
+        <i class="fas fa-times-circle"></i> Request cancellation
     </button>
 <?php endif; ?>
