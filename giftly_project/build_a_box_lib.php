@@ -17,7 +17,7 @@ if (!function_exists('bab_ensure_schema')) {
      * Gated on to_regclass() so it is a single cheap SELECT on every later hit.
      */
     function bab_ensure_schema($conn) {
-        if (!empty($_SESSION['bab_schema_ok'])) {
+        if (!empty($_SESSION['bab_schema_ok_v2'])) {
             return;
         }
 
@@ -28,7 +28,7 @@ if (!function_exists('bab_ensure_schema')) {
             $col = $conn->query("SELECT 1 AS c FROM information_schema.columns
                                  WHERE table_name = 'boxes' AND column_name = 'card_style'");
             if ($col && $col->num_rows > 0) {
-                $_SESSION['bab_schema_ok'] = true;
+                $_SESSION['bab_schema_ok_v2'] = true;
                 return;
             }
         }
@@ -94,7 +94,7 @@ if (!function_exists('bab_ensure_schema')) {
             ON CONFLICT DO NOTHING
         ");
 
-        $_SESSION['bab_schema_ok'] = true;
+        $_SESSION['bab_schema_ok_v2'] = true;
     }
 
     /**
