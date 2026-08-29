@@ -17,19 +17,19 @@ function about_img($base) {
 }
 
 $owners = [
-    ['name' => 'Bea Marasigan',   'role' => 'Founder & CEO',            'bio' => 'Started Giftly from her apartment with a glue gun and a lot of ribbon.'],
-    ['name' => 'Miguel Tan',       'role' => 'Head of Design',           'bio' => 'Obsesses over paper weight, palette and the perfect bow.'],
-    ['name' => 'Carla Villanueva', 'role' => 'Operations & Logistics',   'bio' => 'Makes sure every box arrives on time and in one beautiful piece.'],
-    ['name' => 'Josh Fernandez',   'role' => 'Head of Curation',         'bio' => 'Hunts down the small-batch makers behind our favourite finds.'],
-    ['name' => 'Ana Delos Reyes',  'role' => 'Customer Happiness Lead',  'bio' => 'The voice on the other end of every message — and every thank-you note.'],
+    ['name' => 'Peatzie Cosino',  'role' => 'Founder & CEO',           'bio' => 'Started Giftly from a kitchen table with a glue gun and a lot of ribbon.'],
+    ['name' => 'Angela Castillo', 'role' => 'Head of Design',          'bio' => 'Obsesses over paper weight, palette, and the perfect bow.'],
+    ['name' => 'Feliciti Gacilla','role' => 'Operations & Logistics',  'bio' => 'Makes sure every box arrives on time and in one beautiful piece.'],
+    ['name' => 'Gabriel Edpao',   'role' => 'Head of Curation',        'bio' => 'Hunts down the small-batch makers behind our favourite finds.'],
+    ['name' => 'Rachelle Dilig',  'role' => 'Customer Happiness',      'bio' => 'The voice on the other end of every message — and every thank-you note.'],
 ];
 
-$timeline = [
-    ['year' => '2021', 'title' => 'A kitchen-table idea',   'text' => 'Bea wrapped a birthday gift for a friend who lived overseas. It arrived looking like a mess — and Giftly was born from the belief that the wrapping matters as much as the gift.'],
-    ['year' => '2022', 'title' => 'Our first little shop',  'text' => 'We opened a tiny studio storefront, hand-tying every box and writing every card ourselves.'],
+$milestones = [
+    ['year' => '2021', 'title' => 'A kitchen-table idea',   'text' => 'One badly-wrapped gift sent overseas — and the belief that the wrapping matters as much as what\'s inside.'],
+    ['year' => '2022', 'title' => 'Our first little shop',  'text' => 'A tiny studio storefront where we hand-tied every box and wrote every card ourselves.'],
     ['year' => '2023', 'title' => 'Giftly goes online',     'text' => 'The website launched so anyone could send a curated box across the country in a few clicks.'],
-    ['year' => '2024', 'title' => 'Build-a-Box arrives',    'text' => 'Customers asked to choose exactly what goes inside — so we built the tool to let them design their own.'],
-    ['year' => 'Today','title' => 'Still cherishing moments','text' => 'Thousands of boxes later, five of us run Giftly with the same rule we started with: pack it like it\'s going to someone you love.'],
+    ['year' => '2024', 'title' => 'Build-a-Box arrives',    'text' => 'The tool that lets customers choose exactly what goes inside their box.'],
+    ['year' => '2026', 'title' => 'Still cherishing moments','text' => 'Thousands of boxes later, run by the same rule we started with.'],
 ];
 ?>
 
@@ -48,15 +48,14 @@ $timeline = [
     .ab-section-head h2 { font-size: 28px; font-weight: 700; color: #222; margin-bottom: 8px; }
     .ab-section-head p { font-size: 15px; color: #999; }
 
-    /* STORY TIMELINE */
-    .ab-timeline { position: relative; max-width: 760px; margin: 0 auto; padding-left: 34px; }
-    .ab-timeline::before { content: ''; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 3px; border-radius: 3px; background: linear-gradient(180deg, #FEA5B6 0%, #ffd9e2 100%); }
-    .ab-t-item { position: relative; padding-bottom: 34px; }
-    .ab-t-item:last-child { padding-bottom: 0; }
-    .ab-t-item::before { content: ''; position: absolute; left: -34px; top: 4px; width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 4px solid #ff8ba7; box-shadow: 0 0 0 5px #fff0f5; }
-    .ab-t-year { display: inline-block; font-size: 12px; font-weight: 700; color: #ff8ba7; letter-spacing: 1px; margin-bottom: 4px; }
-    .ab-t-item h3 { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 6px; }
-    .ab-t-item p { font-size: 14.5px; color: #777; line-height: 1.7; }
+    /* STORY */
+    .ab-story-lead { max-width: 680px; margin: 0 auto 40px; text-align: center; font-size: 16px; color: #666; line-height: 1.85; }
+    .ab-story-lead strong { color: #222; font-weight: 600; }
+    .ab-milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .ab-ms { background: #fff; border: 1px solid #f2f2f2; border-radius: 20px; padding: 22px 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
+    .ab-ms .yr { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #ff8ba7; background: #fff0f5; padding: 3px 12px; border-radius: 50px; margin-bottom: 12px; }
+    .ab-ms h3 { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 6px; }
+    .ab-ms p { font-size: 13.5px; color: #888; line-height: 1.6; }
 
     /* STORE GALLERY */
     .ab-gallery { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 150px; gap: 16px; }
@@ -114,14 +113,19 @@ $timeline = [
     <div class="ab-section">
         <div class="ab-section-head">
             <h2>How we got here</h2>
-            <p>A few moments that made Giftly what it is.</p>
         </div>
-        <div class="ab-timeline">
-            <?php foreach ($timeline as $t): ?>
-                <div class="ab-t-item">
-                    <span class="ab-t-year"><?php echo htmlspecialchars($t['year']); ?></span>
-                    <h3><?php echo htmlspecialchars($t['title']); ?></h3>
-                    <p><?php echo htmlspecialchars($t['text']); ?></p>
+        <p class="ab-story-lead">
+            Giftly started with one gift that arrived looking like a mess. We were sure the
+            <strong>way a gift shows up</strong> is part of the gift itself — so we began wrapping,
+            tying and hand-writing boxes we'd be proud to receive ourselves. A few years on,
+            that's still the whole idea.
+        </p>
+        <div class="ab-milestones">
+            <?php foreach ($milestones as $m): ?>
+                <div class="ab-ms">
+                    <span class="yr"><?php echo htmlspecialchars($m['year']); ?></span>
+                    <h3><?php echo htmlspecialchars($m['title']); ?></h3>
+                    <p><?php echo htmlspecialchars($m['text']); ?></p>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -158,7 +162,7 @@ $timeline = [
     <!-- OWNERS -->
     <div class="ab-section">
         <div class="ab-section-head">
-            <h2>The five of us</h2>
+            <h2>The People Behind Giftly</h2>
             <p>The people who read your gift messages before they're sent.</p>
         </div>
         <div class="ab-owners">

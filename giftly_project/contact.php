@@ -125,7 +125,7 @@ include 'header.php';
     <div class="ct-hero">
         <span class="kicker">Contact</span>
         <h1>We'd <span>love</span> to hear from you</h1>
-        <p>Questions about an order, a custom box, or a bulk request for your team? Send us a note — a real person named Ana reads every one.</p>
+        <p>Questions about an order, a custom box, or a bulk request for your team? Send us a note — a real person on our team reads every one.</p>
     </div>
 
     <div class="ct-grid">
