@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include 'build_a_box_lib.php';
+bab_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -64,6 +66,15 @@ if (isset($_POST['update_product'])) {
         exit();
     }
 
+    // 🚨 VALIDATION: at least one box size must be allowed
+    $box_size_ids = isset($_POST['box_sizes']) && is_array($_POST['box_sizes'])
+        ? array_map('intval', $_POST['box_sizes']) : [];
+    if (empty($box_size_ids)) {
+        $_SESSION['product_error'] = "Please select at least one box size this product can go into.";
+        header("Location: admin_products.php?error=box_sizes");
+        exit();
+    }
+
     $name = mysqli_real_escape_string($conn, $name);
     $desc = mysqli_real_escape_string($conn, $desc);
     $category_id = mysqli_real_escape_string($conn, $category_id);
@@ -87,6 +98,14 @@ if (isset($_POST['update_product'])) {
     }
 
     if ($conn->query($sql) === TRUE) {
+        // Sync allowed box sizes
+        $pid = intval($id);
+        $conn->query("DELETE FROM product_box_sizes WHERE product_id = $pid");
+        foreach ($box_size_ids as $bsid) {
+            $bsid = intval($bsid);
+            $conn->query("INSERT INTO product_box_sizes (product_id, box_size_id)
+                          VALUES ($pid, $bsid) ON CONFLICT DO NOTHING");
+        }
         $_SESSION['product_updated'] = true;
         header("Location: admin_products.php");
         exit();

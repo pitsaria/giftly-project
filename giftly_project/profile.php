@@ -45,6 +45,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'profile';
             <li><a href="?tab=profile" class="<?php echo ($active_tab == 'profile') ? 'active' : ''; ?>"><i class="fas fa-user"></i> Profile Settings</a></li>
             <li><a href="?tab=addresses" class="<?php echo ($active_tab == 'addresses') ? 'active' : ''; ?>"><i class="fas fa-map-pin"></i> My Addresses</a></li>
             <li><a href="?tab=orders" class="<?php echo ($active_tab == 'orders') ? 'active' : ''; ?>"><i class="fas fa-shopping-bag"></i> Order History</a></li>
+            <li><a href="?tab=boxes" class="<?php echo ($active_tab == 'boxes') ? 'active' : ''; ?>"><i class="fas fa-gift"></i> My Boxes</a></li>
             <li><a href="?tab=wishlist" class="<?php echo ($active_tab == 'wishlist') ? 'active' : ''; ?>"><i class="fas fa-heart"></i> Wishlist</a></li>
         </ul>
     </div>
@@ -65,6 +66,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'profile';
         <!-- TAB 3: ORDER HISTORY -->
         <div class="tab-content <?php echo ($active_tab == 'orders') ? 'active' : ''; ?>" id="tab-orders">
             <?php include 'profile_orders.php'; ?>
+        </div>
+
+        <!-- TAB: MY BOXES -->
+        <div class="tab-content <?php echo ($active_tab == 'boxes') ? 'active' : ''; ?>" id="tab-boxes">
+            <?php include 'profile_boxes.php'; ?>
         </div>
 
         <!-- TAB 4: WISHLIST -->

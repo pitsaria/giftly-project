@@ -1,5 +1,7 @@
 <?php
-include 'db_connect.php'; 
+include 'db_connect.php';
+include 'build_a_box_lib.php';
+bab_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -40,7 +42,18 @@ $count_res = $conn->query($count_sql);
 $total_rows = $count_res->fetch_assoc()['total'];
 $total_pages = ceil($total_rows / $limit);
 
-include 'admin_header.php'; 
+include 'admin_header.php';
+
+// Build-a-Box: sizes + per-product allowed-size map
+$bab_all_sizes = bab_box_sizes($conn);
+$bab_product_sizes = [];
+$bab_ps_res = $conn->query("SELECT product_id, box_size_id FROM product_box_sizes");
+while ($bab_ps_res && $bab_ps_row = $bab_ps_res->fetch_assoc()) {
+    $bab_product_sizes[intval($bab_ps_row['product_id'])][] = intval($bab_ps_row['box_size_id']);
+}
+function bab_sizes_attr($pid, $map) {
+    return implode(',', $map[intval($pid)] ?? []);
+}
 
 // Handle Flash messages
 $show_deleted = false;
@@ -684,6 +697,9 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
 case 'quantity_max':
     $error_msg = 'Quantity cannot exceed 9,999.';
     break;
+case 'box_sizes':
+    $error_msg = 'Please select at least one box size for the product.';
+    break;
                 default: $error_msg = 'An error occurred. Please try again.';
             }
             echo $error_msg;
@@ -731,7 +747,7 @@ case 'quantity_max':
                     <div class="card-desc">'.(strlen($row['description']) > 0 ? $row['description'] : '<span style="color:#ddd;">No description</span>').'</div>
                     <div class="card-price">PHP '.number_format($row['price'], 2).'</div>
                     <div class="card-actions">
-                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].')">
+                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\')">
                             <i class="fas fa-pen"></i> Edit
                         </button>
                         <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -802,7 +818,7 @@ case 'quantity_max':
                             <td><span class="prod-price">PHP '.number_format($row['price'], 2).'</span></td>
                             <td>
                                 <div class="list-actions">
-                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].')">
+                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\')">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -888,6 +904,17 @@ case 'quantity_max':
                 ?>
             </select>
 
+            <label class="modal-label">Allowed Box Sizes</label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+                <?php foreach ($bab_all_sizes as $bs): ?>
+                    <label style="flex: 1; min-width: 120px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1.5px solid #eee; border-radius: 12px; background: #fafafa; cursor: pointer; font-size: 13px;">
+                        <input type="checkbox" name="box_sizes[]" value="<?php echo $bs['id']; ?>" class="edit-box-size"
+                               style="width: 16px; height: 16px; accent-color: #ff8ba7;">
+                        <?php echo htmlspecialchars($bs['name']); ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+
             <label class="modal-label">New Image <span style="font-weight: 400; color: #999;">(Optional)</span></label>
             <input type="file" name="image" class="modal-input" style="padding: 10px; background: #fafafa;">
             
@@ -899,13 +926,19 @@ case 'quantity_max':
 </div>
 
 <script>
-    function openEditModal(id, name, desc, price, quantity, category_id) {
+    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_desc').value = desc;
         document.getElementById('edit_price').value = price;
         document.getElementById('edit_quantity').value = quantity;
         document.getElementById('edit_category_id').value = category_id;
+
+        var allowed = (boxSizes ? String(boxSizes).split(',') : []).filter(Boolean);
+        document.querySelectorAll('.edit-box-size').forEach(function(cb) {
+            cb.checked = allowed.indexOf(cb.value) !== -1;
+        });
+
         document.getElementById('editModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
@@ -947,6 +980,10 @@ case 'quantity_max':
     }
     if (price > 9999.99) {
         alert('Maximum price allowed is 9,999.99.');
+        return false;
+    }
+    if (document.querySelectorAll('.edit-box-size:checked').length === 0) {
+        alert('Please select at least one box size for this product.');
         return false;
     }
     return true;

@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include 'build_a_box_lib.php';
+bab_ensure_schema($conn);
 
 if (isset($_POST['add_product'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -7,6 +9,15 @@ if (isset($_POST['add_product'])) {
     $price = floatval($_POST['price']); // Convert to float
     $quantity = intval($_POST['quantity']); // Convert to integer
     $category_id = $_POST['category_id'];
+
+    // 🚨 VALIDATION: at least one box size must be allowed
+    $box_size_ids = isset($_POST['box_sizes']) && is_array($_POST['box_sizes'])
+        ? array_map('intval', $_POST['box_sizes']) : [];
+    if (empty($box_size_ids)) {
+        $_SESSION['product_error'] = "Please select at least one box size this product can go into.";
+        header("Location: admin_add_product.php");
+        exit();
+    }
     
     // 🚨 VALIDATION: Check if price is negative or zero
     if ($price < 0) {
@@ -59,12 +70,28 @@ if ($quantity > 9999) {
     if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
         $sql = "INSERT INTO products (name, description, price, quantity, category_id, image) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$new_filename')";
         if ($conn->query($sql) === TRUE) {
+            // Resolve the new product id and record its allowed box sizes
+            $new_pid = intval($conn->insert_id);
+            if ($new_pid <= 0) {
+                $img_esc = $conn->real_escape_string($new_filename);
+                $pr = $conn->query("SELECT id FROM products WHERE image = '$img_esc' ORDER BY id DESC LIMIT 1");
+                if ($pr && $pr->num_rows > 0) $new_pid = intval($pr->fetch_assoc()['id']);
+            }
+            if ($new_pid > 0) {
+                foreach ($box_size_ids as $bsid) {
+                    $bsid = intval($bsid);
+                    $conn->query("INSERT INTO product_box_sizes (product_id, box_size_id)
+                                  VALUES ($new_pid, $bsid) ON CONFLICT DO NOTHING");
+                }
+            }
             $_SESSION['product_added'] = true;
             header("Location: admin_add_product.php");
-            exit(); 
+            exit();
         }
     }
 }
+
+$bab_all_sizes = bab_box_sizes($conn);
 
 $show_success = false;
 if (isset($_SESSION['product_added']) && $_SESSION['product_added'] === true) {
@@ -171,6 +198,26 @@ include 'admin_header.php';
                     }
                     ?>
                 </select>
+            </div>
+
+            <!-- ALLOWED BOX SIZES (Build-a-Box) -->
+            <div class="admin-form-group">
+                <label>Allowed Box Sizes</label>
+                <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
+                    <i class="fas fa-info-circle"></i> Which Build-a-Box sizes can this product be placed into? (Select at least one.)
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <?php foreach ($bab_all_sizes as $bs): ?>
+                        <label style="flex: 1; min-width: 150px; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1.5px solid #eee; border-radius: 14px; background: #fafafa; cursor: pointer;">
+                            <input type="checkbox" name="box_sizes[]" value="<?php echo $bs['id']; ?>" checked
+                                   style="width: 18px; height: 18px; accent-color: #ff8ba7;">
+                            <span style="font-size: 14px; font-weight: 500; color: #444;">
+                                <?php echo htmlspecialchars($bs['name']); ?>
+                                <small style="display: block; color: #999; font-weight: 400;">up to <?php echo $bs['max_items']; ?> items</small>
+                            </span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
             </div>
 
             <div class="admin-form-group">

@@ -173,7 +173,7 @@
             }
             ?>
 
-            <li><a href="#" class="<?php echo ($current_page == 'build-a-box.php') ? 'active' : ''; ?>">Build-a-Box</a></li>
+            <li><a href="build-a-box.php" class="<?php echo ($current_page == 'build-a-box.php') ? 'active' : ''; ?>">Build-a-Box</a></li>
             <li><a href="#" class="<?php echo ($current_page == 'occasion-boxes.php') ? 'active' : ''; ?>">Occasion Boxes</a></li>
             <li><a href="#" class="<?php echo ($current_page == 'bundles.php') ? 'active' : ''; ?>">Bundles</a></li>
             <li><a href="#" class="<?php echo ($current_page == 'about.php') ? 'active' : ''; ?>">About</a></li>
