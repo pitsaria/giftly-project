@@ -70,7 +70,7 @@ if ($filter_mode === 'me') {
 }
 
 // --- PAGINATION LOGIC ---
-$limit = 20; // Orders per page
+$limit = 8; // Orders per page
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
 
