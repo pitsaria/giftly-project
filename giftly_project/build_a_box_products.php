@@ -14,7 +14,7 @@ $size_id  = isset($_GET['size_id']) ? intval($_GET['size_id']) : 0;
 $search   = isset($_GET['search']) ? trim($_GET['search']) : '';
 $category = isset($_GET['category']) ? intval($_GET['category']) : 0;
 $page     = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$limit    = 24;
+$limit    = 12;
 $offset   = ($page - 1) * $limit;
 
 $size = bab_box_size($conn, $size_id);
