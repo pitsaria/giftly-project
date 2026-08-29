@@ -1,3 +1,11 @@
+<?php
+// Unread contact-message count for the sidebar badge (safe if table is absent)
+$sidebar_unread_msgs = 0;
+if (isset($conn)) {
+    $__um = @$conn->query("SELECT COUNT(*) AS c FROM contact_messages WHERE is_read = FALSE");
+    if ($__um) $sidebar_unread_msgs = (int) $__um->fetch_assoc()['c'];
+}
+?>
 <!-- ADMIN SIDEBAR -->
 <div class="admin-sidebar">
     
@@ -47,6 +55,15 @@
             <a href="admin_orders.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_orders.php') ? 'active' : ''; ?>">
                 <i class="fas fa-shopping-bag"></i>
                 <span>Orders</span>
+            </a>
+        </li>
+        <li>
+            <a href="admin_messages.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_messages.php') ? 'active' : ''; ?>">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+                <?php if ($sidebar_unread_msgs > 0): ?>
+                    <span style="margin-left:auto; background:#ff8ba7; color:#fff; font-size:11px; font-weight:700; min-width:20px; height:20px; border-radius:50px; display:inline-flex; align-items:center; justify-content:center; padding:0 6px;"><?php echo $sidebar_unread_msgs; ?></span>
+                <?php endif; ?>
             </a>
         </li>
         <li>

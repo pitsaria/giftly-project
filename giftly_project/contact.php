@@ -1,20 +1,7 @@
 <?php
 include 'db_connect.php';
-
-// --- ensure the messages table exists (idempotent, cheap) ---
-if (empty($_SESSION['contact_schema_ok'])) {
-    $conn->query("
-        CREATE TABLE IF NOT EXISTS contact_messages (
-            id         SERIAL PRIMARY KEY,
-            name       VARCHAR(120) NOT NULL,
-            email      VARCHAR(160) NOT NULL,
-            subject    VARCHAR(160) NOT NULL DEFAULT '',
-            message    TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-    ");
-    $_SESSION['contact_schema_ok'] = true;
-}
+include 'contact_lib.php';
+contact_ensure_schema($conn);
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
