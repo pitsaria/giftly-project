@@ -36,7 +36,7 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $prod_filter = "";
 if ($filter_category > 0) { $prod_filter .= " AND category_id = $filter_category"; }
 if ($filter_type !== '') { $prod_filter .= " AND product_type = '" . $conn->real_escape_string($filter_type) . "'"; }
-if (!empty($search)) { $prod_filter .= " AND name LIKE '%$search%'"; }
+if (!empty($search)) { $prod_filter .= " AND name ILIKE '%$search%'"; }
 
 // --- PAGINATION LOGIC ---
 $limit = 20;

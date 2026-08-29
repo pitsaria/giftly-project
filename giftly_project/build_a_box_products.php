@@ -45,7 +45,7 @@ if (isset($_GET['ids_only'])) {
 $where = "pbs.box_size_id = $size_id AND p.quantity > 0 AND p.product_type = 'catalog'";
 if ($search !== '') {
     $s = $conn->real_escape_string($search);
-    $where .= " AND p.name LIKE '%$s%'";
+    $where .= " AND p.name ILIKE '%$s%'";
 }
 if ($category > 0) {
     $where .= " AND p.category_id = $category";

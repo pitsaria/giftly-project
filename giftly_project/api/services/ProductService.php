@@ -28,7 +28,7 @@ public function getAll($params) {
 
     $sql = "SELECT * FROM products WHERE 1=1";
     if (!empty($search)) {
-        $sql .= " AND name LIKE '%$search%'";
+        $sql .= " AND name ILIKE '%$search%'";
     }
     if (!empty($category)) {
         $sql .= " AND category_id = '$category'";

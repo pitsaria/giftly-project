@@ -27,7 +27,7 @@ $offset = ($page - 1) * $cat_limit;
 $type_esc = $conn->real_escape_string($cat_type);
 $where = "product_type = '$type_esc'";
 if ($search !== '') {
-    $where .= " AND name LIKE '%" . $conn->real_escape_string($search) . "%'";
+    $where .= " AND name ILIKE '%" . $conn->real_escape_string($search) . "%'";
 }
 
 $total_res   = $conn->query("SELECT COUNT(*) AS c FROM products WHERE $where");

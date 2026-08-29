@@ -13,7 +13,7 @@ $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
 $count_sql = "SELECT COUNT(*) as total FROM products WHERE 1=1";
-if (!empty($search)) { $count_sql .= " AND name LIKE '%$search%'"; }
+if (!empty($search)) { $count_sql .= " AND name ILIKE '%$search%'"; }
 if (!empty($category_id)) { $count_sql .= " AND category_id = '$category_id'"; }
 $count_res = $conn->query($count_sql);
 $total_rows = $count_res->fetch_assoc()['total'];
