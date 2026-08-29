@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include 'build_a_box_lib.php';
+include 'catalog_lib.php';
 bab_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -22,22 +24,26 @@ if (isset($_GET['view'])) {
 }
 $current_view = isset($_SESSION['admin_view']) ? $_SESSION['admin_view'] : 'grid'; 
 
-// Handle Category Filter & Search
+// Handle Category / Type Filter & Search
 $filter_category = isset($_GET['filter_cat']) ? intval($_GET['filter_cat']) : 0;
+$filter_type = isset($_GET['filter_type']) ? catalog_type_key($_GET['filter_type']) : '';
+if (isset($_GET['filter_type']) && !in_array($_GET['filter_type'], array_keys(catalog_types()), true)) {
+    $filter_type = '';
+}
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
+// Shared WHERE fragment for the product list + count
+$prod_filter = "";
+if ($filter_category > 0) { $prod_filter .= " AND category_id = $filter_category"; }
+if ($filter_type !== '') { $prod_filter .= " AND product_type = '" . $conn->real_escape_string($filter_type) . "'"; }
+if (!empty($search)) { $prod_filter .= " AND name LIKE '%$search%'"; }
+
 // --- PAGINATION LOGIC ---
-$limit = 20; 
+$limit = 20;
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-$count_sql = "SELECT COUNT(*) as total FROM products WHERE 1=1";
-if ($filter_category > 0) {
-    $count_sql .= " AND category_id = $filter_category";
-}
-if (!empty($search)) {
-    $count_sql .= " AND name LIKE '%$search%'";
-}
+$count_sql = "SELECT COUNT(*) as total FROM products WHERE 1=1" . $prod_filter;
 $count_res = $conn->query($count_sql);
 $total_rows = $count_res->fetch_assoc()['total'];
 $total_pages = ceil($total_rows / $limit);
@@ -625,7 +631,8 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
             <form action="admin_products.php" method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <input type="hidden" name="view" value="<?php echo $current_view; ?>">
                 <input type="hidden" name="filter_cat" value="<?php echo $filter_category; ?>">
-                
+                <input type="hidden" name="filter_type" value="<?php echo htmlspecialchars($filter_type); ?>">
+
                 <div class="search-container">
                     <i class="fas fa-search"></i>
                     <input type="text" name="search" placeholder="Search products..." value="<?php echo $search; ?>">
@@ -636,7 +643,7 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
                 <?php endif; ?>
             </form>
 
-            <select class="filter-select" onchange="window.location.href='admin_products.php?view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=' + this.value">
+            <select class="filter-select" onchange="window.location.href='admin_products.php?view=<?php echo $current_view; ?>&search=<?php echo urlencode($search); ?>&filter_type=<?php echo urlencode($filter_type); ?>&filter_cat=' + this.value">
                 <option value="0">📂 All Categories</option>
                 <?php
                 $cat_sql = "SELECT * FROM categories ORDER BY name ASC";
@@ -650,11 +657,18 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
                 ?>
             </select>
 
+            <select class="filter-select" onchange="window.location.href='admin_products.php?view=<?php echo $current_view; ?>&search=<?php echo urlencode($search); ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=' + this.value">
+                <option value="">🏷️ All Types</option>
+                <?php foreach (catalog_types() as $tk => $tl): ?>
+                    <option value="<?php echo $tk; ?>" <?php echo ($filter_type === $tk) ? 'selected' : ''; ?>><?php echo htmlspecialchars($tl); ?></option>
+                <?php endforeach; ?>
+            </select>
+
             <div class="view-toggle-container">
-                <button class="view-btn <?php echo ($current_view == 'grid') ? 'active' : ''; ?>" onclick="window.location.href='admin_products.php?view=grid&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>'">
+                <button class="view-btn <?php echo ($current_view == 'grid') ? 'active' : ''; ?>" onclick="window.location.href='admin_products.php?view=grid&search=<?php echo urlencode($search); ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=<?php echo urlencode($filter_type); ?>'">
                     <i class="fas fa-th-large"></i> Grid
                 </button>
-                <button class="view-btn <?php echo ($current_view == 'list') ? 'active' : ''; ?>" onclick="window.location.href='admin_products.php?view=list&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>'">
+                <button class="view-btn <?php echo ($current_view == 'list') ? 'active' : ''; ?>" onclick="window.location.href='admin_products.php?view=list&search=<?php echo urlencode($search); ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=<?php echo urlencode($filter_type); ?>'">
                     <i class="fas fa-list"></i> List
                 </button>
             </div>
@@ -711,14 +725,7 @@ case 'box_sizes':
     <!-- GRID VIEW -->
     <div class="product-grid <?php echo ($current_view == 'grid') ? 'active' : ''; ?>" id="productGrid">
         <?php
-        $sql = "SELECT * FROM products WHERE 1=1";
-        if ($filter_category > 0) {
-            $sql .= " AND category_id = $filter_category";
-        }
-        if (!empty($search)) {
-            $sql .= " AND name LIKE '%$search%'";
-        }
-        $sql .= " ORDER BY id DESC LIMIT $limit OFFSET $offset";
+        $sql = "SELECT * FROM products WHERE 1=1" . $prod_filter . " ORDER BY id DESC LIMIT $limit OFFSET $offset";
         
         $result = $conn->query($sql);
         if ($result->num_rows > 0) {
@@ -736,6 +743,10 @@ case 'box_sizes':
                     }
                 }
                 $cat_display = !empty($cat_name) ? '<span class="card-cat-badge">'.$cat_name.'</span>' : '';
+                $tkey = catalog_type_key($row['product_type'] ?? 'catalog');
+                $type_display = $tkey !== 'catalog'
+                    ? '<span class="card-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$tkey]).'</span>'
+                    : '';
                 echo '
                 <div class="admin-card search-item">
                     <div class="card-image-wrapper">
@@ -743,11 +754,11 @@ case 'box_sizes':
                         <span class="card-stock-badge '.$stock_class.'">'.$stock_status.'</span>
                     </div>
                     <div class="card-name search-name">'.$row['name'].'</div>
-                    '.$cat_display.'
+                    '.$cat_display.$type_display.'
                     <div class="card-desc">'.(strlen($row['description']) > 0 ? $row['description'] : '<span style="color:#ddd;">No description</span>').'</div>
                     <div class="card-price">PHP '.number_format($row['price'], 2).'</div>
                     <div class="card-actions">
-                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\')">
+                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
                             <i class="fas fa-pen"></i> Edit
                         </button>
                         <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -782,14 +793,7 @@ case 'box_sizes':
             </thead>
             <tbody>
                 <?php
-                $sql = "SELECT * FROM products WHERE 1=1";
-                if ($filter_category > 0) {
-                    $sql .= " AND category_id = $filter_category";
-                }
-                if (!empty($search)) {
-                    $sql .= " AND name LIKE '%$search%'";
-                }
-                $sql .= " ORDER BY id DESC LIMIT $limit OFFSET $offset";
+                $sql = "SELECT * FROM products WHERE 1=1" . $prod_filter . " ORDER BY id DESC LIMIT $limit OFFSET $offset";
 
                 $result = $conn->query($sql);
                 if ($result->num_rows > 0) {
@@ -813,12 +817,12 @@ case 'box_sizes':
                                 <span class="search-name prod-name-cell">'.$row['name'].'</span>
                                 <span class="prod-desc-cell">'.(strlen($row['description']) > 0 ? substr($row['description'], 0, 50).'...' : 'No description').'</span>
                             </td>
-                            <td><span class="prod-cat-badge">'.$cat_name.'</span></td>
+                            <td><span class="prod-cat-badge">'.$cat_name.'</span>'.(catalog_type_key($row['product_type'] ?? 'catalog') !== 'catalog' ? ' <span class="prod-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[catalog_type_key($row['product_type'] ?? 'catalog')]).'</span>' : '').'</td>
                             <td><span class="'.$stock_class.'">'.$stock_status.'</span></td>
                             <td><span class="prod-price">PHP '.number_format($row['price'], 2).'</span></td>
                             <td>
                                 <div class="list-actions">
-                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\')">
+                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -843,7 +847,7 @@ case 'box_sizes':
     <!-- PAGINATION -->
     <?php if ($total_rows > $limit): ?>
     <div class="pagination-wrapper">
-        <a href="admin_products.php?page=<?php echo ($page > 1) ? $page - 1 : 1; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+        <a href="admin_products.php?page=<?php echo ($page > 1) ? $page - 1 : 1; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=<?php echo urlencode($filter_type); ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
             <i class="fas fa-chevron-left"></i> Previous
         </a>
 
@@ -855,17 +859,17 @@ case 'box_sizes':
             if ($start_page > 2) echo '<span class="page-btn disabled" style="border: none; background: transparent;">...</span>';
         }
         for ($i = $start_page; $i <= $end_page; $i++): ?>
-            <a href="admin_products.php?page=<?php echo $i; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>" class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
+            <a href="admin_products.php?page=<?php echo $i; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=<?php echo urlencode($filter_type); ?>" class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
                 <?php echo $i; ?>
             </a>
         <?php endfor;
         if ($end_page < $total_pages) {
             if ($end_page < $total_pages - 1) echo '<span class="page-btn disabled" style="border: none; background: transparent;">...</span>';
-            echo '<a href="admin_products.php?page='.$total_pages.'&view='.$current_view.'&search='.$search.'&filter_cat='.$filter_category.'" class="page-btn">'.$total_pages.'</a>';
+            echo '<a href="admin_products.php?page='.$total_pages.'&view='.$current_view.'&search='.$search.'&filter_cat='.$filter_category.'&filter_type='.urlencode($filter_type).'" class="page-btn">'.$total_pages.'</a>';
         }
         ?>
 
-        <a href="admin_products.php?page=<?php echo ($page < $total_pages) ? $page + 1 : $total_pages; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+        <a href="admin_products.php?page=<?php echo ($page < $total_pages) ? $page + 1 : $total_pages; ?>&view=<?php echo $current_view; ?>&search=<?php echo $search; ?>&filter_cat=<?php echo $filter_category; ?>&filter_type=<?php echo urlencode($filter_type); ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
             Next <i class="fas fa-chevron-right"></i>
         </a>
     </div>
@@ -879,7 +883,14 @@ case 'box_sizes':
         <h3 class="modal-title">✏️ Edit Product</h3>
         <form action="admin_update_product.php" method="POST" enctype="multipart/form-data" onsubmit="return validateEditForm()">
             <input type="hidden" name="id" id="edit_id">
-            
+
+            <label class="modal-label">Product Type</label>
+            <select name="product_type" id="edit_product_type" class="modal-input" onchange="toggleEditBoxSizes()">
+                <?php foreach (catalog_types() as $tk => $tl): ?>
+                    <option value="<?php echo $tk; ?>"><?php echo htmlspecialchars($tl); ?></option>
+                <?php endforeach; ?>
+            </select>
+
             <label class="modal-label">Product Name</label>
             <input type="text" name="name" id="edit_name" class="modal-input" required>
             
@@ -904,6 +915,7 @@ case 'box_sizes':
                 ?>
             </select>
 
+            <div id="edit_box_sizes_group">
             <label class="modal-label">Allowed Box Sizes</label>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
                 <?php foreach ($bab_all_sizes as $bs): ?>
@@ -913,6 +925,7 @@ case 'box_sizes':
                         <?php echo htmlspecialchars($bs['name']); ?>
                     </label>
                 <?php endforeach; ?>
+            </div>
             </div>
 
             <label class="modal-label">New Image <span style="font-weight: 400; color: #999;">(Optional)</span></label>
@@ -926,18 +939,28 @@ case 'box_sizes':
 </div>
 
 <script>
-    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes) {
+    function toggleEditBoxSizes() {
+        var t = document.getElementById('edit_product_type').value;
+        var grp = document.getElementById('edit_box_sizes_group');
+        var show = (t === 'catalog');
+        grp.style.display = show ? '' : 'none';
+        grp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !show; });
+    }
+
+    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_desc').value = desc;
         document.getElementById('edit_price').value = price;
         document.getElementById('edit_quantity').value = quantity;
         document.getElementById('edit_category_id').value = category_id;
+        document.getElementById('edit_product_type').value = productType || 'catalog';
 
         var allowed = (boxSizes ? String(boxSizes).split(',') : []).filter(Boolean);
         document.querySelectorAll('.edit-box-size').forEach(function(cb) {
             cb.checked = allowed.indexOf(cb.value) !== -1;
         });
+        toggleEditBoxSizes();
 
         document.getElementById('editModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -982,7 +1005,8 @@ case 'box_sizes':
         alert('Maximum price allowed is 9,999.99.');
         return false;
     }
-    if (document.querySelectorAll('.edit-box-size:checked').length === 0) {
+    if (document.getElementById('edit_product_type').value === 'catalog'
+        && document.querySelectorAll('.edit-box-size:checked').length === 0) {
         alert('Please select at least one box size for this product.');
         return false;
     }

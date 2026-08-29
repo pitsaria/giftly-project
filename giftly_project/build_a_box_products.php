@@ -6,9 +6,11 @@
  */
 include 'db_connect.php';
 include 'build_a_box_lib.php';
+include 'catalog_lib.php';
 header('Content-Type: application/json');
 
 bab_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 $size_id  = isset($_GET['size_id']) ? intval($_GET['size_id']) : 0;
 $search   = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -30,7 +32,7 @@ if (isset($_GET['ids_only'])) {
         SELECT p.id
         FROM products p
         JOIN product_box_sizes pbs ON pbs.product_id = p.id
-        WHERE pbs.box_size_id = $size_id
+        WHERE pbs.box_size_id = $size_id AND p.product_type = 'catalog'
     ");
     $ids = [];
     while ($res && $row = $res->fetch_assoc()) {
@@ -40,7 +42,7 @@ if (isset($_GET['ids_only'])) {
     exit();
 }
 
-$where = "pbs.box_size_id = $size_id AND p.quantity > 0";
+$where = "pbs.box_size_id = $size_id AND p.quantity > 0 AND p.product_type = 'catalog'";
 if ($search !== '') {
     $s = $conn->real_escape_string($search);
     $where .= " AND p.name LIKE '%$s%'";

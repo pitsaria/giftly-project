@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include 'build_a_box_lib.php';
+include 'catalog_lib.php';
 bab_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -23,6 +25,7 @@ if (isset($_POST['update_product'])) {
     $price = floatval($_POST['price']);
     $quantity = intval($_POST['quantity']);
     $category_id = $_POST['category_id'];
+    $product_type = catalog_type_key($_POST['product_type'] ?? 'catalog');
 
     // 🚨 VALIDATION: Check if price is negative
     if ($price < 0) {
@@ -66,10 +69,10 @@ if (isset($_POST['update_product'])) {
         exit();
     }
 
-    // 🚨 VALIDATION: at least one box size must be allowed
+    // 🚨 VALIDATION: regular shop products must be usable in at least one box size
     $box_size_ids = isset($_POST['box_sizes']) && is_array($_POST['box_sizes'])
         ? array_map('intval', $_POST['box_sizes']) : [];
-    if (empty($box_size_ids)) {
+    if ($product_type === 'catalog' && empty($box_size_ids)) {
         $_SESSION['product_error'] = "Please select at least one box size this product can go into.";
         header("Location: admin_products.php?error=box_sizes");
         exit();
@@ -87,14 +90,14 @@ if (isset($_POST['update_product'])) {
         $target_file = $target_dir . $new_filename;
 
         if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', image='$new_filename' WHERE id=$id";
+            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type', image='$new_filename' WHERE id=$id";
         } else {
             $_SESSION['product_updated'] = false;
             header("Location: admin_products.php?error=upload");
             exit();
         }
     } else {
-        $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id' WHERE id=$id";
+        $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type' WHERE id=$id";
     }
 
     if ($conn->query($sql) === TRUE) {

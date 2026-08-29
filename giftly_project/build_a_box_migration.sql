@@ -1,9 +1,12 @@
 -- ============================================================
---  Build-a-Box feature — schema
+--  Build-a-Box + Occasion Boxes / Baskets — schema
 --  Safe to run more than once. The application also creates
---  these automatically on first use (see build_a_box_lib.php),
---  so running this by hand is optional.
+--  these automatically on first use (see build_a_box_lib.php
+--  and catalog_lib.php), so running this by hand is optional.
 -- ============================================================
+
+-- Occasion Boxes / Baskets are products with a type tag.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(20) NOT NULL DEFAULT 'catalog';
 
 CREATE TABLE IF NOT EXISTS box_sizes (
     id         SERIAL PRIMARY KEY,

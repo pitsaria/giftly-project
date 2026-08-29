@@ -42,6 +42,10 @@ if ($conn->connect_error) {
     die(json_encode(['error' => 'Database connection failed: ' . $conn->connect_error]));
 }
 
+// Ensure products.product_type exists (Occasion Boxes / Baskets feature)
+require_once __DIR__ . '/../../catalog_lib.php';
+catalog_ensure_schema($conn);
+
 // Function to send JSON response
 function sendResponse($data, $status = 200) {
     http_response_code($status);

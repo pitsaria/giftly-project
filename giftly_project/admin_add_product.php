@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include 'build_a_box_lib.php';
+include 'catalog_lib.php';
 bab_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 if (isset($_POST['add_product'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -9,11 +11,12 @@ if (isset($_POST['add_product'])) {
     $price = floatval($_POST['price']); // Convert to float
     $quantity = intval($_POST['quantity']); // Convert to integer
     $category_id = $_POST['category_id'];
+    $product_type = catalog_type_key($_POST['product_type'] ?? 'catalog');
 
-    // 🚨 VALIDATION: at least one box size must be allowed
+    // 🚨 VALIDATION: regular shop products must be usable in at least one box size
     $box_size_ids = isset($_POST['box_sizes']) && is_array($_POST['box_sizes'])
         ? array_map('intval', $_POST['box_sizes']) : [];
-    if (empty($box_size_ids)) {
+    if ($product_type === 'catalog' && empty($box_size_ids)) {
         $_SESSION['product_error'] = "Please select at least one box size this product can go into.";
         header("Location: admin_add_product.php");
         exit();
@@ -68,7 +71,7 @@ if ($quantity > 9999) {
     $target_file = $target_dir . $new_filename;
 
     if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        $sql = "INSERT INTO products (name, description, price, quantity, category_id, image) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$new_filename')";
+        $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$new_filename', '$product_type')";
         if ($conn->query($sql) === TRUE) {
             // Resolve the new product id and record its allowed box sizes
             $new_pid = intval($conn->insert_id);
@@ -163,6 +166,17 @@ include 'admin_header.php';
     <div class="admin-form-container">
         <form action="" method="POST" enctype="multipart/form-data">
             <div class="admin-form-group">
+                <label for="product_type">Product Type</label>
+                <select id="product_type" name="product_type" class="admin-input" onchange="toggleBoxSizes()">
+                    <?php foreach (catalog_types() as $tk => $tl): ?>
+                        <option value="<?php echo $tk; ?>"><?php echo htmlspecialchars($tl); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                    <i class="fas fa-info-circle"></i> "Shop product" appears in the shop &amp; Build-a-Box. "Occasion Box" / "Basket" are pre-made sets shown on their own page.
+                </div>
+            </div>
+            <div class="admin-form-group">
                 <label for="name">Product Name</label>
                 <input type="text" id="name" name="name" class="admin-input" placeholder="e.g. Miss Dior Roses" required>
             </div>
@@ -201,7 +215,7 @@ include 'admin_header.php';
             </div>
 
             <!-- ALLOWED BOX SIZES (Build-a-Box) -->
-            <div class="admin-form-group">
+            <div class="admin-form-group" id="boxSizesGroup">
                 <label>Allowed Box Sizes</label>
                 <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
                     <i class="fas fa-info-circle"></i> Which Build-a-Box sizes can this product be placed into? (Select at least one.)
@@ -240,6 +254,15 @@ include 'admin_header.php';
 <?php include 'admin_footer.php'; ?>
 
 <script>
+    function toggleBoxSizes() {
+        var t = document.getElementById('product_type').value;
+        var grp = document.getElementById('boxSizesGroup');
+        var show = (t === 'catalog');
+        grp.style.display = show ? '' : 'none';
+        grp.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.disabled = !show; });
+    }
+    toggleBoxSizes();
+
     document.getElementById('imageInput').addEventListener('change', function(e) {
         var fileName = e.target.files[0].name;
         var wrapper = document.getElementById('fileWrapper');

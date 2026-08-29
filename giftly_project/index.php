@@ -311,7 +311,7 @@ include 'header.php';
                 <h1>Make Every <span>Surprise</span><br>More Meaningful</h1>
                 <p>Create personalized gift boxes or choose curated collections for every occasion.</p>
                 <div class="hero-buttons">
-                    <a href="shop.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Build your Box</a>
+                    <a href="build-a-box.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Build your Box</a>
                     <a href="shop.php" class="btn-secondary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Shop Collection</a>
                 </div>
             </div>
@@ -327,7 +327,7 @@ include 'header.php';
                 <h1>Perfect <span>Occasion</span><br>Gift Boxes</h1>
                 <p>Curated gifts for birthdays, anniversaries, weddings, and every special moment.</p>
                 <div class="hero-buttons">
-                    <a href="shop.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Shop Occasion Boxes</a>
+                    <a href="occasion-boxes.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Shop Occasion Boxes</a>
                     <a href="shop.php" class="btn-secondary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Explore Gifts</a>
                 </div>
             </div>
@@ -343,7 +343,7 @@ include 'header.php';
                 <h1>Giftly <span>Basket</span><br>Delights</h1>
                 <p>Beautifully arranged baskets filled with premium goodies for any celebration.</p>
                 <div class="hero-buttons">
-                    <a href="shop.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">View Baskets</a>
+                    <a href="baskets.php" class="btn-primary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">View Baskets</a>
                     <a href="shop.php" class="btn-secondary" style="padding: 14px 35px; text-decoration:none; display:inline-block;">Start Shopping</a>
                 </div>
             </div>

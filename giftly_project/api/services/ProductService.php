@@ -19,16 +19,22 @@ public function getAll($params) {
     $search = isset($params['search']) ? $params['search'] : '';
     $category = isset($params['category']) ? $params['category'] : '';
     $order = isset($params['order']) ? $params['order'] : 'desc'; // Default to desc
-    
+    // Occasion Boxes / Baskets are also products; the storefront shop shows
+    // only 'catalog' items unless a caller asks for another type explicitly.
+    $type = isset($params['type']) ? $params['type'] : 'catalog';
+
     // Set ORDER BY based on parameter
     $order_by = ($order == 'asc') ? 'ASC' : 'DESC';
-    
+
     $sql = "SELECT * FROM products WHERE 1=1";
     if (!empty($search)) {
         $sql .= " AND name LIKE '%$search%'";
     }
     if (!empty($category)) {
         $sql .= " AND category_id = '$category'";
+    }
+    if (!empty($type)) {
+        $sql .= " AND product_type = '" . $this->conn->real_escape_string($type) . "'";
     }
     
     // Get total count

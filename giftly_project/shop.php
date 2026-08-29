@@ -1,6 +1,8 @@
-<?php 
-include 'db_connect.php'; 
-include 'header.php'; 
+<?php
+include 'db_connect.php';
+include 'catalog_lib.php';
+catalog_ensure_schema($conn);
+include 'header.php';
 
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $category_id = isset($_GET['category']) ? $_GET['category'] : '';
@@ -656,7 +658,7 @@ function isInWishlist($product_id, $wishlist_ids) {
    <div class="product-grid">
        <?php
    // ✅ FETCH PRODUCTS FROM API (Oldest first)
-$api_url = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api/index.php?route=products&order=asc';
+$api_url = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api/index.php?route=products&order=asc&type=catalog';
 if (!empty($search)) {
     $api_url .= '&search=' . urlencode($search);
 }
