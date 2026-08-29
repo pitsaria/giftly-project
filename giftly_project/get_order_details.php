@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include_once 'orders_lib.php';
+include_once 'reviews_lib.php';
 orders_ensure_schema($conn);
+reviews_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     exit('Unauthorized');
@@ -173,6 +175,19 @@ if ($order['status'] === 'cancelled' && $cs === 'approved'): ?>
             <div style="margin-top:6px; color:#b98a3a;">Your reason: “<?php echo htmlspecialchars($order['cancel_reason']); ?>”</div>
         <?php endif; ?>
     </div>
+<?php elseif ($order['status'] === 'delivered' && empty($order['received_at'])): ?>
+    <form method="POST" action="profile.php?tab=orders" style="margin-top:20px;">
+        <input type="hidden" name="confirm_received" value="1">
+        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+        <button type="submit" class="modal-cancel-btn" style="background:#e8f5e9;color:#2e7d32;">
+            <i class="fas fa-box-open"></i> Confirm I received this order
+        </button>
+    </form>
+    <div style="font-size:12px;color:#999;margin-top:8px;text-align:center;">Confirming lets you review the items you got.</div>
+<?php elseif ($order['status'] === 'delivered' && !empty($order['received_at'])): ?>
+    <button class="modal-cancel-btn" style="background:#fff3e0;color:#e65100;" onclick="parent.closeOrderModal(); parent.openReviewModal(<?php echo $order['id']; ?>);">
+        <i class="fas fa-star"></i> Review your items
+    </button>
 <?php elseif ($order['status'] === 'pending'): ?>
     <?php if ($cs === 'rejected' && !empty($order['cancel_admin_note'])): ?>
         <div style="margin-top:16px; background:#fdeded; border:1px solid #ffc1cc; border-radius:14px; padding:12px 16px; font-size:13px; color:#d32f2f;">

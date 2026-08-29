@@ -52,6 +52,12 @@ if (isset($conn)) {
             </a>
         </li>
         <li>
+            <a href="admin_reviews.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_reviews.php') ? 'active' : ''; ?>">
+                <i class="fas fa-star"></i>
+                <span>Reviews</span>
+            </a>
+        </li>
+        <li>
             <a href="admin_orders.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_orders.php') ? 'active' : ''; ?>">
                 <i class="fas fa-shopping-bag"></i>
                 <span>Orders</span>

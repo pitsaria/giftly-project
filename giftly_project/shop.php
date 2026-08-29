@@ -4,6 +4,17 @@ include 'catalog_lib.php';
 catalog_ensure_schema($conn);
 include 'header.php';
 
+function shop_stars($rating) {
+    $rating = (float) $rating;
+    $h = '<span class="rv-stars">';
+    for ($i = 1; $i <= 5; $i++) {
+        if ($rating >= $i)           $h .= '<i class="fas fa-star"></i>';
+        elseif ($rating >= $i - 0.5) $h .= '<i class="fas fa-star-half"></i>';
+        else                         $h .= '<i class="far fa-star"></i>';
+    }
+    return $h . '</span>';
+}
+
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $category_id = isset($_GET['category']) ? $_GET['category'] : '';
 
@@ -611,6 +622,17 @@ function isInWishlist($product_id, $wishlist_ids) {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(254, 165, 182, 0.4);
 }
+
+/* --- REVIEW STARS --- */
+.rv-stars { color: #ffb400; letter-spacing: 1px; }
+.p-rating { font-size: 12px; margin-bottom: 10px; text-align: left; color: #999; }
+.p-rating .rv-stars { font-size: 12px; }
+.p-rating span { color: #aaa; }
+
+/* --- MODAL: allow the reviews section to scroll --- */
+.modal-box { max-height: 92vh; }
+.modal-right { overflow-y: auto; }
+#modalReviews { width: 100%; }
 </style>
 
 <!-- 🎉 NEW PREMIUM TOAST ALERT -->
@@ -720,7 +742,8 @@ $heartClass = $isInWishlist ? 'active' : '';
             </div>
             
             <div class="p-name" onclick="'.$onClick.'">'.$row['name'].'</div>
-            
+            ' . (((int)($row['review_count'] ?? 0)) > 0 ? '
+            <div class="p-rating" onclick="'.$onClick.'">' . shop_stars((float)$row['avg_rating']) . ' <span>('.(int)$row['review_count'].')</span></div>' : '') . '
             <div class="p-bottom-row">
                 <div class="p-price" onclick="'.$onClick.'">PHP <span>'.number_format($row['price'], 2).'</span></div>
                 
@@ -792,9 +815,13 @@ $heartClass = $isInWishlist ? 'active' : '';
                 </button>
 
             </div>
+
+            <div id="modalReviews"></div>
         </div>
     </div>
 </div>
+
+<script src="reviews_widget.js"></script>
 
 <!-- STOCK ALERT MODAL -->
 <div class="stock-alert-overlay" id="stockAlertModal">
@@ -878,6 +905,7 @@ $heartClass = $isInWishlist ? 'active' : '';
         }
 
         document.getElementById('productModal').style.display = 'flex';
+        if (window.loadProductReviews) loadProductReviews(id);
     }
 
     function closeModal() { document.getElementById('productModal').style.display = 'none'; }

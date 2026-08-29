@@ -50,6 +50,10 @@ catalog_ensure_schema($conn);
 require_once __DIR__ . '/../../orders_lib.php';
 orders_ensure_schema($conn);
 
+// Ensure product_reviews / orders.received_at exist (product reviews)
+require_once __DIR__ . '/../../reviews_lib.php';
+reviews_ensure_schema($conn);
+
 // Function to send JSON response
 function sendResponse($data, $status = 200) {
     http_response_code($status);

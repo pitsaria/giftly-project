@@ -1,7 +1,22 @@
 <?php
 $user_id = $_SESSION['user_id'];
 include_once 'orders_lib.php';
+include_once 'reviews_lib.php';
 orders_ensure_schema($conn);
+reviews_ensure_schema($conn);
+
+// --- HANDLE "CONFIRM RECEIVED" ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_received'])) {
+    $oid = intval($_POST['order_id'] ?? 0);
+    $conn->query("UPDATE orders SET received_at = CURRENT_TIMESTAMP
+                  WHERE id = $oid AND user_id = " . intval($user_id) . "
+                    AND status = 'delivered' AND received_at IS NULL");
+    $_SESSION['order_flash'] = $conn->affected_rows > 0
+        ? ['type' => 'ok', 'msg' => 'Thanks for confirming! You can now review the items you received.']
+        : ['type' => 'error', 'msg' => 'Could not update this order.'];
+    header('Location: profile.php?tab=orders');
+    exit();
+}
 
 // --- HANDLE CANCELLATION REQUEST (shopper states a reason; admin approves) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_cancel'])) {
@@ -170,6 +185,28 @@ if ($result->num_rows > 0) {
     .cancel-note.declined { color: #d32f2f; }
     .btn-req-cancel { background: #fdeded; color: #d32f2f; border: none; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: 'Poppins'; }
     .btn-req-cancel:hover { background: #d32f2f; color: #fff; }
+    .btn-confirm-recv { background: #e8f5e9; color: #2e7d32; border: none; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Poppins'; }
+    .btn-confirm-recv:hover { background: #2e7d32; color: #fff; }
+    .btn-review { background: #fff3e0; color: #e65100; border: none; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Poppins'; }
+    .btn-review:hover { background: #e65100; color: #fff; }
+
+    /* review modal */
+    .rvm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: none; justify-content: center; align-items: center; padding: 20px; }
+    .rvm-box { background: #fff; border-radius: 28px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.18); animation: fadeUp 0.3s ease; max-height: 88vh; overflow-y: auto; }
+    .rvm-box h3 { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .rvm-box .sub { font-size: 13px; color: #999; margin-bottom: 18px; }
+    .rvm-item { border: 1px solid #f0f0f0; border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+    .rvm-item .prod { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .rvm-item .prod img { width: 42px; height: 42px; object-fit: contain; background: #fafafa; border-radius: 10px; padding: 4px; }
+    .rvm-item .prod strong { font-size: 14px; color: #222; }
+    .rvm-pick { display: flex; gap: 4px; font-size: 22px; color: #ddd; margin-bottom: 8px; }
+    .rvm-pick i { cursor: pointer; }
+    .rvm-pick i.on { color: #ffb400; }
+    .rvm-item textarea { width: 100%; min-height: 54px; border: 1.5px solid #eee; border-radius: 12px; padding: 9px 12px; font-family: 'Poppins'; font-size: 13px; resize: vertical; outline: none; background: #fafafa; }
+    .rvm-item textarea:focus { border-color: #ffc1cc; background: #fff; }
+    .rvm-item .save { margin-top: 8px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; border-radius: 50px; padding: 7px 18px; font-family: 'Poppins'; font-weight: 600; font-size: 12px; cursor: pointer; }
+    .rvm-item .st { font-size: 11px; margin-left: 10px; }
+    .rvm-close { margin-top: 8px; width: 100%; padding: 12px; border: none; border-radius: 50px; background: #eaeaea; color: #555; font-family: 'Poppins'; font-weight: 600; cursor: pointer; }
 
     .of-flash { padding: 12px 18px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; }
     .of-flash.ok { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
@@ -217,6 +254,8 @@ if ($result->num_rows > 0) {
                 $status_class = strtolower($row['status']);
                 $cs = $row['cancel_status'] ?? 'none';
                 $can_request = ($row['status'] === 'pending' && in_array($cs, ['none', 'rejected'], true));
+                $delivered = ($row['status'] === 'delivered');
+                $received  = $delivered && !empty($row['received_at']);
             ?>
             <tr>
                 <td><strong>#<?php echo $row['id']; ?></strong></td>
@@ -244,6 +283,17 @@ if ($result->num_rows > 0) {
                         <?php if ($can_request): ?>
                             <button class="btn-req-cancel" onclick="openReasonModal(<?php echo $row['id']; ?>)">
                                 <i class="fas fa-xmark"></i> Cancel
+                            </button>
+                        <?php endif; ?>
+                        <?php if ($delivered && !$received): ?>
+                            <form method="POST" action="profile.php?tab=orders" style="margin:0;">
+                                <input type="hidden" name="confirm_received" value="1">
+                                <input type="hidden" name="order_id" value="<?php echo $row['id']; ?>">
+                                <button type="submit" class="btn-confirm-recv"><i class="fas fa-box-open"></i> Confirm received</button>
+                            </form>
+                        <?php elseif ($received): ?>
+                            <button class="btn-review" onclick="openReviewModal(<?php echo $row['id']; ?>)">
+                                <i class="fas fa-star"></i> Review items
                             </button>
                         <?php endif; ?>
                     </div>
@@ -327,4 +377,57 @@ if ($result->num_rows > 0) {
     }
     document.getElementById('rcText').addEventListener('input', rcSync);
     document.getElementById('reasonModal').addEventListener('click', function (e) { if (e.target === this) closeReasonModal(); });
+
+    /* --- REVIEW ITEMS MODAL --- */
+    function openReviewModal(orderId) {
+        const m = document.getElementById('reviewModal');
+        m.style.display = 'flex';
+        document.getElementById('rvmBody').innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;"><i class="fas fa-spinner fa-spin"></i></div>';
+        fetch('get_order_review_items.php?order_id=' + orderId)
+            .then(r => r.text())
+            .then(h => { document.getElementById('rvmBody').innerHTML = h; rvmBindStars(); })
+            .catch(() => { document.getElementById('rvmBody').innerHTML = '<p style="color:#d32f2f;text-align:center;">Could not load items.</p>'; });
+    }
+    function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
+    document.getElementById('reviewModal').addEventListener('click', function (e) { if (e.target === this) closeReviewModal(); });
+
+    function rvmBindStars() {
+        document.querySelectorAll('#rvmBody .rvm-pick').forEach(function (pick) {
+            const stars = pick.querySelectorAll('i');
+            const input = pick.parentElement.querySelector('.rvm-rating');
+            function paint(v) { stars.forEach(s => s.classList.toggle('on', parseInt(s.dataset.v) <= v)); }
+            stars.forEach(function (s) {
+                s.addEventListener('mouseenter', () => paint(parseInt(s.dataset.v)));
+                s.addEventListener('click', () => { input.value = s.dataset.v; paint(parseInt(s.dataset.v)); });
+            });
+            pick.addEventListener('mouseleave', () => paint(parseInt(input.value) || 0));
+        });
+    }
+
+    function rvmSave(btn, productId) {
+        const item = btn.closest('.rvm-item');
+        const rating = item.querySelector('.rvm-rating').value;
+        const comment = item.querySelector('textarea').value;
+        const st = item.querySelector('.st');
+        if (!rating || rating < 1) { st.style.color = '#d32f2f'; st.textContent = 'Pick a rating'; return; }
+        st.style.color = '#888'; st.textContent = 'Saving…';
+        fetch('submit_review.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'product_id=' + productId + '&rating=' + rating + '&comment=' + encodeURIComponent(comment)
+        }).then(r => r.json()).then(d => {
+            if (d.status === 'success') { st.style.color = '#2e7d32'; st.textContent = 'Saved ✓'; btn.textContent = 'Update'; }
+            else { st.style.color = '#d32f2f'; st.textContent = d.message || 'Failed'; }
+        }).catch(() => { st.style.color = '#d32f2f'; st.textContent = 'Network error'; });
+    }
 </script>
+
+<!-- REVIEW ITEMS MODAL -->
+<div class="rvm-overlay" id="reviewModal">
+    <div class="rvm-box">
+        <h3>Review your items</h3>
+        <div class="sub">Only you and other shoppers will see this. Be honest — it helps everyone.</div>
+        <div id="rvmBody"></div>
+        <button class="rvm-close" onclick="closeReviewModal()">Done</button>
+    </div>
+</div>

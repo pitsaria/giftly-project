@@ -41,7 +41,16 @@ public function getAll($params) {
     $count_sql = str_replace("SELECT *", "SELECT COUNT(*) as total", $sql);
     $count_result = $this->conn->query($count_sql);
     $total = $count_result->fetch_assoc()['total'];
-    
+
+    // Attach published-review aggregates to the row query (not the count query)
+    $sql = str_replace(
+        "SELECT *",
+        "SELECT *, " .
+        "(SELECT COALESCE(ROUND(AVG(rating), 1), 0) FROM product_reviews pr WHERE pr.product_id = products.id AND pr.status = 'published') AS avg_rating, " .
+        "(SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = products.id AND pr.status = 'published') AS review_count",
+        $sql
+    );
+
     // 🚀 ORDER BY: In stock first, then by ID (oldest or newest)
     $sql .= " ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, id $order_by";
     $sql .= " LIMIT $limit OFFSET $offset";

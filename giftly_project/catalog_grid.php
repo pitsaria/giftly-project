@@ -14,6 +14,9 @@
  *   $cat_limit            (optional) per-page, default 12
  */
 
+include_once 'reviews_lib.php';
+reviews_ensure_schema($conn);
+
 $cat_type      = isset($cat_type) ? $cat_type : 'catalog';
 $cat_title     = isset($cat_title) ? $cat_title : 'Products';
 $cat_subtitle  = isset($cat_subtitle) ? $cat_subtitle : '';
@@ -145,6 +148,13 @@ if (isset($_SESSION['user_id'])) {
         .cat-modal-left { padding: 25px; }
         .cat-modal-right { padding: 30px 25px; }
     }
+
+    .rv-stars { color: #ffb400; letter-spacing: 1px; }
+    .ci-rating { font-size: 12px; margin-bottom: 8px; color: #999; }
+    .ci-rating .rv-stars { font-size: 12px; }
+    .cat-modal-box { max-height: 92vh; }
+    .cat-modal-right { overflow-y: auto; }
+    #modalReviews { width: 100%; }
 </style>
 
 <div id="catToast" class="toast-alert">
@@ -174,6 +184,7 @@ if (isset($_SESSION['user_id'])) {
                 $sold    = 0;
                 $sres = $conn->query("SELECT SUM(quantity) AS t FROM order_items WHERE product_id = $id");
                 if ($sres && $sres->num_rows) $sold = (int) $sres->fetch_assoc()['t'];
+                $rvs = reviews_summary($conn, $id);
                 $onClick = $inStock
                     ? htmlspecialchars(
                         "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode($row['image']) . ", " . (float) $row['price'] . ", " . (int) $row['quantity'] . ")",
@@ -191,6 +202,9 @@ if (isset($_SESSION['user_id'])) {
                     <?php if ($sold > 10): ?><div class="ci-badge">Popular</div><?php endif; ?>
                 </div>
                 <div class="ci-name" onclick="<?php echo $onClick; ?>"><?php echo htmlspecialchars($row['name']); ?></div>
+                <?php if ($rvs['count'] > 0): ?>
+                    <div class="ci-rating" onclick="<?php echo $onClick; ?>"><?php echo reviews_stars($rvs['avg']); ?> <span>(<?php echo $rvs['count']; ?>)</span></div>
+                <?php endif; ?>
                 <?php if (trim($row['description']) !== ''): ?>
                     <div class="ci-desc"><?php echo htmlspecialchars($row['description']); ?></div>
                 <?php endif; ?>
@@ -246,9 +260,12 @@ if (isset($_SESSION['user_id'])) {
                 <button id="catModalAdd" class="btn-cm-add" onclick="catAddFromModal()"><i class="fas fa-shopping-cart"></i> Add to Cart</button>
                 <button id="catModalBuy" class="btn-cm-buy" onclick="catBuyNow()"><i class="fas fa-bolt"></i> Buy Now</button>
             </div>
+            <div id="modalReviews"></div>
         </div>
     </div>
 </div>
+
+<script src="reviews_widget.js"></script>
 
 <!-- STOCK ALERT -->
 <div class="cat-stock-overlay" id="catStockModal">
@@ -281,6 +298,7 @@ function catOpen(id, name, desc, image, price, stock) {
         addBtn.classList.add('disabled'); buyBtn.classList.add('disabled');
     }
     document.getElementById('catModal').style.display = 'flex';
+    if (window.loadProductReviews) loadProductReviews(id);
 }
 function catClose() { document.getElementById('catModal').style.display = 'none'; }
 document.getElementById('catModal').addEventListener('click', function (e) { if (e.target === this) catClose(); });

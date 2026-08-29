@@ -66,6 +66,24 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reviewed_at TIMESTAMP;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_admin_note TEXT;
 
 -- ============================================================
+--  Product reviews (only buyers who received the order can review)
+-- ============================================================
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS received_at TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS product_reviews (
+    id         SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL,
+    order_id   INTEGER,
+    rating     SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment    TEXT NOT NULL DEFAULT '',
+    status     VARCHAR(20) NOT NULL DEFAULT 'published',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (product_id, user_id)
+);
+
+-- ============================================================
 --  Contact form submissions
 -- ============================================================
 CREATE TABLE IF NOT EXISTS contact_messages (
