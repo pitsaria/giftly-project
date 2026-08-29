@@ -638,7 +638,7 @@ function babSubmit(mode) {
                 window.location.href = 'box_checkout.php?box_id=' + d.box_id;
             } else if (mode === 'in_cart') {
                 babToast('Box added to cart 🎁');
-                setTimeout(() => { window.location.href = 'cart.php'; }, 900);
+                setTimeout(() => { window.location.href = 'cart.php#boxes'; }, 900);
             } else {
                 babToast('Box saved 💾');
                 setTimeout(() => { window.location.href = 'profile.php?tab=boxes'; }, 900);

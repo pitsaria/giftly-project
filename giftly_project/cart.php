@@ -331,10 +331,87 @@ $user_id = $_SESSION['user_id'];
     flex: 0.5 !important;
     min-width: 120px !important;
 }
+
+/* --- CART TABS (Products vs Gift Boxes) --- */
+.cart-tabs { display: flex; justify-content: center; gap: 10px; max-width: 1100px; margin: 0 auto 30px; padding: 0 20px; }
+.cart-tab { padding: 10px 22px; border-radius: 50px; border: 1.5px solid #eee; background: #fff; color: #666; font-family: 'Poppins'; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+.cart-tab:hover { border-color: #ffc1cc; color: #ff8ba7; }
+.cart-tab.active { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border-color: #FEA5B6; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.3); }
+.cart-tab-count { background: rgba(0,0,0,0.08); border-radius: 50px; padding: 1px 9px; font-size: 12px; line-height: 1.6; }
+.cart-tab.active .cart-tab-count { background: rgba(255,255,255,0.28); }
+.cart-tab-panel { display: none; }
+.cart-tab-panel.active { display: block; }
+
+/* --- GIFT BOXES TAB --- */
+.gb-wrap { max-width: 900px; margin: 0 auto; padding: 0 20px 40px; }
+.gb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.gb-head h2 { font-size: 22px; font-weight: 700; color: #222; display: flex; align-items: center; gap: 10px; }
+.gb-head h2 i { color: #ff8ba7; }
+.gb-new { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; padding: 9px 20px; border-radius: 50px; font-weight: 600; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.gb-new:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.35); }
+.gb-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 22px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.04); display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+.gb-thumbs { display: grid; grid-template-columns: repeat(3, 46px); grid-auto-rows: 46px; gap: 6px; flex-shrink: 0; }
+.gb-thumbs img { width: 46px; height: 46px; object-fit: contain; background: #fafafa; border-radius: 10px; padding: 4px; border: 1px solid #f0f0f0; }
+.gb-thumbs .more { width: 46px; height: 46px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; font-weight: 700; }
+.gb-info { flex: 1; min-width: 180px; }
+.gb-info .nm { font-size: 17px; font-weight: 700; color: #222; }
+.gb-info .meta { font-size: 13px; color: #888; margin-top: 3px; }
+.gb-letter { font-size: 12px; color: #999; font-style: italic; margin-top: 10px; border-left: 3px solid #ffc1cc; padding-left: 10px; line-height: 1.5; }
+.gb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.gb-total { font-size: 19px; font-weight: 800; color: #222; }
+.gb-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.gb-btn { padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: 'Poppins'; transition: 0.2s; }
+.gb-btn.edit { background: #eef4ff; color: #1976d2; }
+.gb-btn.edit:hover { background: #1976d2; color: #fff; }
+.gb-btn.co { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; }
+.gb-btn.co:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.35); }
+.gb-btn.rm { background: #ffe4e4; color: #d32f2f; }
+.gb-btn.rm:hover { background: #d32f2f; color: #fff; }
+.gb-btn.disabled { opacity: .5; pointer-events: none; }
+.gb-issue { flex-basis: 100%; background: #fff8e1; border: 1px solid #ffd54f; color: #7a5c00; font-size: 12px; padding: 9px 12px; border-radius: 10px; }
+.gb-foot-note { text-align: center; font-size: 12px; color: #aaa; margin-top: 10px; }
+@media (max-width: 620px) {
+    .gb-card { flex-direction: column; align-items: stretch; }
+    .gb-right { align-items: stretch; }
+    .gb-actions { justify-content: stretch; }
+    .gb-actions .gb-btn { flex: 1; justify-content: center; }
+}
 </style>
 
+<?php
+/* --- Build-a-Box: load the shopper's in-cart gift boxes --- */
+include_once 'build_a_box_lib.php';
+bab_ensure_schema($conn);
+
+$bab_cart_boxes = [];
+$bab_res = $conn->query("SELECT id FROM boxes WHERE user_id = " . intval($user_id) . "
+                         AND status = 'in_cart' ORDER BY updated_at DESC, id DESC");
+while ($bab_res && $bab_row = $bab_res->fetch_assoc()) {
+    $bab_b = bab_load_box($conn, $bab_row['id'], $user_id);
+    if ($bab_b) $bab_cart_boxes[] = $bab_b;
+}
+$bab_has_boxes = count($bab_cart_boxes) > 0;
+
+$bab_lc = $conn->query("SELECT COALESCE(SUM(quantity),0) AS q FROM carts WHERE user_id = " . intval($user_id));
+$bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
+?>
+
+<?php if ($bab_has_boxes): ?>
+<div class="cart-tabs">
+    <button class="cart-tab active" data-tab="products" onclick="cartSwitchTab('products')">
+        <i class="fas fa-shopping-bag"></i> Product Cart
+        <span class="cart-tab-count"><?php echo $bab_loose_qty; ?></span>
+    </button>
+    <button class="cart-tab" data-tab="boxes" onclick="cartSwitchTab('boxes')">
+        <i class="fas fa-gift"></i> Gift Boxes
+        <span class="cart-tab-count"><?php echo count($bab_cart_boxes); ?></span>
+    </button>
+</div>
+<?php endif; ?>
+
+<div id="cartTabProducts" class="cart-tab-panel active">
 <div class="cart-wrapper">
-    
+
     <!-- LEFT COLUMN: ITEMS -->
     <div class="cart-left">
         <h2 class="cart-title">
@@ -567,109 +644,110 @@ $user_id = $_SESSION['user_id'];
     </div>
 
 </div>
+</div><!-- /#cartTabProducts -->
 
-<?php
-/* =========================================================
-   YOUR GIFT BOXES  (Build-a-Box) — self-contained section
-   ========================================================= */
-include_once 'build_a_box_lib.php';
-bab_ensure_schema($conn);
-
-$bab_cart_boxes = [];
-$bab_res = $conn->query("SELECT id FROM boxes WHERE user_id = " . intval($user_id) . "
-                         AND status = 'in_cart' ORDER BY updated_at DESC, id DESC");
-while ($bab_res && $bab_row = $bab_res->fetch_assoc()) {
-    $bab_b = bab_load_box($conn, $bab_row['id'], $user_id);
-    if ($bab_b) $bab_cart_boxes[] = $bab_b;
-}
-
-if (!empty($bab_cart_boxes)):
-?>
-<style>
-    .babc-wrap { max-width: 1100px; margin: 0 auto 40px; padding: 0 20px; }
-    .babc-title { font-size: 22px; font-weight: 700; color: #222; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
-    .babc-title .fa-gift { color: #ff8ba7; }
-    .babc-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.03); }
-    .babc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-    .babc-name { font-size: 16px; font-weight: 700; color: #222; }
-    .babc-meta { font-size: 13px; color: #888; margin-top: 2px; }
-    .babc-thumbs { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
-    .babc-thumbs img { width: 46px; height: 46px; object-fit: contain; background: #fafafa; border-radius: 10px; padding: 4px; border: 1px solid #f0f0f0; }
-    .babc-thumbs .more { width: 46px; height: 46px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; font-weight: 600; }
-    .babc-issue { background: #fff8e1; border: 1px solid #ffd54f; color: #7a5c00; font-size: 12px; padding: 8px 12px; border-radius: 10px; margin: 10px 0; }
-    .babc-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-top: 1px solid #f5f5f5; padding-top: 14px; }
-    .babc-total { font-size: 16px; font-weight: 700; color: #222; }
-    .babc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .babc-btn { padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: 'Poppins'; }
-    .babc-btn.edit { background: #eef4ff; color: #1976d2; }
-    .babc-btn.co { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; }
-    .babc-btn.rm { background: #ffe4e4; color: #d32f2f; }
-    .babc-btn.disabled { opacity: .5; pointer-events: none; }
-</style>
-
-<div class="babc-wrap">
-    <div class="babc-title"><i class="fas fa-gift"></i> Your Gift Boxes</div>
-    <?php foreach ($bab_cart_boxes as $d):
-        $box = $d['box'];
-        $bad = count($d['issues']) > 0;
-    ?>
-    <div class="babc-card" id="babcCard<?php echo $box['id']; ?>">
-        <div class="babc-top">
-            <div>
-                <div class="babc-name"><?php echo htmlspecialchars($box['size_name']); ?></div>
-                <div class="babc-meta"><?php echo $d['item_count']; ?> / <?php echo $box['max_items']; ?> items</div>
-            </div>
+<?php if ($bab_has_boxes): ?>
+<div id="cartTabBoxes" class="cart-tab-panel">
+    <div class="gb-wrap">
+        <div class="gb-head">
+            <h2><i class="fas fa-gift"></i> Your Gift Boxes</h2>
+            <a href="build-a-box.php" class="gb-new"><i class="fas fa-plus"></i> Build another box</a>
         </div>
-        <div class="babc-thumbs">
-            <?php
-            $bshown = 0;
-            foreach ($d['items'] as $bi) {
-                if ($bi['unavailable'] === 'removed') continue;
-                if ($bshown >= 6) break;
-                echo '<img src="uploads/' . htmlspecialchars($bi['image']) . '" alt="">';
-                $bshown++;
-            }
-            $brem = count($d['items']) - $bshown;
-            if ($brem > 0) echo '<div class="more">+' . $brem . '</div>';
-            ?>
+
+        <?php foreach ($bab_cart_boxes as $d):
+            $box = $d['box'];
+            $bad = count($d['issues']) > 0;
+        ?>
+        <div class="gb-card" id="gbCard<?php echo $box['id']; ?>">
+            <div class="gb-thumbs">
+                <?php
+                $bshown = 0;
+                foreach ($d['items'] as $bi) {
+                    if ($bi['unavailable'] === 'removed') continue;
+                    if ($bshown >= 5) break;
+                    echo '<img src="uploads/' . htmlspecialchars($bi['image']) . '" alt="">';
+                    $bshown++;
+                }
+                $brem = 0;
+                foreach ($d['items'] as $bi) { if ($bi['unavailable'] !== 'removed') $brem++; }
+                $brem -= $bshown;
+                if ($brem > 0) echo '<div class="more">+' . $brem . '</div>';
+                ?>
+            </div>
+
+            <div class="gb-info">
+                <div class="nm"><?php echo htmlspecialchars($box['size_name']); ?></div>
+                <div class="meta"><?php echo $d['item_count']; ?> / <?php echo $box['max_items']; ?> items</div>
+                <?php if (trim($box['letter']) !== ''): ?>
+                    <div class="gb-letter">“<?php echo htmlspecialchars(mb_strimwidth($box['letter'], 0, 110, '…')); ?>”</div>
+                <?php endif; ?>
+            </div>
+
+            <div class="gb-right">
+                <div class="gb-total">PHP <?php echo number_format($d['total'], 2); ?></div>
+                <div class="gb-actions">
+                    <a href="build-a-box.php?box_id=<?php echo $box['id']; ?>" class="gb-btn edit"><i class="fas fa-pen"></i> Edit</a>
+                    <a href="box_checkout.php?box_id=<?php echo $box['id']; ?>" class="gb-btn co <?php echo $bad ? 'disabled' : ''; ?>"><i class="fas fa-lock"></i> Checkout</a>
+                    <button class="gb-btn rm" onclick="gbRemove(<?php echo $box['id']; ?>)"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+
+            <?php if ($bad): ?>
+                <div class="gb-issue"><i class="fas fa-exclamation-triangle"></i>
+                    <?php echo htmlspecialchars($d['issues'][0]); ?> Edit the box before checkout.
+                </div>
+            <?php endif; ?>
         </div>
-        <?php if ($bad): ?>
-            <div class="babc-issue"><i class="fas fa-exclamation-triangle"></i>
-                <?php echo htmlspecialchars($d['issues'][0]); ?> Edit the box before checkout.
-            </div>
-        <?php endif; ?>
-        <div class="babc-foot">
-            <div class="babc-total">PHP <?php echo number_format($d['total'], 2); ?></div>
-            <div class="babc-actions">
-                <a href="build-a-box.php?box_id=<?php echo $box['id']; ?>" class="babc-btn edit"><i class="fas fa-pen"></i> Edit</a>
-                <a href="box_checkout.php?box_id=<?php echo $box['id']; ?>" class="babc-btn co <?php echo $bad ? 'disabled' : ''; ?>"><i class="fas fa-lock"></i> Checkout box</a>
-                <button class="babc-btn rm" onclick="babcRemove(<?php echo $box['id']; ?>)"><i class="fas fa-trash"></i></button>
-            </div>
+        <?php endforeach; ?>
+
+        <div class="gb-foot-note">
+            <i class="fas fa-info-circle"></i> Gift boxes are checked out one at a time.
+            Saved boxes live in <a href="profile.php?tab=boxes" style="color:#ff8ba7;">My Boxes</a>.
         </div>
     </div>
-    <?php endforeach; ?>
 </div>
+<?php endif; ?>
 
 <script>
-function babcRemove(id) {
+function cartSwitchTab(name) {
+    document.querySelectorAll('.cart-tab').forEach(function (t) {
+        t.classList.toggle('active', t.dataset.tab === name);
+    });
+    document.getElementById('cartTabProducts').classList.toggle('active', name === 'products');
+    var b = document.getElementById('cartTabBoxes');
+    if (b) b.classList.toggle('active', name === 'boxes');
+    if (history.replaceState) {
+        history.replaceState(null, '', name === 'boxes' ? '#boxes' : location.pathname + location.search);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function gbRemove(id) {
     if (!confirm('Remove this gift box from your cart?')) return;
     fetch('box_actions.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ action: 'delete', box_id: id })
-    }).then(r => r.json()).then(d => {
-        if (d.status === 'success') {
-            const c = document.getElementById('babcCard' + id);
-            if (c) c.remove();
-            const wrap = document.querySelector('.babc-wrap');
-            if (wrap && !wrap.querySelector('.babc-card')) wrap.remove();
-        } else {
-            alert(d.message || 'Could not remove box');
+    }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.status !== 'success') { alert(d.message || 'Could not remove box'); return; }
+        var c = document.getElementById('gbCard' + id);
+        if (c) c.remove();
+        var wrap = document.querySelector('.gb-wrap');
+        if (wrap && !wrap.querySelector('.gb-card')) location.reload();
+        else {
+            var badge = document.querySelector('.cart-tab[data-tab="boxes"] .cart-tab-count');
+            if (badge) badge.textContent = document.querySelectorAll('.gb-card').length;
         }
     });
 }
+
+(function () {
+    var hasBoxes = <?php echo $bab_has_boxes ? 'true' : 'false'; ?>;
+    var looseQty = <?php echo (int)$bab_loose_qty; ?>;
+    if (!hasBoxes) return;
+    if (location.hash === '#boxes' || looseQty === 0) cartSwitchTab('boxes');
+})();
 </script>
-<?php endif; ?>
 
 <!-- CUTE DELETE CONFIRMATION MODAL -->
 <div class="delete-modal-overlay" id="deleteModal">
