@@ -1,12 +1,13 @@
-<?php 
-include 'db_connect.php'; 
-include 'header.php'; 
+<?php
+include 'db_connect.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 $user_id = $_SESSION['user_id'];
+
+include 'header.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Get the IDs of items the user checked

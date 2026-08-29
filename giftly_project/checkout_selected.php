@@ -1,12 +1,13 @@
 <?php
-include 'db_connect.php'; 
-include 'header.php'; 
+include 'db_connect.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 $user_id = $_SESSION['user_id'];
+
+include 'header.php';
 
 // --- FETCH USER'S SAVED PHONE NUMBER ---
 $user_data = $conn->query("SELECT phone FROM users WHERE id = $user_id");

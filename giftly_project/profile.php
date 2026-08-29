@@ -1,6 +1,5 @@
 <?php
-include 'db_connect.php'; 
-include 'header.php';
+include 'db_connect.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -8,6 +7,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'profile';
+
+include 'header.php';
 ?>
 
 <style>

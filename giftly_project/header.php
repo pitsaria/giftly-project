@@ -1,3 +1,8 @@
+<?php
+// Buffer output so pages that call header()/redirects after including this
+// file (e.g. an auth check placed below the include) still work.
+if (ob_get_level() === 0) { ob_start(); }
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
