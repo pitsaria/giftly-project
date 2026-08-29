@@ -1,6 +1,21 @@
-<?php 
-include 'db_connect.php'; 
-include 'header.php'; 
+<?php
+include 'db_connect.php';
+include 'reviews_lib.php';
+reviews_ensure_schema($conn);
+include 'header.php';
+
+// recent real customer reviews for the homepage
+$home_reviews = [];
+$hr = $conn->query("
+    SELECT r.rating, r.comment, u.name AS user_name, p.name AS product_name
+    FROM product_reviews r
+    JOIN users u ON u.id = r.user_id
+    JOIN products p ON p.id = r.product_id
+    WHERE r.status = 'published' AND r.rating >= 4 AND LENGTH(TRIM(r.comment)) > 0
+    ORDER BY r.created_at DESC
+    LIMIT 3
+");
+while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
 ?>
 
 <style>
@@ -253,7 +268,7 @@ include 'header.php';
     /* --- REVIEWS --- */
     .review-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; background: #f8f8fa; padding: 40px; border-radius: 35px; }
     .review-card { background: #fff; padding: 30px; border-radius: 24px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-    .r-avatar { width: 60px; height: 60px; border-radius: 50%; background: #ffc1cc; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; }
+    .r-avatar { width: 60px; height: 60px; border-radius: 50%; background: #ffc1cc; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 24px; }
     .r-avatar i { font-size: 30px; color: #fff; }
     .r-stars { color: #ffc107; font-size: 14px; margin-bottom: 10px; }
     .r-text { font-size: 12px; color: #555; line-height: 1.6; }
@@ -542,26 +557,46 @@ include 'header.php';
 <div class="container">
     <h2 class="section-header">Customer Reviews</h2>
     <div class="review-grid">
-        <div class="review-card">
-            <div class="r-avatar"><i class="fas fa-user"></i></div>
-            <div class="r-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-            <div class="r-text">"The gift box was beautifully packaged and arrived on time. My friend absolutely loved the surprise!"</div>
-        </div>
-        <div class="review-card">
-            <div class="r-avatar"><i class="fas fa-user"></i></div>
-            <div class="r-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-            <div class="r-text">"The gift box was beautifully packaged and arrived on time. My friend absolutely loved the surprise!"</div>
-        </div>
-        <div class="review-card">
-            <div class="r-avatar"><i class="fas fa-user"></i></div>
-            <div class="r-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
-            <div class="r-text">"The gift box was beautifully packaged and arrived on time. My friend absolutely loved the surprise!"</div>
-        </div>
+        <?php if (!empty($home_reviews)): ?>
+            <?php foreach ($home_reviews as $rv): ?>
+                <div class="review-card">
+                    <div class="r-avatar"><?php echo strtoupper(substr($rv['user_name'], 0, 1)); ?></div>
+                    <div class="r-stars">
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <i class="fa<?php echo $i <= (int) $rv['rating'] ? 's' : 'r'; ?> fa-star"></i>
+                        <?php endfor; ?>
+                    </div>
+                    <div class="r-text">&ldquo;<?php echo htmlspecialchars(mb_strimwidth(trim($rv['comment']), 0, 180, '…')); ?>&rdquo;</div>
+                    <div style="margin-top:12px; font-size:12px; color:#999; font-weight:600;">
+                        <?php echo htmlspecialchars($rv['user_name']); ?> · <?php echo htmlspecialchars($rv['product_name']); ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="review-card" style="grid-column: 1 / -1;">
+                <div class="r-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <div class="r-text">Be the first to leave a review! After your gift box arrives, tell everyone what you think.</div>
+            </div>
+        <?php endif; ?>
     </div>
     <div class="btn-review-container">
-        <button class="btn-review">+ Leave a Review</button>
+        <button class="btn-review" onclick="homeLeaveReview()">+ Leave a Review</button>
+        <div style="font-size:12px; color:#999; margin-top:10px;">You can review the items from any order you've received.</div>
     </div>
 </div>
+
+<script>
+    function homeLeaveReview() {
+        fetch('check_login.php')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.logged_in) { window.location.href = 'profile.php?tab=orders'; }
+                else if (window.openLoginModal) { openLoginModal(); }
+                else { window.location.href = 'login.php'; }
+            })
+            .catch(function () { window.location.href = 'login.php'; });
+    }
+</script>
 
 <?php include 'footer.php'; ?>
 
