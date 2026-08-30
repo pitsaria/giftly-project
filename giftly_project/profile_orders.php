@@ -2,8 +2,10 @@
 $user_id = $_SESSION['user_id'];
 include_once 'orders_lib.php';
 include_once 'reviews_lib.php';
+include_once 'paymongo_lib.php';
 orders_ensure_schema($conn);
 reviews_ensure_schema($conn);
+pay_ensure_schema($conn);
 
 // --- HANDLE "CONFIRM RECEIVED" ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_received'])) {
@@ -274,7 +276,22 @@ if ($result->num_rows > 0) {
                         <?php endif; ?>
                     <?php endif; ?>
                 </td>
-                <td style="color: #888;"><?php echo date('F j, Y', strtotime($row['created_at'])); ?></td>
+                <td style="color: #888;">
+                    <?php echo date('F j, Y', strtotime($row['created_at'])); ?>
+                    <?php
+                    $pm = $row['payment_method'] ?? 'cod';
+                    $ps = $row['payment_status'] ?? 'unpaid';
+                    if ($pm === 'cod') {
+                        echo '<div style="font-size:11px;color:#999;margin-top:3px;">Cash on delivery</div>';
+                    } elseif ($ps === 'paid') {
+                        echo '<div style="font-size:11px;color:#2e7d32;margin-top:3px;"><i class="fas fa-circle-check"></i> Paid online</div>';
+                    } elseif ($ps === 'failed') {
+                        echo '<div style="font-size:11px;color:#d32f2f;margin-top:3px;">Payment failed</div>';
+                    } else {
+                        echo '<div style="font-size:11px;color:#e65100;margin-top:3px;"><a href="pay_order.php?order_id=' . (int) $row['id'] . '" style="color:#e65100;font-weight:600;">Awaiting payment — pay now</a></div>';
+                    }
+                    ?>
+                </td>
                 <td>
                     <div class="order-actions">
                         <button class="btn-order-view" onclick="openOrderModal(<?php echo $row['id']; ?>)">

@@ -2,8 +2,11 @@
 include 'db_connect.php';
 include 'build_a_box_lib.php';
 include_once 'orders_lib.php';
+include_once 'paymongo_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
+pay_ensure_schema($conn);
+$paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -128,6 +131,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $conn->query("UPDATE boxes SET status = 'ordered', updated_at = CURRENT_TIMESTAMP WHERE id = $box_id AND user_id = $user_id");
 
         $conn->commit();
+
+        // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---
+        if ($paymongo_on && $payment === 'online') {
+            $pay_url = paymongo_create_checkout(
+                $conn, (int) $order_id, (float) $grand_total,
+                $fullname, ($_SESSION['user_email'] ?? ''), $sender_phone
+            );
+            if ($pay_url !== '') {
+                header("Location: " . $pay_url);
+                exit();
+            }
+            // fall through to the normal success page (order stays unpaid)
+        }
+
         $_SESSION['box_order_ok'] = [
             'order_id' => $order_id,
             'grand_total' => $grand_total,
@@ -398,6 +415,13 @@ unset($_SESSION['box_checkout_error']);
                 <input type="hidden" name="payment_method" id="payInput" value="cod">
                 <div class="co-delivery">
                     <label class="co-opt sel" id="payCod" onclick="coPay('cod')"><i class="fas fa-money-bill-wave" style="display:block;margin-bottom:4px;"></i> Cash on Delivery</label>
+<?php if ($paymongo_on): ?>
+                    <label class="co-opt" id="payCard" onclick="coPay('online')"><i class="fas fa-credit-card" style="display:block;margin-bottom:4px;"></i> Pay Online <span style="display:block;font-size:11px;color:#999;">Card · GCash · Maya</span></label>
+                </div>
+                <div id="onlinePayNote" style="display:none;">
+                    <div class="hint" style="margin-top:12px;"><i class="fas fa-lock" style="color:#ff8ba7;"></i> You'll be sent to PayMongo's secure page to pay by card, GCash or Maya, then brought back here.</div>
+                </div>
+<?php else: ?>
                     <label class="co-opt" id="payCard" onclick="coPay('card')"><i class="fas fa-credit-card" style="display:block;margin-bottom:4px;"></i> Credit / Debit Card</label>
                 </div>
 
@@ -426,6 +450,7 @@ unset($_SESSION['box_checkout_error']);
                     </div>
                     <div class="hint"><i class="fas fa-lock"></i> Demo checkout — only the last 4 digits are kept with your order.</div>
                 </div>
+<?php endif; ?>
             </div>
         </form>
     </div>
@@ -489,14 +514,18 @@ unset($_SESSION['box_checkout_error']);
     }
     function coPay(p) {
         document.getElementById('payCod').classList.toggle('sel', p === 'cod');
-        document.getElementById('payCard').classList.toggle('sel', p === 'card');
+        document.getElementById('payCard').classList.toggle('sel', p !== 'cod');
         document.getElementById('payInput').value = p;
+        const note = document.getElementById('onlinePayNote');
+        if (note) note.style.display = (p === 'online') ? 'block' : 'none';
         const cf = document.getElementById('cardFields');
-        cf.classList.toggle('show', p === 'card');
-        ['cardHolder', 'cardNumber', 'cardExpiry', 'cardCvc'].forEach(function (id) {
-            const el = document.getElementById(id);
-            if (el) el.required = (p === 'card');
-        });
+        if (cf) {
+            cf.classList.toggle('show', p === 'card');
+            ['cardHolder', 'cardNumber', 'cardExpiry', 'cardCvc'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.required = (p === 'card');
+            });
+        }
     }
     function coFillAddr() {
         const o = document.getElementById('savedAddr').selectedOptions[0];

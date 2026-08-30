@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include_once 'orders_lib.php';
+include_once 'paymongo_lib.php';
 orders_ensure_schema($conn);
+pay_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -271,6 +273,19 @@ $showing_to = min($offset + $limit, $total_rows);
                             $delivery_mode = '<span style="background: #fff3e0; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #e65100; white-space: nowrap; display: inline-block;">🎁 To Recipient</span>';
                         }
 
+                        // payment status pill
+                        $pm = $row['payment_method'] ?? 'cod';
+                        $ps = $row['payment_status'] ?? 'unpaid';
+                        if ($pm === 'cod') {
+                            $pay_pill = '<span style="background:#f0f0f0;color:#777;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">COD</span>';
+                        } elseif ($ps === 'paid') {
+                            $pay_pill = '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">PAID</span>';
+                        } elseif ($ps === 'failed') {
+                            $pay_pill = '<span style="background:#fdeded;color:#d32f2f;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">PAYMENT FAILED</span>';
+                        } else {
+                            $pay_pill = '<span style="background:#fff8e1;color:#a5710d;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">UNPAID</span>';
+                        }
+
                         $address_summary = $row['address'] . ', ' . $row['city'];
                         if(!empty($row['recipient_name'])) {
                             $address_summary .= '<br><strong>Recipient:</strong> ' . $row['recipient_name'];
@@ -333,7 +348,7 @@ $showing_to = min($offset + $limit, $total_rows);
                             <td class="search-price"><strong>PHP '.number_format($row['total_amount'], 2).'</strong></td>
                             <td style="font-size: 12px; white-space: nowrap;">
                                 '.$delivery_mode.'
-                                <div style="margin-top: 4px; color: #888; font-size: 12px; white-space: nowrap;">'.ucfirst($row['payment_method']).'</div>
+                                <div style="margin-top: 4px; color: #888; font-size: 12px; white-space: nowrap;">'.ucfirst($row['payment_method']).' '.$pay_pill.'</div>
                             </td>
                             <td>'.$status_cell.'</td>
                             <td style="text-align:center;">'.$action_cell.'</td>

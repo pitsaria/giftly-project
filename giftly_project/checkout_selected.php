@@ -1,7 +1,10 @@
 <?php
 include 'db_connect.php';
 include_once 'orders_lib.php';
+include_once 'paymongo_lib.php';
 orders_ensure_schema($conn);
+pay_ensure_schema($conn);
+$paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -181,6 +184,28 @@ $grand_total_with_shipping = $total_amount + $shipping_fee;
         }
 
         $conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
+
+        // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---
+        // (header.php has already been sent by this point, so redirect client-side)
+        if ($paymongo_on && $payment === 'online') {
+            $pay_url = paymongo_create_checkout(
+                $conn, (int) $order_id, (float) $grand_total_with_shipping,
+                $fullname, ($_SESSION['user_email'] ?? ''), $sender_phone
+            );
+            if ($pay_url !== '') {
+                echo '<meta http-equiv="refresh" content="0;url=' . htmlspecialchars($pay_url, ENT_QUOTES) . '">';
+                echo '<script>location.replace(' . json_encode($pay_url) . ');</script>';
+                echo '<div style="text-align:center;padding:150px 20px 80px;font-family:Poppins,sans-serif;color:#555;">'
+                   . '<i class="fas fa-lock" style="font-size:32px;color:#ff8ba7;"></i>'
+                   . '<p style="font-size:16px;margin-top:14px;">Taking you to the secure payment page…</p>'
+                   . '<p style="margin-top:8px;"><a href="' . htmlspecialchars($pay_url, ENT_QUOTES) . '" style="color:#ff8ba7;font-weight:600;">Continue to payment</a></p>'
+                   . '</div>';
+                include 'footer.php';
+                exit();
+            }
+            // If PayMongo couldn't start, fall through: the order exists as
+            // unpaid and the shopper can pay from "My Orders".
+        }
 
         // --- BEAUTIFUL SUCCESS PAGE ---
 ?>
@@ -1026,6 +1051,18 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                             <i class="fas fa-money-bill-wave" style="display: block; font-size: 20px; margin-bottom: 5px;"></i>
                             Cash on Delivery
                         </div>
+<?php if ($paymongo_on): ?>
+                        <div class="payment-option" id="payCard" onclick="selectPayment('online')">
+                            <i class="fas fa-credit-card" style="display: block; font-size: 20px; margin-bottom: 5px;"></i>
+                            Pay Online
+                            <div style="font-size:11px;color:#999;font-weight:400;margin-top:3px;">Card · GCash · Maya</div>
+                        </div>
+                    </div>
+                    <div id="onlinePayNote" style="display:none; margin-top:16px; padding:16px 18px; border:1.5px dashed #ffc1cc; border-radius:14px; background:#fff8fa; font-size:13px; color:#777;">
+                        <i class="fas fa-lock" style="color:#ff8ba7;"></i>
+                        You'll be taken to PayMongo's secure page to pay by card, GCash or Maya, then brought right back.
+                    </div>
+<?php else: ?>
                         <div class="payment-option" id="payCard" onclick="selectPayment('card')">
                             <i class="fas fa-credit-card" style="display: block; font-size: 20px; margin-bottom: 5px;"></i>
                             Credit / Debit Card
@@ -1053,6 +1090,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                         </div>
                         <div style="font-size:12px;color:#999;margin-top:8px;"><i class="fas fa-lock"></i> Demo checkout — only the last 4 digits are kept with your order.</div>
                     </div>
+<?php endif; ?>
                 </div>
             </div>
         </form>
@@ -1440,11 +1478,15 @@ function submitOrder() {
 }
 
     /* --- PAYMENT CLICK LOGIC --- */
+    window.__onlinePayValue = <?php echo $paymongo_on ? "'online'" : "'card'"; ?>;
     function selectPayment(method) {
         document.getElementById('paymentMethodInput').value = method;
         document.getElementById('payCOD').classList.remove('selected');
         document.getElementById('payCard').classList.remove('selected');
         document.getElementById('pay' + (method === 'cod' ? 'COD' : 'Card')).classList.add('selected');
+
+        var note = document.getElementById('onlinePayNote');
+        if (note) note.style.display = (method === 'online') ? 'block' : 'none';
 
         var cf = document.getElementById('cardFields');
         if (cf) {
@@ -1515,7 +1557,7 @@ function submitOrder() {
             document.getElementById('payCard').classList.remove('disabled');
             document.getElementById('payCard').style.pointerEvents = 'auto';
             document.getElementById('payCard').style.opacity = '1';
-            selectPayment('card');
+            selectPayment(window.__onlinePayValue);
         } else {
             recipientField.classList.remove('show');
             
