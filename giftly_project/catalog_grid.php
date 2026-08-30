@@ -152,18 +152,17 @@ if (isset($_SESSION['user_id'])) {
     .rv-stars { color: #ffb400; letter-spacing: 1px; }
     .ci-rating { font-size: 12px; margin-bottom: 8px; color: #999; }
     .ci-rating .rv-stars { font-size: 12px; }
-    /* keep the quick-view the same size with or without reviews — only the reviews block scrolls */
-    .cat-modal-box { max-height: 90vh; }
+    /* fixed height whether or not the product has reviews — the right column scrolls */
+    .cat-modal-box { height: min(88vh, 600px); }
     .cat-modal-left { align-self: stretch; }
-    .cat-modal-right { max-height: 90vh; overflow-y: auto; }
-    #modalReviews { width: 100%; max-height: 240px; overflow-y: auto; margin-top: 4px; }
+    .cat-modal-right { height: 100%; overflow-y: auto; }
+    #modalReviews { width: 100%; margin-top: 4px; }
     #modalReviews .rv-wrap { margin-top: 14px; padding-top: 14px; }
     #modalReviews .rv-list-scroll { max-height: none; overflow: visible; }
     @media (max-width: 640px) {
-        .cat-modal-box { overflow-y: auto; }
+        .cat-modal-box { height: auto; max-height: 90vh; overflow-y: auto; }
         .cat-modal-left { align-self: auto; }
-        .cat-modal-right { max-height: none; overflow: visible; }
-        #modalReviews { max-height: none; overflow: visible; }
+        .cat-modal-right { height: auto; overflow: visible; }
     }
 </style>
 

@@ -298,12 +298,12 @@ if ($edit_box) {
     .bab-prod-grid.list-view .bab-prod-rating { display: none; }
 
     .bab-qv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 999999; padding: 20px; }
-    .bab-qv-box { background: #fff; border-radius: 28px; max-width: 780px; width: 100%; max-height: 90vh; box-shadow: 0 25px 60px rgba(0,0,0,0.2); position: relative; display: flex; flex-wrap: wrap; overflow: hidden; animation: babUp 0.3s ease; }
+    .bab-qv-box { background: #fff; border-radius: 28px; max-width: 780px; width: 100%; height: min(88vh, 580px); box-shadow: 0 25px 60px rgba(0,0,0,0.2); position: relative; display: flex; flex-wrap: wrap; overflow: hidden; animation: babUp 0.3s ease; }
     .bab-qv-close { position: absolute; top: 14px; right: 18px; font-size: 24px; color: #999; cursor: pointer; z-index: 3; background: none; border: none; }
     .bab-qv-close:hover { color: #ff8ba7; }
     .bab-qv-left { flex: 0.9; min-width: 260px; background: #fafafa; padding: 34px; display: flex; align-items: center; justify-content: center; align-self: stretch; }
     .bab-qv-left img { max-width: 100%; max-height: 280px; object-fit: contain; }
-    .bab-qv-right { flex: 1.1; min-width: 280px; padding: 34px 32px; display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+    .bab-qv-right { flex: 1.1; min-width: 280px; padding: 34px 32px; display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
     .bab-qv-right h3 { font-size: 22px; font-weight: 700; color: #222; margin-bottom: 6px; }
     .bab-qv-price { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 12px; }
     .bab-qv-price span { color: #888; font-weight: 500; font-size: 14px; }
@@ -312,12 +312,12 @@ if ($edit_box) {
     .bab-qv-add { width: 100%; padding: 12px 0; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins'; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .bab-qv-add:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
     .bab-qv-add:disabled { background: #ddd; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-    #modalReviews { width: 100%; max-height: 230px; overflow-y: auto; margin-top: 8px; }
+    #modalReviews { width: 100%; margin-top: 8px; }
     #modalReviews .rv-list-scroll { max-height: none; overflow: visible; }
     @media (max-width: 640px) {
+        .bab-qv-box { height: auto; max-height: 90vh; overflow-y: auto; }
         .bab-qv-left { align-self: auto; }
-        .bab-qv-right { max-height: none; overflow: visible; }
-        #modalReviews { max-height: none; overflow: visible; }
+        .bab-qv-right { height: auto; overflow: visible; }
     }
 </style>
 
