@@ -18,6 +18,9 @@ echo "=== Config ===\n";
 echo "SUPABASE_URL         : " . ($c['url'] !== '' ? $c['url'] : '(EMPTY)') . "\n";
 echo "SUPABASE_SERVICE_KEY : " . ($c['key'] !== '' ? substr($c['key'], 0, 8) . '…(' . strlen($c['key']) . ' chars)' : '(EMPTY)') . "\n";
 echo "SUPABASE_BUCKET      : " . $c['bucket'] . "\n";
+if (stripos($c['key'], 'sb_publishable_') === 0 || (strlen($c['key']) > 0 && strlen($c['key']) < 60 && stripos($c['key'], 'sb_secret_') !== 0)) {
+    echo "  ⚠ this looks like a PUBLISHABLE/anon key — you need the service_role (secret) key\n";
+}
 echo "curl extension       : " . (function_exists('curl_init') ? 'yes' : 'NO') . "\n";
 echo "allow_url_fopen      : " . (ini_get('allow_url_fopen') ? 'on' : 'off') . "\n";
 echo "upload_max_filesize  : " . ini_get('upload_max_filesize') . "\n";
@@ -43,6 +46,7 @@ curl_setopt_array($ch, [
     CURLOPT_POSTFIELDS     => $png,
     CURLOPT_HTTPHEADER     => [
         'Authorization: Bearer ' . $c['key'],
+        'apikey: ' . $c['key'],
         'Content-Type: image/png',
         'x-upsert: true',
     ],

@@ -20,8 +20,12 @@ if (!function_exists('supabase_storage_config')) {
 
     function supabase_storage_config(): array
     {
+        $url = rtrim((string) getenv('SUPABASE_URL'), '/');
+        // Tolerate someone pasting the REST or Storage endpoint instead of the
+        // project root — we only want https://<ref>.supabase.co here.
+        $url = preg_replace('#/(rest|storage|auth|realtime)/v1/?$#', '', $url);
         return [
-            'url'    => rtrim((string) getenv('SUPABASE_URL'), '/'),
+            'url'    => $url,
             'key'    => (string) getenv('SUPABASE_SERVICE_KEY'),
             'bucket' => getenv('SUPABASE_BUCKET') ?: 'product-images',
         ];
@@ -79,6 +83,7 @@ if (!function_exists('supabase_storage_config')) {
         $endpoint = $c['url'] . '/storage/v1/object/' . $c['bucket'] . '/' . rawurlencode($object);
         $headers  = [
             'Authorization: Bearer ' . $c['key'],
+            'apikey: ' . $c['key'],
             'Content-Type: ' . $mime,
             'x-upsert: true',
         ];
@@ -157,7 +162,10 @@ if (!function_exists('supabase_storage_config')) {
             $ch = curl_init($endpoint);
             curl_setopt_array($ch, [
                 CURLOPT_CUSTOMREQUEST  => 'DELETE',
-                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $c['key']],
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Bearer ' . $c['key'],
+                    'apikey: ' . $c['key'],
+                ],
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 15,
             ]);
