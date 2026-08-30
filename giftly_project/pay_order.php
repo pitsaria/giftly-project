@@ -31,5 +31,8 @@ $url = paymongo_create_checkout(
     $order['fullname'] ?? '', ($_SESSION['user_email'] ?? ''), $order['sender_phone'] ?? ''
 );
 
+if ($url === '') {
+    $_SESSION['pay_start_error'] = paymongo_last_error() ?: 'Payment could not be started.';
+}
 header('Location: ' . ($url !== '' ? $url : 'payment_return.php?order_id=' . $oid));
 exit();

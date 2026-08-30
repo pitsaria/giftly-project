@@ -142,7 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 header("Location: " . $pay_url);
                 exit();
             }
-            // fall through to the normal success page (order stays unpaid)
+            // Couldn't open PayMongo — send the shopper somewhere that explains why.
+            $_SESSION['pay_start_error'] = paymongo_last_error() ?: 'Payment could not be started.';
+            header("Location: payment_return.php?order_id=" . (int) $order_id);
+            exit();
         }
 
         $_SESSION['box_order_ok'] = [

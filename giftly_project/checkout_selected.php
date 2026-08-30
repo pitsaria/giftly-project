@@ -203,8 +203,18 @@ $grand_total_with_shipping = $total_amount + $shipping_fee;
                 include 'footer.php';
                 exit();
             }
-            // If PayMongo couldn't start, fall through: the order exists as
-            // unpaid and the shopper can pay from "My Orders".
+            // PayMongo couldn't start — show why, order stays unpaid & payable later.
+            $err = paymongo_last_error() ?: 'Payment could not be started right now.';
+            echo '<div style="max-width:520px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
+               . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-triangle-exclamation"></i></div>'
+               . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Couldn\'t start the payment</h2>'
+               . '<p style="color:#888;line-height:1.6;margin-bottom:8px;">Your order <strong>#' . (int) $order_id . '</strong> is saved but unpaid.</p>'
+               . '<p style="color:#c77;font-size:12.5px;margin-bottom:22px;">' . htmlspecialchars($err) . '</p>'
+               . '<a href="pay_order.php?order_id=' . (int) $order_id . '" style="padding:13px 30px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">Try payment again</a>'
+               . '<div style="margin-top:12px;"><a href="profile.php?tab=orders" style="color:#999;font-size:13px;">Go to My Orders</a></div>'
+               . '</div>';
+            include 'footer.php';
+            exit();
         }
 
         // --- BEAUTIFUL SUCCESS PAGE ---

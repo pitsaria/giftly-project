@@ -23,8 +23,27 @@
 
 if (!function_exists('pay_ensure_schema')) {
 
-    function paymongo_secret_key() { return getenv('PAYMONGO_SECRET_KEY') ?: ''; }
+    function paymongo_secret_key() { return trim((string) getenv('PAYMONGO_SECRET_KEY')); }
     function paymongo_configured()  { return paymongo_secret_key() !== ''; }
+
+    /**
+     * Payment methods offered on the hosted page. Override with a comma-list in
+     * env PAYMONGO_METHODS once you've activated more in the PayMongo dashboard.
+     */
+    function paymongo_methods() {
+        $env = trim((string) getenv('PAYMONGO_METHODS'));
+        if ($env !== '') {
+            return array_values(array_filter(array_map('trim', explode(',', $env))));
+        }
+        return ['card', 'gcash'];
+    }
+
+    /** Last PayMongo API error for the current request (for surfacing to the user). */
+    function paymongo_last_error($set = null) {
+        static $err = '';
+        if ($set !== null) $err = $set;
+        return $err;
+    }
 
     /** Absolute https base URL for building success/cancel URLs. */
     function app_base_url() {
@@ -81,12 +100,17 @@ if (!function_exists('pay_ensure_schema')) {
                 CURLOPT_CUSTOMREQUEST  => $method,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER     => $headers,
-                CURLOPT_TIMEOUT        => 20,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT        => 15,
                 CURLOPT_POSTFIELDS     => $body,
             ]);
             $resp = curl_exec($ch);
+            $curl_err = curl_error($ch);
             $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+            if ($resp === false || $code === 0) {
+                paymongo_last_error('Network error reaching PayMongo' . ($curl_err ? ': ' . $curl_err : ''));
+            }
         } else {
             $hdr = "Authorization: $auth\r\nAccept: application/json\r\n";
             if ($body !== null) $hdr .= "Content-Type: application/json\r\n";
@@ -121,9 +145,9 @@ if (!function_exists('pay_ensure_schema')) {
                 'currency' => 'PHP',
                 'quantity' => 1,
             ]],
-            // No payment_method_types => PayMongo offers whatever is enabled on
-            // the account (card, GCash, Maya, GrabPay …). Avoids a hard failure
-            // if a method isn't activated yet.
+            // card + gcash are enabled on every PayMongo account by default.
+            // Add 'paymaya' / 'grab_pay' here once you've activated them.
+            'payment_method_types' => paymongo_methods(),
             'description'      => 'Giftly order #' . $order_id,
             'reference_number' => (string) $order_id,
             'success_url'      => $base . '/payment_return.php?order_id=' . $order_id,
@@ -142,8 +166,11 @@ if (!function_exists('pay_ensure_schema')) {
         if ($code >= 200 && $code < 300 && $attr && !empty($attr['checkout_url'])) {
             $ref = $conn->real_escape_string($res['data']['id'] ?? '');
             $conn->query("UPDATE orders SET payment_ref = '$ref' WHERE id = $order_id");
+            paymongo_last_error('');
             return $attr['checkout_url'];
         }
+        $detail = $res['errors'][0]['detail'] ?? ($res['error'] ?? 'Unknown error');
+        paymongo_last_error('PayMongo (' . $code . '): ' . $detail);
         error_log('PayMongo checkout_session failed (' . $code . '): ' . json_encode($res));
         return '';
     }

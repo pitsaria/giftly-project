@@ -17,8 +17,11 @@ if ($order_id > 0 && $user_id > 0) {
 $paid = $order && $order['payment_status'] === 'paid';
 $failed = $order && $order['payment_status'] === 'failed';
 
+$start_error = $_SESSION['pay_start_error'] ?? '';
+unset($_SESSION['pay_start_error']);
+
 // Keep re-checking for a few seconds while the webhook lands.
-$polling = $order && !$paid && !$failed && !$cancelled && $try < 6;
+$polling = $order && !$paid && !$failed && !$cancelled && $start_error === '' && $try < 6;
 
 include 'header.php';
 ?>
@@ -54,6 +57,16 @@ include 'header.php';
             <h1>Order not found</h1>
             <p>We couldn't find that order on your account.</p>
             <div class="pr-btns"><a href="shop.php" class="primary">Back to shop</a></div>
+
+        <?php elseif ($start_error !== '' && !$paid): ?>
+            <div class="pr-badge bad"><i class="fas fa-triangle-exclamation"></i></div>
+            <h1>Couldn't start the payment</h1>
+            <p>Order <strong>#<?php echo $order_id; ?></strong> is saved but unpaid. You can try paying again.</p>
+            <div class="pr-box"><div class="pr-row"><span>Reason</span><span style="color:#d32f2f;font-weight:500;"><?php echo htmlspecialchars($start_error); ?></span></div></div>
+            <div class="pr-btns">
+                <a href="pay_order.php?order_id=<?php echo $order_id; ?>" class="primary">Try again</a>
+                <a href="profile.php?tab=orders" class="ghost">My Orders</a>
+            </div>
 
         <?php elseif ($cancelled && !$paid): ?>
             <div class="pr-badge bad"><i class="fas fa-xmark"></i></div>
