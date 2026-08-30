@@ -72,6 +72,18 @@ switch($path) {
         }
         break;
 
+    case 'auth/google':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->googleLogin($input);
+        } elseif ($method == 'GET') {
+            $auth->googleConfig();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === PRODUCT SERVICE ===
     case 'products':
         require_once 'services/ProductService.php';

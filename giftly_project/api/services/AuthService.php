@@ -3,6 +3,7 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../auth_lib.php';
 
 class AuthService {
     private $conn;
@@ -149,6 +150,123 @@ class AuthService {
         $this->conn->query("UPDATE users SET password = '$hashed', reset_token = NULL, token_expiry = NULL WHERE reset_token = '$tokenEsc'");
 
         sendSuccess(null, 'Password reset successfully! You can now log in.');
+    }
+
+    // GET auth/google — the configured Web client ID (empty when the feature
+    // is off, so the app hides the button exactly like the website does).
+    public function googleConfig() {
+        sendSuccess(['client_id' => google_client_id()]);
+    }
+
+    // POST auth/google — "Continue with Google" for the mobile app.
+    // Mirrors google_auth.php's verify/link/create, but issues a Bearer token
+    // for the standalone client instead of relying on the PHP session.
+    public function googleLogin($input) {
+        auth_ensure_schema($this->conn);
+
+        $credential = $input['credential'] ?? '';
+        if ($credential === '') {
+            sendError('Missing Google credential.');
+        }
+
+        $client_id = google_client_id();
+        if ($client_id === '') {
+            sendError('Google sign-in is not configured on the server.', 500);
+        }
+
+        // Verify the ID token with Google's tokeninfo endpoint (no crypto libs).
+        $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+        $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 8, 'ignore_errors' => true]]);
+        $resp = @file_get_contents($url, false, $ctx);
+        if ($resp === false) {
+            sendError('Could not reach Google to verify your sign-in.', 502);
+        }
+
+        $info = json_decode($resp, true);
+        if (!is_array($info) || isset($info['error']) || isset($info['error_description'])) {
+            sendError('Your Google sign-in could not be verified.');
+        }
+
+        $aud   = $info['aud'] ?? '';
+        $iss   = $info['iss'] ?? '';
+        $exp   = (int) ($info['exp'] ?? 0);
+        $sub   = $info['sub'] ?? '';
+        $email = strtolower(trim($info['email'] ?? ''));
+        $name  = trim($info['name'] ?? '');
+        $ev    = $info['email_verified'] ?? 'false';
+        $email_verified = ($ev === true || $ev === 'true' || $ev === 1 || $ev === '1');
+
+        if ($aud !== $client_id) {
+            sendError('This Google sign-in was issued for a different app.');
+        }
+        if ($iss !== 'accounts.google.com' && $iss !== 'https://accounts.google.com') {
+            sendError('Invalid token issuer.');
+        }
+        if ($exp > 0 && $exp < time()) {
+            sendError('Your Google sign-in has expired — please try again.');
+        }
+        if ($sub === '' || $email === '') {
+            sendError('Google did not return a usable account.');
+        }
+        if (!$email_verified) {
+            sendError('Your Google email address is not verified.');
+        }
+
+        $sub_esc   = $this->conn->real_escape_string($sub);
+        $email_esc = $this->conn->real_escape_string($email);
+
+        // find, link, or create — same order as google_auth.php
+        $user = null;
+        $r = $this->conn->query("SELECT * FROM users WHERE google_id = '$sub_esc' LIMIT 1");
+        if ($r && $r->num_rows > 0) {
+            $user = $r->fetch_assoc();
+        }
+        if (!$user) {
+            $r = $this->conn->query("SELECT * FROM users WHERE LOWER(email) = '$email_esc' LIMIT 1");
+            if ($r && $r->num_rows > 0) {
+                $user = $r->fetch_assoc();
+                $this->conn->query("UPDATE users SET google_id = '$sub_esc' WHERE id = " . (int) $user['id']);
+            }
+        }
+        if (!$user) {
+            $display     = $name !== '' ? $name : (strstr($email, '@', true) ?: 'Customer');
+            $display_esc = $this->conn->real_escape_string(mb_substr($display, 0, 100));
+            $rand_hash   = $this->conn->real_escape_string(password_hash(bin2hex(random_bytes(18)), PASSWORD_DEFAULT));
+            $ok = $this->conn->query("INSERT INTO users (name, email, password, phone, role, google_id)
+                                      VALUES ('$display_esc', '$email_esc', '$rand_hash', '', 'customer', '$sub_esc')");
+            if (!$ok) {
+                sendError('Could not create your account. Please try again.', 500);
+            }
+            $new_id = (int) $this->conn->insert_id;
+            $rr = $new_id > 0
+                ? $this->conn->query("SELECT * FROM users WHERE id = $new_id")
+                : $this->conn->query("SELECT * FROM users WHERE google_id = '$sub_esc' LIMIT 1");
+            $user = $rr ? $rr->fetch_assoc() : null;
+            if (!$user) {
+                sendError('Account created, but sign-in failed. Please try logging in.', 500);
+            }
+        }
+
+        $token = AuthHelper::issueToken($this->conn, $user['id']);
+
+        // Keep the website session in sync too (parity with login()).
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['user_id']    = $user['id'];
+        $_SESSION['user_name']  = $user['name'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['role']       = $user['role'];
+
+        sendSuccess([
+            'token' => $token,
+            'user' => [
+                'id'    => $user['id'],
+                'name'  => $user['name'],
+                'email' => $user['email'],
+                'role'  => $user['role'],
+            ],
+        ], 'Login successful');
     }
 
     // ✅ VERIFY TOKEN / SESSION
