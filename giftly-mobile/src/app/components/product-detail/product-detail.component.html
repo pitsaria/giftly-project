@@ -4,7 +4,12 @@
       <ion-icon name="close-outline"></ion-icon>
     </button>
     <img [src]="product.image | imgUrl" [alt]="product.name" class="product-image" />
-    <button class="heart-btn" [class.active]="isWishlisted()" (click)="toggleWishlist()">
+    <button
+      class="heart-btn"
+      *ngIf="mode === 'cart'"
+      [class.active]="isWishlisted()"
+      (click)="toggleWishlist()"
+    >
       <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
     </button>
     <div class="out-of-stock-ribbon" *ngIf="!inStock()">Out of Stock</div>
@@ -18,7 +23,7 @@
   <div class="price">₱{{ product.price }}</div>
   <p class="description">{{ product.description }}</p>
 
-  <div class="quantity-row" *ngIf="inStock()">
+  <div class="quantity-row" *ngIf="mode === 'cart' && inStock()">
     <span>Quantity</span>
     <div class="stepper">
       <button (click)="decrease()"><ion-icon name="remove-outline"></ion-icon></button>
@@ -27,13 +32,26 @@
     </div>
   </div>
 
+  <p class="in-box-note" *ngIf="mode === 'box' && inBoxQty > 0">{{ inBoxQty }} already in your box</p>
+
   <ion-button
+    *ngIf="mode === 'cart'"
     expand="block"
     class="giftly-btn-primary"
     [disabled]="!inStock() || adding()"
     (click)="addToCart()"
   >
     {{ inStock() ? 'Add to Cart' : 'Out of Stock' }}
+  </ion-button>
+
+  <ion-button
+    *ngIf="mode === 'box'"
+    expand="block"
+    class="giftly-btn-primary"
+    [disabled]="!inStock() || boxFull || inBoxQty >= product.quantity"
+    (click)="addToBox()"
+  >
+    {{ !inStock() ? 'Out of Stock' : boxFull ? 'Box full' : inBoxQty > 0 ? 'Add one more' : 'Add to box' }}
   </ion-button>
 
   <app-product-reviews [productId]="product.id"></app-product-reviews>

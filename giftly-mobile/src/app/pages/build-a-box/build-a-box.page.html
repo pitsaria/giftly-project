@@ -89,11 +89,14 @@
 
         <div class="prod-grid" *ngIf="products().length">
           <div class="prod-card" *ngFor="let p of products()">
-            <img [src]="p.image | imgUrl" [alt]="p.name" />
-            <div class="p-name">{{ p.name }}</div>
-            <div class="p-rating" *ngIf="p.rating_count">
-              <ion-icon name="star" *ngFor="let s of stars(p.rating)"></ion-icon>
-              <span>({{ p.rating_count }})</span>
+            <img [src]="p.image | imgUrl" [alt]="p.name" (click)="openProduct(p)" />
+            <div class="p-name" (click)="openProduct(p)">{{ p.name }}</div>
+            <div class="p-rating">
+              <ng-container *ngIf="p.rating_count; else noRev">
+                <ion-icon name="star" *ngFor="let s of stars(p.rating)"></ion-icon>
+                <span>({{ p.rating_count }})</span>
+              </ng-container>
+              <ng-template #noRev><span class="p-rating-empty">No reviews yet</span></ng-template>
             </div>
             <div class="p-price">₱{{ p.price | number: '1.2-2' }}</div>
 

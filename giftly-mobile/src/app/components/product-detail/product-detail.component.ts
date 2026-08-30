@@ -22,6 +22,12 @@ import { ProductReviewsComponent } from '../product-reviews/product-reviews.comp
 })
 export class ProductDetailComponent {
   @Input({ required: true }) product!: Product;
+  // 'cart' (Shop) shows a qty stepper + Add to Cart. 'box' (Build-a-Box) shows
+  // a single "Add to box" button and dismisses with { addToBox: true }.
+  @Input() mode: 'cart' | 'box' = 'cart';
+  // In box mode, disable adding when the box is already full.
+  @Input() boxFull = false;
+  @Input() inBoxQty = 0;
 
   private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
@@ -80,6 +86,10 @@ export class ProductDetailComponent {
     } finally {
       this.adding.set(false);
     }
+  }
+
+  addToBox(): void {
+    this.modalCtrl.dismiss({ addToBox: true });
   }
 
   dismiss(): void {

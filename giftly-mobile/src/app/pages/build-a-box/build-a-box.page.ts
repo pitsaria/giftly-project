@@ -20,6 +20,7 @@ import {
   IonTextarea,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
+  ModalController,
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -43,6 +44,7 @@ import { CartService } from '../../core/cart.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
+import { ProductDetailComponent } from '../../components/product-detail/product-detail.component';
 
 interface DraftItem {
   product_id: number;
@@ -90,6 +92,7 @@ export class BuildABoxPage implements OnInit {
   private cart = inject(CartService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
 
   readonly loading = signal(true);
@@ -262,6 +265,36 @@ export class BuildABoxPage implements OnInit {
 
   qtyInBox(productId: number): number {
     return this.items().find((i) => i.product_id === productId)?.qty ?? 0;
+  }
+
+  async openProduct(p: BoxProduct): Promise<void> {
+    const modal = await this.modalCtrl.create({
+      component: ProductDetailComponent,
+      componentProps: {
+        product: {
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: String(p.price),
+          image: p.image,
+          quantity: p.quantity,
+          category_id: p.category_id,
+          avg_rating: String(p.rating),
+          review_count: p.rating_count,
+        },
+        mode: 'box',
+        boxFull: this.boxFull(),
+        inBoxQty: this.qtyInBox(p.id),
+      },
+      breakpoints: [0, 0.75, 0.95],
+      initialBreakpoint: 0.75,
+    });
+    await modal.present();
+    const { data } = await modal.onWillDismiss();
+    if (data?.addToBox) {
+      if (this.qtyInBox(p.id) > 0) await this.inc(p.id);
+      else await this.add(p);
+    }
   }
 
   async add(p: BoxProduct): Promise<void> {
