@@ -320,9 +320,23 @@ export class ProfilePage implements OnInit {
   }
 
   async logout(): Promise<void> {
-    await this.auth.logout();
-    this.profile.set(null);
-    this.router.navigateByUrl('/tabs/home');
+    const alert = await this.alertCtrl.create({
+      header: 'Log out?',
+      message: 'Are you sure you want to log out of your Giftly account?',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Log Out',
+          role: 'destructive',
+          handler: async () => {
+            await this.auth.logout();
+            this.profile.set(null);
+            this.router.navigateByUrl('/tabs/home');
+          },
+        },
+      ],
+    });
+    await alert.present();
   }
 
   private async toast(message: string): Promise<void> {
