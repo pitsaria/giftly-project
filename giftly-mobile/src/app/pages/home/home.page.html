@@ -75,9 +75,12 @@
           <img [src]="product.image | imgUrl" [alt]="product.name" />
         </div>
         <div class="f-name">{{ product.name }}</div>
-        <div class="f-rating" *ngIf="product.review_count">
-          <ion-icon name="star"></ion-icon>
-          <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+        <div class="f-rating">
+          <ng-container *ngIf="product.review_count; else noReviews">
+            <ion-icon name="star"></ion-icon>
+            <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+          </ng-container>
+          <ng-template #noReviews><span class="f-rating-empty">No reviews yet</span></ng-template>
         </div>
         <div class="f-footer">
           <span class="f-price">₱{{ product.price }}</span>

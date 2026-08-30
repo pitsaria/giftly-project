@@ -107,6 +107,7 @@
     justify-content: center;
     gap: 2px;
     margin-bottom: 4px;
+    min-height: 15px;
 
     ion-icon {
       color: #ffb400;
@@ -117,6 +118,12 @@
       font-size: 11px;
       color: #999;
       margin-left: 2px;
+    }
+
+    .p-rating-empty {
+      font-size: 11px;
+      color: #bbb;
+      margin-left: 0;
     }
   }
 

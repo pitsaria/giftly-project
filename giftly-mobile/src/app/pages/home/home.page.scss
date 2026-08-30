@@ -264,6 +264,7 @@
     align-items: center;
     gap: 3px;
     margin-bottom: 4px;
+    min-height: 15px;
 
     ion-icon {
       color: #ffb400;
@@ -273,6 +274,10 @@
     span {
       font-size: 11px;
       color: #999;
+    }
+
+    .f-rating-empty {
+      color: #bbb;
     }
   }
 

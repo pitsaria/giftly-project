@@ -51,9 +51,12 @@
         <div class="out-of-stock-ribbon" *ngIf="product.quantity <= 0">Out of Stock</div>
       </div>
       <div class="p-name">{{ product.name }}</div>
-      <div class="p-rating" *ngIf="product.review_count">
-        <ion-icon name="star" *ngFor="let s of stars(product)"></ion-icon>
-        <span>({{ product.review_count }})</span>
+      <div class="p-rating">
+        <ng-container *ngIf="product.review_count; else noReviews">
+          <ion-icon name="star" *ngFor="let s of stars(product)"></ion-icon>
+          <span>({{ product.review_count }})</span>
+        </ng-container>
+        <ng-template #noReviews><span class="p-rating-empty">No reviews yet</span></ng-template>
       </div>
       <div class="p-price">₱{{ product.price }}</div>
       <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
