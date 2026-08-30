@@ -99,7 +99,9 @@
                 </div>
                 
 <button type="submit" name="register" class="reg-submit-btn">Create Account</button>                <div class="reg-divider">or</div>
-                
+
+                <?php $g_slot_id = 'gbtn_register'; include 'google_signin.php'; ?>
+
                 <div class="reg-login-link">
                     Already have an account? <a href="javascript:void(0)" onclick="closeRegisterModal(); setTimeout(openLoginModal, 300);">Log In</a>
                 </div>

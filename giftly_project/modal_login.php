@@ -70,9 +70,11 @@ if (!empty($error_msg)): ?>
                     
 <a href="javascript:void(0)" onclick="openForgotModal()" class="login-forgot-link">Forgot your password?</a>                    
                     <button type="submit" name="login" class="login-submit-btn">Log in</button>
-                    
+
                     <div class="login-divider">or</div>
-                    
+
+                    <?php $g_slot_id = 'gbtn_login'; include 'google_signin.php'; ?>
+
                     <div class="login-register-link">
                         Don't have an account? <a href="javascript:void(0)" onclick="closeLoginModal(false); setTimeout(openRegisterModal, 300);">Sign up</a>
                     </div>
