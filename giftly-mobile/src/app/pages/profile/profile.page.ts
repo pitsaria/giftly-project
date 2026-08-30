@@ -1,12 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
+  IonRefresher,
+  IonRefresherContent,
   IonSegment,
   IonSegmentButton,
   IonLabel,
@@ -20,27 +19,35 @@ import {
 import { addIcons } from 'ionicons';
 import {
   personOutline,
+  personCircleOutline,
   locationOutline,
-  bagOutline,
   heartOutline,
   heart,
   trashOutline,
   logOutOutline,
+  giftOutline,
+  createOutline,
+  lockClosedOutline,
+  informationCircleOutline,
+  mailOutline,
+  chevronForwardOutline,
 } from 'ionicons/icons';
-import { Address, Order, Profile, WishlistData } from '../../core/models';
+import { Address, Box, Profile, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
 import { AuthService } from '../../core/auth.service';
 import { ProfileService } from '../../core/profile.service';
 import { AddressService, NewAddress } from '../../core/address.service';
-import { OrderService } from '../../core/order.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { CartService } from '../../core/cart.service';
-import { environment } from '../../../environments/environment';
+import { BoxService } from '../../core/box.service';
+import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
+import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
-type Tab = 'settings' | 'addresses' | 'orders' | 'wishlist';
+type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
 
 // Mirrors giftly_project/profile.php's sidebar-tab structure (Settings /
-// Addresses / Order History / Wishlist), condensed into one segmented page.
+// Addresses / Wishlist), condensed into one segmented page. Order history
+// moved out to its own Orders tab (see ../orders/orders.page.ts).
 // Fetched state lives in signals — guaranteed to trigger a re-render on
 // write, unlike plain fields mutated inside an async continuation.
 @Component({
@@ -51,10 +58,9 @@ type Tab = 'settings' | 'addresses' | 'orders' | 'wishlist';
     CommonModule,
     FormsModule,
     RouterLink,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
+    IonRefresher,
+    IonRefresherContent,
     IonSegment,
     IonSegmentButton,
     IonLabel,
@@ -62,20 +68,22 @@ type Tab = 'settings' | 'addresses' | 'orders' | 'wishlist';
     IonInput,
     IonButton,
     IonSpinner,
+    TopBarComponent,
+    ImgUrlPipe,
   ],
 })
 export class ProfilePage implements OnInit {
   auth = inject(AuthService);
   private profileSvc = inject(ProfileService);
   private addressSvc = inject(AddressService);
-  private orderSvc = inject(OrderService);
   private wishlistSvc = inject(WishlistService);
   private cart = inject(CartService);
+  private boxSvc = inject(BoxService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
 
-  readonly uploadsUrl = environment.uploadsUrl;
   readonly tab = signal<Tab>('settings');
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -86,8 +94,8 @@ export class ProfilePage implements OnInit {
 
   readonly profile = signal<Profile | null>(null);
   readonly addresses = signal<Address[]>([]);
-  readonly orders = signal<Order[]>([]);
   readonly wishlist = signal<WishlistData | null>(null);
+  readonly boxes = signal<Box[]>([]);
 
   showAddAddress = false;
   newAddress: NewAddress = { label: '', address: '', city: '', province: '', zip: '' };
@@ -98,18 +106,47 @@ export class ProfilePage implements OnInit {
   constructor() {
     addIcons({
       personOutline,
+      personCircleOutline,
       locationOutline,
-      bagOutline,
       heartOutline,
       heart,
       trashOutline,
       logOutOutline,
+      giftOutline,
+      createOutline,
+      lockClosedOutline,
+      informationCircleOutline,
+      mailOutline,
+      chevronForwardOutline,
     });
   }
 
   async ngOnInit(): Promise<void> {
+    this.applyTabQueryParam();
     if (this.auth.isLoggedIn()) {
-      await this.loadTab('settings', false);
+      await this.loadTab(this.tab(), false);
+    }
+  }
+
+  // Honour ?tab= (e.g. Build-a-Box navigates here with tab=boxes after saving).
+  private applyTabQueryParam(): void {
+    const requested = this.route.snapshot.queryParamMap.get('tab') as Tab | null;
+    if (requested === 'boxes' || requested === 'addresses' || requested === 'wishlist' || requested === 'settings') {
+      this.tab.set(requested);
+    }
+  }
+
+  // Ionic keeps this page's component instance alive when you switch tabs
+  // away and back (IonicRouteStrategy), so ngOnInit only ever runs once —
+  // without this, toggling a product's wishlist from Shop/Home and then
+  // returning to an already-open Wishlist tab kept showing the stale list
+  // from before, only fixed by a full app reload. Force-reloading the
+  // active tab on every re-entry (loadTab already guards overlapping calls
+  // with its loadToken) keeps it in sync with changes made elsewhere.
+  async ionViewWillEnter(): Promise<void> {
+    this.applyTabQueryParam();
+    if (this.auth.isLoggedIn()) {
+      await this.loadTab(this.tab(), true);
     }
   }
 
@@ -122,6 +159,13 @@ export class ProfilePage implements OnInit {
 
   async retryTab(): Promise<void> {
     await this.loadTab(this.tab(), true);
+  }
+
+  async handleRefresh(event: any): Promise<void> {
+    if (this.auth.isLoggedIn()) {
+      await this.loadTab(this.tab(), true);
+    }
+    event.target.complete();
   }
 
   private async loadTab(tab: Tab, forceReload: boolean): Promise<void> {
@@ -142,10 +186,16 @@ export class ProfilePage implements OnInit {
         this.profile.set(await this.profileSvc.getProfile());
       } else if (tab === 'addresses') {
         this.addresses.set(await this.addressSvc.getAll());
-      } else if (tab === 'orders') {
-        this.orders.set(await this.orderSvc.getOrders());
       } else if (tab === 'wishlist') {
         this.wishlist.set(await this.wishlistSvc.getWishlist());
+      } else if (tab === 'boxes') {
+        this.boxes.set(await this.boxSvc.listBoxes());
+      }
+      // The profile header (avatar/name/email) is shown regardless of which
+      // tab is active, so make sure it's loaded even when starting on a
+      // different tab.
+      if (!this.profile()) {
+        this.profile.set(await this.profileSvc.getProfile());
       }
       if (token !== this.loadToken) return;
     } catch (err) {
@@ -220,28 +270,6 @@ export class ProfilePage implements OnInit {
     await alert.present();
   }
 
-  async cancelOrder(order: Order): Promise<void> {
-    const alert = await this.alertCtrl.create({
-      header: 'Cancel this order?',
-      buttons: [
-        { text: 'No', role: 'cancel' },
-        {
-          text: 'Yes, cancel',
-          role: 'destructive',
-          handler: async () => {
-            try {
-              await this.orderSvc.cancelOrder(order.id);
-              this.orders.set(await this.orderSvc.getOrders());
-            } catch {
-              await this.toast('Could not cancel this order.');
-            }
-          },
-        },
-      ],
-    });
-    await alert.present();
-  }
-
   async toggleWishlist(productId: number): Promise<void> {
     try {
       await this.wishlistSvc.toggle(productId);
@@ -258,6 +286,37 @@ export class ProfilePage implements OnInit {
     } catch {
       await this.toast('Could not add to cart. Please try again.');
     }
+  }
+
+  editBox(id: number): void {
+    this.router.navigate(['/build-a-box'], { queryParams: { box_id: id } });
+  }
+
+  checkoutBox(id: number): void {
+    this.router.navigate(['/box-checkout'], { queryParams: { box_id: id } });
+  }
+
+  async deleteBox(id: number): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: 'Delete this box?',
+      message: 'This cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              await this.boxSvc.deleteBox(id);
+              this.boxes.set(await this.boxSvc.listBoxes());
+            } catch {
+              await this.toast('Could not delete this box. Please try again.');
+            }
+          },
+        },
+      ],
+    });
+    await alert.present();
   }
 
   async logout(): Promise<void> {

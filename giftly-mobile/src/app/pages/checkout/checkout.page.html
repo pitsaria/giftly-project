@@ -1,5 +1,8 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/cart" text=""></ion-back-button>
+    </ion-buttons>
     <ion-title>Checkout</ion-title>
   </ion-toolbar>
 </ion-header>
@@ -19,7 +22,7 @@
   <ng-container *ngIf="!loading() && !error()">
   <h2 class="section-title"><ion-icon name="person-outline"></ion-icon> Delivery Details</h2>
 
-  <ion-input label="Full Name" labelPlacement="stacked" fill="outline" [(ngModel)]="fullname" class="field"></ion-input>
+  <ion-input label="Full Name *" labelPlacement="stacked" fill="outline" [(ngModel)]="fullname" class="field"></ion-input>
 
   <ion-select
     *ngIf="addresses().length"
@@ -35,9 +38,15 @@
     </ion-select-option>
   </ion-select>
 
-  <ion-input label="Street Address" labelPlacement="stacked" fill="outline" [(ngModel)]="address" class="field"></ion-input>
-  <ion-input label="City" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
-  <ion-input label="Sender Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="senderPhone" class="field"></ion-input>
+  <ion-input label="Street Address *" labelPlacement="stacked" fill="outline" [(ngModel)]="address" class="field"></ion-input>
+  <ion-input label="City *" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
+
+  <app-ph-phone-input
+    label="Sender Phone *"
+    class="field"
+    [(digits)]="senderPhoneDigits"
+    [(touched)]="senderPhoneTouched"
+  ></app-ph-phone-input>
 
   <div class="toggle-row">
     <button [class.active]="deliveryType === 'me'" (click)="deliveryType = 'me'">For Me</button>
@@ -45,13 +54,18 @@
   </div>
 
   <ng-container *ngIf="deliveryType === 'recipient'">
-    <ion-input label="Recipient Name" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientName" class="field"></ion-input>
-    <ion-input label="Recipient Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientPhone" class="field"></ion-input>
+    <ion-input label="Recipient Name *" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientName" class="field"></ion-input>
+    <app-ph-phone-input
+      label="Recipient Phone *"
+      class="field"
+      [(digits)]="recipientPhoneDigits"
+      [(touched)]="recipientPhoneTouched"
+    ></app-ph-phone-input>
   </ng-container>
 
   <div class="field-row">
-    <ion-input type="date" label="Delivery Date" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
-    <ion-input type="time" label="Delivery Time" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
+    <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
+    <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
   </div>
 
   <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Message</h2>
@@ -65,6 +79,49 @@
     <button [class.active]="paymentMethod === 'card'" (click)="paymentMethod = 'card'">
       <ion-icon name="card-outline"></ion-icon> Card
     </button>
+  </div>
+
+  <div class="card-fields" *ngIf="paymentMethod === 'card'">
+    <ion-input label="Name on Card" labelPlacement="stacked" fill="outline" [(ngModel)]="cardHolder" class="field"></ion-input>
+    <ion-input
+      label="Card Number"
+      labelPlacement="stacked"
+      fill="outline"
+      inputmode="numeric"
+      maxlength="23"
+      placeholder="1234 5678 9012 3456"
+      [(ngModel)]="cardNumber"
+      (ionInput)="onCardNumberInput()"
+      class="field"
+    ></ion-input>
+    <div class="field-row">
+      <ion-input
+        label="Expiry (MM/YY)"
+        labelPlacement="stacked"
+        fill="outline"
+        inputmode="numeric"
+        maxlength="5"
+        placeholder="MM/YY"
+        [(ngModel)]="cardExpiry"
+        (ionInput)="onCardExpiryInput()"
+        class="field"
+      ></ion-input>
+      <ion-input
+        label="CVC"
+        labelPlacement="stacked"
+        fill="outline"
+        inputmode="numeric"
+        maxlength="4"
+        placeholder="123"
+        [(ngModel)]="cardCvc"
+        (ionInput)="onCardCvcInput()"
+        class="field"
+      ></ion-input>
+    </div>
+    <p class="card-note">
+      <ion-icon name="lock-closed-outline"></ion-icon> Demo checkout — only the last 4 digits are kept
+      with your order.
+    </p>
   </div>
 
   <div class="summary">

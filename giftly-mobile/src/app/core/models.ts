@@ -19,7 +19,13 @@ export interface Product {
   image: string;
   quantity: number;
   category_id: number;
+  // Attached by the products list endpoint (published-review aggregates).
+  avg_rating?: string;
+  review_count?: number;
+  product_type?: 'catalog' | 'occasion_box' | 'basket';
 }
+
+export type ProductType = 'catalog' | 'occasion_box' | 'basket';
 
 export interface Category {
   id: number;
@@ -88,6 +94,11 @@ export interface Order {
   cancel_status?: 'none' | 'requested' | 'approved' | 'rejected';
   cancel_reason?: string | null;
   cancel_admin_note?: string | null;
+  // Set once the customer confirms the order arrived — unlocks reviewing items.
+  received_at?: string | null;
+  // Card payments keep only the last 4 digits + cardholder name.
+  card_last4?: string | null;
+  card_holder?: string | null;
 }
 
 export interface OrderItem {
@@ -108,4 +119,79 @@ export interface Profile {
   profile_pic: string | null;
   order_count: number;
   address_count: number;
+}
+
+// === Build-a-Box ===
+
+export interface BoxSize {
+  id: number;
+  code: string;
+  name: string;
+  max_items: number;
+  price: number;
+  sort_order?: number;
+}
+
+export interface BoxCardStyle {
+  key: string;
+  label: string;
+  emoji: string;
+}
+
+export interface BoxProduct {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  quantity: number;
+  category_id: number;
+  rating: number;
+  rating_count: number;
+}
+
+export interface BoxLineItem {
+  product_id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+  stock: number;
+  unavailable: 'removed' | 'out_of_stock' | 'low_stock' | null;
+}
+
+export interface Box {
+  id: number;
+  box_size_id: number;
+  size_name: string;
+  size_code: string;
+  max_items: number;
+  box_price: number;
+  letter: string;
+  card_style: string;
+  status: 'saved' | 'in_cart' | 'ordered';
+  updated_at: string | null;
+  item_count: number;
+  subtotal: number;
+  total: number;
+  issues: string[];
+  items: BoxLineItem[];
+}
+
+// === Reviews ===
+
+export interface Review {
+  id: number;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+export interface ReviewData {
+  avg: number;
+  count: number;
+  reviews: Review[];
+  my_review: Review | null;
+  can_review: boolean;
 }

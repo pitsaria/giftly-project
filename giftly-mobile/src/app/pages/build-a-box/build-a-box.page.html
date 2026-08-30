@@ -1,0 +1,228 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/home"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ editBoxId ? 'Edit your box' : 'Build a Box' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Not logged in -->
+  <div class="logged-out" *ngIf="!auth.isLoggedIn()">
+    <ion-icon name="gift-outline"></ion-icon>
+    <h2>Log in to build a box</h2>
+    <p>Pick a box, fill it with hand-picked gifts, and add a little letter.</p>
+    <ion-button class="giftly-btn-primary" routerLink="/login">Login</ion-button>
+    <ion-button fill="outline" routerLink="/register">Sign Up</ion-button>
+  </div>
+
+  <ng-container *ngIf="auth.isLoggedIn()">
+    <div class="ion-text-center loading-spinner" *ngIf="loading()">
+      <ion-spinner name="crescent"></ion-spinner>
+    </div>
+
+    <div class="error-state" *ngIf="!loading() && error()">
+      <p>{{ error() }}</p>
+      <ion-button fill="outline" (click)="loadInit()">Try Again</ion-button>
+    </div>
+
+    <ng-container *ngIf="!loading() && !error()">
+      <div class="bab-intro">
+        <p>Pick a box, fill it with hand-picked gifts, and add a little letter. 💌</p>
+      </div>
+
+      <!-- STEP 1 — box size -->
+      <section class="step">
+        <h2 class="step-title"><span class="badge">1</span> Choose your box size</h2>
+
+        <div class="size-grid" *ngIf="!sizeCollapsed()">
+          <button
+            type="button"
+            class="size-card"
+            [class.selected]="selectedSize()?.id === s.id"
+            *ngFor="let s of sizes()"
+            (click)="chooseSize(s)"
+          >
+            <ion-icon name="gift-outline"></ion-icon>
+            <h3>{{ s.name }}</h3>
+            <span>Holds up to {{ s.max_items }} items</span>
+            <span class="price" *ngIf="s.price > 0">+ ₱{{ s.price | number: '1.2-2' }}</span>
+          </button>
+        </div>
+
+        <div class="chosen-bar" *ngIf="sizeCollapsed() && selectedSize() as size">
+          <ion-icon name="gift-outline"></ion-icon>
+          <span><b>{{ size.name }}</b> · holds up to {{ size.max_items }} items</span>
+          <ion-button fill="clear" size="small" (click)="changeSize()">Change</ion-button>
+        </div>
+      </section>
+
+      <!-- STEP 2 — items -->
+      <section class="step" [class.locked]="!selectedSize()">
+        <h2 class="step-title"><span class="badge">2</span> Choose items for your box</h2>
+
+        <ion-searchbar
+          [(ngModel)]="search"
+          (ionInput)="onSearch()"
+          debounce="400"
+          placeholder="Search gifts..."
+        ></ion-searchbar>
+
+        <div class="category-row">
+          <ion-chip
+            [outline]="selectedCategory !== null"
+            [color]="selectedCategory === null ? 'primary' : undefined"
+            (click)="pickCategory(null)"
+          >
+            <ion-label>All Items</ion-label>
+          </ion-chip>
+          <ion-chip
+            *ngFor="let c of categories()"
+            [outline]="selectedCategory !== c.id"
+            [color]="selectedCategory === c.id ? 'primary' : undefined"
+            (click)="pickCategory(c.id)"
+          >
+            <ion-label>{{ c.name }}</ion-label>
+          </ion-chip>
+        </div>
+
+        <div class="prod-grid" *ngIf="products().length">
+          <div class="prod-card" *ngFor="let p of products()">
+            <img [src]="p.image | imgUrl" [alt]="p.name" />
+            <div class="p-name">{{ p.name }}</div>
+            <div class="p-rating" *ngIf="p.rating_count">
+              <ion-icon name="star" *ngFor="let s of stars(p.rating)"></ion-icon>
+              <span>({{ p.rating_count }})</span>
+            </div>
+            <div class="p-price">₱{{ p.price | number: '1.2-2' }}</div>
+
+            <div class="p-stepper" *ngIf="qtyInBox(p.id) > 0; else addBtn">
+              <button (click)="dec(p.id)"><ion-icon name="remove-outline"></ion-icon></button>
+              <span>{{ qtyInBox(p.id) }} in box</span>
+              <button [disabled]="boxFull() || qtyInBox(p.id) >= p.quantity" (click)="inc(p.id)">
+                <ion-icon name="add-outline"></ion-icon>
+              </button>
+            </div>
+            <ng-template #addBtn>
+              <ion-button
+                expand="block"
+                size="small"
+                [disabled]="boxFull() || p.quantity <= 0"
+                (click)="add(p)"
+              >
+                {{ p.quantity <= 0 ? 'Out of stock' : boxFull() ? 'Box full' : 'Add to box' }}
+              </ion-button>
+            </ng-template>
+          </div>
+        </div>
+
+        <div class="ion-text-center" *ngIf="productLoading()">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+
+        <div class="empty-msg" *ngIf="!productLoading() && selectedSize() && !products().length">
+          No gifts match this box &amp; filter.
+        </div>
+        <div class="empty-msg" *ngIf="!selectedSize()">Choose a box size to see gifts that fit.</div>
+
+        <ion-infinite-scroll
+          (ionInfinite)="loadMore($event)"
+          [disabled]="productPage >= productTotalPages"
+        >
+          <ion-infinite-scroll-content loadingSpinner="crescent"></ion-infinite-scroll-content>
+        </ion-infinite-scroll>
+      </section>
+    </ng-container>
+  </ng-container>
+</ion-content>
+
+<!-- Sticky "Your Box" summary -->
+<ion-footer class="box-summary" *ngIf="auth.isLoggedIn() && !loading() && !error() && selectedSize()">
+  <div class="bs-head">
+    <div>
+      <strong>{{ itemCount() }}</strong
+      ><span>/ {{ maxItems() }} items</span>
+    </div>
+    <div class="bs-total">₱{{ grandTotal() | number: '1.2-2' }}</div>
+  </div>
+  <div class="bs-bar"><i [style.width.%]="progressPct()"></i></div>
+
+  <div class="bs-items" *ngIf="items().length">
+    <div class="bs-item" *ngFor="let i of items()">
+      <img [src]="i.image | imgUrl" [alt]="i.name" />
+      <span class="bs-name">{{ i.name }}</span>
+      <div class="bs-stepper">
+        <button (click)="dec(i.product_id)"><ion-icon name="remove-outline"></ion-icon></button>
+        <span>{{ i.qty }}</span>
+        <button [disabled]="boxFull() || i.qty >= i.stock" (click)="inc(i.product_id)">
+          <ion-icon name="add-outline"></ion-icon>
+        </button>
+      </div>
+      <button class="bs-rm" (click)="remove(i.product_id)"><ion-icon name="trash-outline"></ion-icon></button>
+    </div>
+  </div>
+
+  <button type="button" class="letter-trigger" (click)="openLetter()">
+    <ion-icon [name]="letter() || cardStyle() !== 'simple' ? 'checkmark-circle' : 'create-outline'"></ion-icon>
+    <span *ngIf="letter() || cardStyle() !== 'simple'">
+      {{ cardStyleEmoji() }} {{ cardStyleLabel() }} card{{ letter() ? ' — “' + (letter() | slice: 0:40) + '”' : '' }}
+    </span>
+    <span *ngIf="!letter() && cardStyle() === 'simple'">Step 3 · Write a letter</span>
+  </button>
+
+  <div class="bs-actions">
+    <ion-button fill="outline" size="small" [disabled]="saving()" (click)="submit('saved')">
+      <ion-icon slot="start" name="bookmark-outline"></ion-icon> Save
+    </ion-button>
+    <ion-button fill="outline" size="small" [disabled]="saving()" (click)="submit('in_cart')">
+      <ion-icon slot="start" name="cart-outline"></ion-icon> Add to Cart
+    </ion-button>
+    <ion-button size="small" class="giftly-btn-primary" [disabled]="saving()" (click)="submit('checkout')">
+      <ion-icon slot="start" name="lock-closed-outline"></ion-icon> Checkout
+    </ion-button>
+  </div>
+</ion-footer>
+
+<!-- Letter modal -->
+<ion-modal [isOpen]="letterOpen()" (didDismiss)="letterOpen.set(false)">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Your letter</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="letterOpen.set(false)"><ion-icon name="close-outline"></ion-icon></ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <p class="lm-label">Card style</p>
+      <div class="lm-styles">
+        <button
+          type="button"
+          class="lm-style"
+          [class.active]="draftCardStyle === s.key"
+          *ngFor="let s of cardStyles()"
+          (click)="draftCardStyle = s.key"
+        >
+          <span class="emo">{{ s.emoji }}</span>
+          <span class="lbl">{{ s.label }}</span>
+        </button>
+      </div>
+
+      <p class="lm-label">Message (optional)</p>
+      <ion-textarea
+        [(ngModel)]="draftLetter"
+        [autoGrow]="true"
+        [maxlength]="1000"
+        rows="5"
+        fill="outline"
+        placeholder="Dear ..."
+      ></ion-textarea>
+
+      <ion-button expand="block" class="giftly-btn-primary lm-save" (click)="saveLetter()">
+        Save letter
+      </ion-button>
+    </ion-content>
+  </ng-template>
+</ion-modal>

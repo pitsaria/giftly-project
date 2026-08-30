@@ -32,7 +32,7 @@ export class OrderConfirmationPage implements OnInit {
   }
 
   viewOrders(): void {
-    this.router.navigateByUrl('/tabs/profile?tab=orders');
+    this.router.navigateByUrl('/tabs/orders');
   }
 
   continueShopping(): void {

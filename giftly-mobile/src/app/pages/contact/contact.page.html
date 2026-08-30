@@ -1,0 +1,84 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Contact</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="ct-hero">
+    <h1>We'd <span>love</span> to hear from you</h1>
+    <p>Questions about an order, a custom box, or a bulk request? Send us a note — a real person reads every one.</p>
+  </div>
+
+  <div class="ct-info">
+    <a class="ct-row" href="mailto:giftly@gmail.com">
+      <ion-icon name="mail-outline"></ion-icon>
+      <div><span>Email</span><strong>giftly@gmail.com</strong></div>
+    </a>
+    <a class="ct-row" href="tel:09123456789">
+      <ion-icon name="call-outline"></ion-icon>
+      <div><span>Phone</span><strong>0912 345 6789</strong></div>
+    </a>
+    <div class="ct-row">
+      <ion-icon name="time-outline"></ion-icon>
+      <div><span>Hours</span><strong>Mon – Sat, 9:00 AM – 6:00 PM</strong></div>
+    </div>
+    <div class="ct-row">
+      <ion-icon name="location-outline"></ion-icon>
+      <div><span>Studio</span><strong>Giftly Studio, Metro Manila</strong></div>
+    </div>
+  </div>
+
+  <div class="ct-success" *ngIf="sent(); else form">
+    <ion-icon name="checkmark-circle"></ion-icon>
+    <h2>Message sent! 💌</h2>
+    <p>Thanks for reaching out. We'll get back to you within one business day at the email you gave us.</p>
+    <ion-button fill="outline" routerLink="/tabs/shop">Continue shopping</ion-button>
+  </div>
+
+  <ng-template #form>
+    <h2 class="ct-form-title">Send a message</h2>
+    <ion-input label="Your name" labelPlacement="stacked" fill="outline" [(ngModel)]="name" class="field"></ion-input>
+    <ion-input type="email" label="Email" labelPlacement="stacked" fill="outline" [(ngModel)]="email" class="field"></ion-input>
+    <ion-input
+      label="Subject (optional)"
+      labelPlacement="stacked"
+      fill="outline"
+      [(ngModel)]="subject"
+      placeholder="Order help, custom box, partnership…"
+      class="field"
+    ></ion-input>
+    <ion-textarea
+      label="Message"
+      labelPlacement="stacked"
+      fill="outline"
+      [(ngModel)]="message"
+      [autoGrow]="true"
+      rows="4"
+      placeholder="How can we help?"
+      class="field"
+    ></ion-textarea>
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      [disabled]="submitting()"
+      (click)="send()"
+    >
+      <ion-icon slot="start" name="paper-plane-outline"></ion-icon>
+      {{ submitting() ? 'Sending…' : 'Send message' }}
+    </ion-button>
+  </ng-template>
+
+  <h2 class="ct-faq-title">Quick answers</h2>
+  <ion-accordion-group>
+    <ion-accordion *ngFor="let f of faqs; let i = index" [value]="'faq' + i">
+      <ion-item slot="header">
+        <ion-label class="ion-text-wrap">{{ f.q }}</ion-label>
+      </ion-item>
+      <div class="faq-body" slot="content">{{ f.a }}</div>
+    </ion-accordion>
+  </ion-accordion-group>
+</ion-content>

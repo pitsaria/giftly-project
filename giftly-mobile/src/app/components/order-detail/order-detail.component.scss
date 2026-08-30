@@ -1,0 +1,140 @@
+.loading-state {
+  padding: 60px 20px;
+
+  ion-spinner {
+    width: 36px;
+    height: 36px;
+    color: var(--ion-color-primary);
+  }
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: #fff0f5;
+  color: var(--ion-color-primary);
+  margin-bottom: 16px;
+
+  &.status-cancelled {
+    background: #fdeded;
+    color: #d32f2f;
+  }
+
+  &.status-delivered {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+  margin: 16px 0 10px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+
+  img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    background: #fafafa;
+    border-radius: 10px;
+  }
+
+  .item-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #222;
+  }
+
+  .item-meta {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
+}
+
+.info-box {
+  background: #fafafa;
+  border-radius: 16px;
+  padding: 14px 16px;
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    padding: 6px 0;
+    color: #555;
+
+    strong {
+      color: #222;
+      text-align: right;
+    }
+
+    &.total {
+      border-top: 1px solid #eee;
+      margin-top: 4px;
+      padding-top: 10px;
+      font-size: 15px;
+
+      strong {
+        color: var(--ion-color-primary);
+      }
+    }
+  }
+}
+
+.gift-message {
+  margin-top: 16px;
+
+  .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 4px;
+  }
+
+  p {
+    font-size: 13px;
+    color: #666;
+    background: #fff8f9;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin: 0;
+  }
+}
+
+ion-button {
+  margin-top: 24px;
+  --border-radius: var(--giftly-pill-radius);
+}
+
+.cancel-note {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+
+  &.pending {
+    background: #fff8e1;
+    color: #a5710d;
+  }
+
+  &.declined {
+    background: #fdeded;
+    color: #d32f2f;
+  }
+}

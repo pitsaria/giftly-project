@@ -1,0 +1,42 @@
+:host {
+  // Custom elements default to display:inline, which makes a host-level
+  // margin-bottom (e.g. the "field" class checkout/register apply) a no-op.
+  display: block;
+}
+
+.ph-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.ph-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+
+  &.invalid {
+    border-color: var(--ion-color-danger);
+  }
+
+  .ph-prefix {
+    padding: 0 4px 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #444;
+  }
+
+  .ph-input {
+    flex: 1;
+    --padding-start: 4px;
+  }
+}
+
+.ph-error {
+  font-size: 12px;
+  color: var(--ion-color-danger);
+  margin: 4px 2px 12px;
+}

@@ -1,0 +1,46 @@
+.brand-link {
+  display: flex;
+  align-items: center;
+  padding-inline-start: 8px;
+}
+
+.brand-logo {
+  height: 26px;
+}
+
+.icon-btn {
+  --color: #444;
+  position: relative;
+
+  ion-icon {
+    font-size: 22px;
+  }
+}
+
+.login-pill {
+  --background: var(--giftly-gradient);
+  --color: #fff;
+  --border-radius: var(--giftly-pill-radius);
+  --box-shadow: 0 4px 12px rgba(254, 165, 182, 0.35);
+  --padding-start: 18px;
+  --padding-end: 18px;
+  font-weight: 600;
+  font-size: 13px;
+  height: 32px;
+  margin-inline-end: 2px;
+}
+
+.cart-btn ion-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 9px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --background: var(--ion-color-primary);
+}

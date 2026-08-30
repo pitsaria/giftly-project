@@ -1,0 +1,95 @@
+<ng-template #body>
+  <div class="rv-wrap" [class.rv-modal]="modal">
+    <div class="ion-text-center" *ngIf="loading()">
+      <ion-spinner name="crescent"></ion-spinner>
+    </div>
+
+    <ng-container *ngIf="!loading() && data() as d">
+      <div class="rv-head">
+        <h4>Reviews</h4>
+        <ng-container *ngIf="d.count > 0; else noneYet">
+          <span class="rv-avg">{{ d.avg | number: '1.1-1' }}</span>
+          <span class="rv-stars">
+            <ion-icon *ngFor="let s of fullStars" [name]="starIcon(s, d.avg)"></ion-icon>
+          </span>
+          <span class="rv-count">{{ d.count }} review{{ d.count === 1 ? '' : 's' }}</span>
+        </ng-container>
+        <ng-template #noneYet><span class="rv-none">No reviews yet.</span></ng-template>
+      </div>
+
+      <!-- Already reviewed -->
+      <div class="rv-mine" *ngIf="d.my_review as mine">
+        <span class="rv-mine-label"><ion-icon name="star"></ion-icon> Your review</span>
+        <span class="rv-stars">
+          <ion-icon *ngFor="let s of fullStars" [name]="starIcon(s, mine.rating)"></ion-icon>
+        </span>
+        <p *ngIf="mine.comment">“{{ mine.comment }}”</p>
+        <small>Reviews can't be edited.</small>
+      </div>
+
+      <!-- Write a review -->
+      <div class="rv-form" *ngIf="!d.my_review && d.can_review">
+        <h5>Write a review</h5>
+        <div class="rv-pick">
+          <ion-icon
+            *ngFor="let s of fullStars"
+            [name]="myRating >= s ? 'star' : 'star-outline'"
+            (click)="myRating = s"
+          ></ion-icon>
+        </div>
+        <ion-textarea
+          [(ngModel)]="myComment"
+          [autoGrow]="true"
+          [maxlength]="1500"
+          rows="3"
+          fill="outline"
+          placeholder="Share an honest thought about this item…"
+        ></ion-textarea>
+        <ion-button
+          expand="block"
+          class="giftly-btn-primary"
+          [disabled]="submitting()"
+          (click)="submit()"
+        >
+          {{ submitting() ? 'Posting…' : 'Post review' }}
+        </ion-button>
+      </div>
+
+      <div class="rv-locked" *ngIf="!d.my_review && !d.can_review && auth.isLoggedIn()">
+        You can review this once you've received an order that includes it.
+      </div>
+
+      <!-- Review list -->
+      <div class="rv-list" *ngIf="d.reviews.length">
+        <div class="rv-item" *ngFor="let r of d.reviews">
+          <div class="rv-item-top">
+            <span class="rv-who">{{ r.user_name }}</span>
+            <span class="rv-when">{{ r.created_at | date: 'MMM d, y' }}</span>
+          </div>
+          <span class="rv-stars">
+            <ion-icon *ngFor="let s of fullStars" [name]="starIcon(s, r.rating)"></ion-icon>
+          </span>
+          <p *ngIf="r.comment">{{ r.comment }}</p>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</ng-template>
+
+<ng-container *ngIf="!modal">
+  <ng-container *ngTemplateOutlet="body"></ng-container>
+</ng-container>
+
+<ng-container *ngIf="modal">
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Reviews</ion-title>
+      <ion-buttons slot="end">
+        <ion-button (click)="close()"><ion-icon name="close-outline"></ion-icon></ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+  <ion-content class="ion-padding">
+    <ng-container *ngTemplateOutlet="body"></ng-container>
+  </ion-content>
+</ng-container>

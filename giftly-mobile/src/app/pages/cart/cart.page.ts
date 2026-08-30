@@ -5,12 +5,16 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonButtons,
+  IonBackButton,
   IonContent,
+  IonRefresher,
+  IonRefresherContent,
   IonFooter,
   IonCheckbox,
   IonIcon,
   IonButton,
-  IonSpinner,
+  IonSkeletonText,
   ToastController,
   AlertController,
 } from '@ionic/angular';
@@ -19,7 +23,7 @@ import { removeOutline, addOutline, trashOutline, bagHandleOutline } from 'ionic
 import { CartItem } from '../../core/models';
 import { CartService } from '../../core/cart.service';
 import { describeError } from '../../core/http-error';
-import { environment } from '../../../environments/environment';
+import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // Mirrors giftly_project/cart.php.
 // State is held in signals rather than plain fields: signal writes always
@@ -34,12 +38,17 @@ import { environment } from '../../../environments/environment';
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
+    IonBackButton,
     IonContent,
+    IonRefresher,
+    IonRefresherContent,
     IonFooter,
     IonCheckbox,
     IonIcon,
     IonButton,
-    IonSpinner,
+    IonSkeletonText,
+    ImgUrlPipe,
   ],
 })
 export class CartPage implements OnInit {
@@ -48,7 +57,6 @@ export class CartPage implements OnInit {
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
 
-  readonly uploadsUrl = environment.uploadsUrl;
   readonly items = signal<CartItem[]>([]);
   readonly selected = signal<Set<number>>(new Set());
   readonly loading = signal(true);
@@ -56,6 +64,7 @@ export class CartPage implements OnInit {
   readonly slowLoad = signal(false);
   private slowLoadTimer: ReturnType<typeof setTimeout> | undefined;
   private loadToken = 0;
+  readonly skeletonRows = Array.from({ length: 3 });
 
   constructor() {
     addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline });
@@ -101,6 +110,11 @@ export class CartPage implements OnInit {
         this.loading.set(false);
       }
     }
+  }
+
+  async handleRefresh(event: any): Promise<void> {
+    await this.refresh();
+    event.target.complete();
   }
 
   toggleSelect(cartId: number): void {

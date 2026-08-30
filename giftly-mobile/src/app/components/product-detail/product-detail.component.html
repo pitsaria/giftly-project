@@ -1,17 +1,9 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Product Details</ion-title>
-    <ion-buttons slot="end">
-      <ion-button (click)="dismiss()">
-        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
-
 <ion-content class="ion-padding">
   <div class="product-image-wrap">
-    <img [src]="uploadsUrl + '/' + product.image" [alt]="product.name" class="product-image" />
+    <button class="close-btn" (click)="dismiss()" aria-label="Close">
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+    <img [src]="product.image | imgUrl" [alt]="product.name" class="product-image" />
     <button class="heart-btn" [class.active]="isWishlisted()" (click)="toggleWishlist()">
       <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
     </button>
@@ -19,6 +11,10 @@
   </div>
 
   <h1>{{ product.name }}</h1>
+  <div class="rating-line" *ngIf="product.review_count">
+    <ion-icon name="star" *ngFor="let s of ratingStars()"></ion-icon>
+    <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+  </div>
   <div class="price">₱{{ product.price }}</div>
   <p class="description">{{ product.description }}</p>
 
@@ -39,4 +35,6 @@
   >
     {{ inStock() ? 'Add to Cart' : 'Out of Stock' }}
   </ion-button>
+
+  <app-product-reviews [productId]="product.id"></app-product-reviews>
 </ion-content>

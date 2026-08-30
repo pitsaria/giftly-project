@@ -1,14 +1,29 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/home" text=""></ion-back-button>
+    </ion-buttons>
     <ion-title>My Cart</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <div class="ion-text-center loading-state" *ngIf="loading()">
-    <ion-spinner name="crescent"></ion-spinner>
-    <p *ngIf="!slowLoad()">Loading your cart...</p>
-    <p *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="cart-list" *ngIf="loading()">
+    <div class="select-all-row skeleton">
+      <ion-skeleton-text [animated]="true" style="width: 100px"></ion-skeleton-text>
+    </div>
+    <div class="cart-item skeleton" *ngFor="let i of skeletonRows">
+      <ion-skeleton-text [animated]="true" class="skeleton-thumb"></ion-skeleton-text>
+      <div class="item-info">
+        <ion-skeleton-text [animated]="true" style="width: 60%"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 30%"></ion-skeleton-text>
+      </div>
+    </div>
+    <p class="slow-load-msg" *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
   </div>
 
   <div class="empty-state" *ngIf="!loading() && error()">
@@ -30,7 +45,7 @@
 
     <div class="cart-item" *ngFor="let item of items()">
       <ion-checkbox [checked]="selected().has(item.cart_id)" (ionChange)="toggleSelect(item.cart_id)"></ion-checkbox>
-      <img [src]="uploadsUrl + '/' + item.image" [alt]="item.name" />
+      <img [src]="item.image | imgUrl" [alt]="item.name" />
       <div class="item-info">
         <div class="item-name">{{ item.name }}</div>
         <div class="item-price">₱{{ item.price }}</div>

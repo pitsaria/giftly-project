@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { TabsPage } from './tabs.page';
-import { authGuard } from '../core/auth.guard';
 
 export const routes: Routes = [
   {
@@ -16,9 +15,10 @@ export const routes: Routes = [
         loadComponent: () => import('../pages/shop/shop.page').then((m) => m.ShopPage),
       },
       {
-        path: 'cart',
-        loadComponent: () => import('../pages/cart/cart.page').then((m) => m.CartPage),
-        canActivate: [authGuard],
+        // No authGuard here — like Profile, the tab is always reachable and
+        // shows its own "please log in" state, rather than bouncing to /login.
+        path: 'orders',
+        loadComponent: () => import('../pages/orders/orders.page').then((m) => m.OrdersPage),
       },
       {
         path: 'profile',

@@ -1,5 +1,8 @@
 <ion-header>
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/home" text=""></ion-back-button>
+    </ion-buttons>
     <ion-title>Log In</ion-title>
   </ion-toolbar>
 </ion-header>
@@ -26,10 +29,14 @@
     fill="outline"
     [(ngModel)]="password"
     class="field"
-  ></ion-input>
+  >
+    <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+  </ion-input>
 
-  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting" (click)="login()">
-    {{ submitting ? 'Logging in...' : 'Login' }}
+  <p class="forgot-link"><a routerLink="/forgot-password">Forgot password?</a></p>
+
+  <ion-button expand="block" class="giftly-btn-primary" [disabled]="submitting()" (click)="login()">
+    {{ submitting() ? 'Logging in...' : 'Login' }}
   </ion-button>
 
   <p class="switch-link">

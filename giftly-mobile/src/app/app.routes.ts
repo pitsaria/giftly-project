@@ -15,6 +15,20 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/register/register.page').then((m) => m.RegisterPage),
   },
   {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./pages/forgot-password/forgot-password.page').then((m) => m.ForgotPasswordPage),
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./pages/reset-password/reset-password.page').then((m) => m.ResetPasswordPage),
+  },
+  {
+    path: 'cart',
+    loadComponent: () => import('./pages/cart/cart.page').then((m) => m.CartPage),
+    canActivate: [authGuard],
+  },
+  {
     path: 'checkout',
     loadComponent: () => import('./pages/checkout/checkout.page').then((m) => m.CheckoutPage),
     canActivate: [authGuard],
@@ -24,5 +38,22 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/order-confirmation/order-confirmation.page').then((m) => m.OrderConfirmationPage),
     canActivate: [authGuard],
+  },
+  {
+    path: 'build-a-box',
+    loadComponent: () => import('./pages/build-a-box/build-a-box.page').then((m) => m.BuildABoxPage),
+  },
+  {
+    path: 'box-checkout',
+    loadComponent: () => import('./pages/box-checkout/box-checkout.page').then((m) => m.BoxCheckoutPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'about',
+    loadComponent: () => import('./pages/about/about.page').then((m) => m.AboutPage),
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('./pages/contact/contact.page').then((m) => m.ContactPage),
   },
 ];

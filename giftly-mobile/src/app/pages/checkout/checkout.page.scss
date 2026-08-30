@@ -80,6 +80,23 @@
   }
 }
 
+.card-fields {
+  border: 1.5px dashed var(--ion-color-secondary);
+  border-radius: 14px;
+  padding: 14px 14px 4px;
+  background: #fff8fa;
+  margin-bottom: 16px;
+
+  .card-note {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #999;
+    margin: 4px 0 10px;
+  }
+}
+
 .summary {
   background: #fafafa;
   border-radius: 16px;

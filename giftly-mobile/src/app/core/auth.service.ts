@@ -62,6 +62,20 @@ export class AuthService {
     );
   }
 
+  // Returns a reset token the caller carries straight into resetPassword() —
+  // there's no outbound email configured on the backend (mirrors the
+  // website's own forgot_password_ajax.php, which just prints the link
+  // instead of emailing it), so the app hands the token to the next screen
+  // itself rather than pretending an email was sent.
+  async forgotPassword(email: string): Promise<string> {
+    const res = await firstValueFrom(this.api.post<{ token: string }>('auth/forgot-password', { email }));
+    return res.data.token;
+  }
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await firstValueFrom(this.api.post('auth/reset-password', { token, password }));
+  }
+
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.api.post('auth/logout', {}));

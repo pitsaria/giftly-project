@@ -1,0 +1,15 @@
+<label class="ph-label" *ngIf="label">{{ label }}</label>
+<div class="ph-field" [class.invalid]="touched && !valid">
+  <span class="ph-prefix">+63</span>
+  <ion-input
+    type="tel"
+    inputmode="numeric"
+    [placeholder]="placeholder"
+    maxlength="10"
+    [value]="digits"
+    (ionInput)="onInput($event.detail.value)"
+    (ionBlur)="onBlur()"
+    class="ph-input"
+  ></ion-input>
+</div>
+<div class="ph-error" *ngIf="touched && !valid">Enter exactly 10 digits after +63 (e.g. {{ placeholder }}).</div>

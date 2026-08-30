@@ -1,0 +1,80 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Order #{{ order.id }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="ion-text-center loading-state" *ngIf="loading()">
+    <ion-spinner name="crescent"></ion-spinner>
+  </div>
+
+  <ng-container *ngIf="!loading() && detail() as d">
+    <div class="status-badge" [class]="'status-' + d.status">{{ d.status }}</div>
+
+    <h3 class="section-title">Items</h3>
+    <div class="item-row" *ngFor="let item of d.items">
+      <img [src]="item.image | imgUrl" [alt]="item.name" />
+      <div class="item-info">
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-meta">Qty {{ item.quantity }} · ₱{{ item.price }}</div>
+      </div>
+      <ion-button
+        *ngIf="d.received_at"
+        size="small"
+        fill="clear"
+        (click)="openReview(item)"
+      >
+        <ion-icon slot="start" name="star-outline"></ion-icon> Review
+      </ion-button>
+    </div>
+
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      *ngIf="canConfirmReceived()"
+      [disabled]="confirming()"
+      (click)="confirmReceived()"
+    >
+      {{ confirming() ? 'Confirming...' : 'Confirm order received' }}
+    </ion-button>
+
+    <h3 class="section-title">Delivery</h3>
+    <div class="info-box">
+      <div class="row"><span>Address</span><strong>{{ d.address }}, {{ d.city }}</strong></div>
+      <div class="row" *ngIf="d.recipient_name"><span>Recipient</span><strong>{{ d.recipient_name }}</strong></div>
+      <div class="row"><span>Delivery Date</span><strong>{{ d.delivery_date | date: 'mediumDate' }}</strong></div>
+      <div class="row"><span>Delivery Time</span><strong>{{ d.delivery_time }}</strong></div>
+      <div class="row"><span>Payment</span><strong>{{ d.payment_method === 'cod' ? 'Cash on Delivery' : 'Card' }}</strong></div>
+      <div class="row total"><span>Total</span><strong>₱{{ d.total_amount }}</strong></div>
+    </div>
+
+    <div class="gift-message" *ngIf="d.gift_message">
+      <div class="label">Gift Message</div>
+      <p>{{ d.gift_message }}</p>
+    </div>
+
+    <div class="cancel-note pending" *ngIf="d.cancel_status === 'requested'">
+      Cancellation requested — waiting for an admin to review it.
+    </div>
+    <div class="cancel-note declined" *ngIf="d.cancel_status === 'rejected'">
+      Your cancellation request was declined.<span *ngIf="d.cancel_admin_note"> {{ d.cancel_admin_note }}</span>
+    </div>
+
+    <ion-button
+      expand="block"
+      fill="outline"
+      color="danger"
+      *ngIf="d.status === 'pending' && (d.cancel_status === 'none' || d.cancel_status === 'rejected' || !d.cancel_status)"
+      [disabled]="cancelling()"
+      (click)="cancelOrder()"
+    >
+      {{ cancelling() ? 'Sending...' : 'Request cancellation' }}
+    </ion-button>
+  </ng-container>
+</ion-content>

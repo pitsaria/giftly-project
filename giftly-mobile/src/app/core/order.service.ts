@@ -28,6 +28,11 @@ export interface CreateOrderPayload {
   sender_phone?: string;
   recipient_name?: string;
   recipient_phone?: string;
+  // Card payment only — validated server-side, only last 4 digits are stored.
+  card_number?: string;
+  card_holder?: string;
+  card_expiry?: string;
+  card_cvc?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,5 +61,10 @@ export class OrderService {
   /** Submit a cancellation request (an admin approves it before the order is cancelled). */
   async cancelOrder(id: number, reason = ''): Promise<void> {
     await firstValueFrom(this.api.put('orders/cancel', { reason }, { id }));
+  }
+
+  /** Confirm a delivered order arrived — unlocks reviewing its items. */
+  async confirmReceived(id: number): Promise<void> {
+    await firstValueFrom(this.api.put('orders/received', {}, { id }));
   }
 }

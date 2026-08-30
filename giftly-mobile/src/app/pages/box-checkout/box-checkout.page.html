@@ -1,0 +1,161 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ box() ? 'Checkout — ' + box()!.size_name : 'Checkout' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="ion-text-center loading-state" *ngIf="loading()">
+    <ion-spinner name="crescent"></ion-spinner>
+  </div>
+
+  <div class="error-state" *ngIf="!loading() && error()">
+    <p>{{ error() }}</p>
+    <ion-button fill="outline" (click)="load()">Try Again</ion-button>
+  </div>
+
+  <ng-container *ngIf="!loading() && !error() && box() as b">
+    <div class="issues" *ngIf="b.issues.length">
+      <p *ngFor="let issue of b.issues">{{ issue }}</p>
+      <ion-button size="small" fill="outline" [routerLink]="['/build-a-box']" [queryParams]="{ box_id: b.id }">
+        <ion-icon slot="start" name="create-outline"></ion-icon> Edit box
+      </ion-button>
+    </div>
+
+    <h2 class="section-title"><ion-icon name="person-outline"></ion-icon> Delivery Details</h2>
+
+    <ion-input label="Full Name *" labelPlacement="stacked" fill="outline" [(ngModel)]="fullname" class="field"></ion-input>
+
+    <ion-select
+      *ngIf="addresses().length"
+      label="Saved Address"
+      labelPlacement="stacked"
+      fill="outline"
+      [(ngModel)]="addressId"
+      (ionChange)="selectAddress($event.detail.value)"
+      class="field"
+    >
+      <ion-select-option *ngFor="let a of addresses()" [value]="a.id">
+        {{ a.label }} — {{ a.address }}, {{ a.city }}
+      </ion-select-option>
+    </ion-select>
+
+    <ion-input label="Street Address *" labelPlacement="stacked" fill="outline" [(ngModel)]="address" class="field"></ion-input>
+    <ion-input label="City / Province *" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
+
+    <app-ph-phone-input
+      label="Sender Phone *"
+      class="field"
+      [(digits)]="senderPhoneDigits"
+      [(touched)]="senderPhoneTouched"
+    ></app-ph-phone-input>
+
+    <div class="toggle-row">
+      <button [class.active]="deliveryType === 'me'" (click)="deliveryType = 'me'">For Me</button>
+      <button [class.active]="deliveryType === 'recipient'" (click)="deliveryType = 'recipient'">For Someone Else</button>
+    </div>
+
+    <ng-container *ngIf="deliveryType === 'recipient'">
+      <ion-input label="Recipient Name *" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientName" class="field"></ion-input>
+      <app-ph-phone-input
+        label="Recipient Phone *"
+        class="field"
+        [(digits)]="recipientPhoneDigits"
+        [(touched)]="recipientPhoneTouched"
+      ></app-ph-phone-input>
+    </ng-container>
+
+    <div class="field-row">
+      <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
+      <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
+    </div>
+
+    <h2 class="section-title"><ion-icon name="card-outline"></ion-icon> Payment Method</h2>
+    <div class="payment-row">
+      <button [class.active]="paymentMethod === 'cod'" (click)="paymentMethod = 'cod'">
+        <ion-icon name="cash-outline"></ion-icon> Cash on Delivery
+      </button>
+      <button [class.active]="paymentMethod === 'card'" (click)="paymentMethod = 'card'">
+        <ion-icon name="card-outline"></ion-icon> Card
+      </button>
+    </div>
+
+    <div class="card-fields" *ngIf="paymentMethod === 'card'">
+      <ion-input label="Name on Card" labelPlacement="stacked" fill="outline" [(ngModel)]="cardHolder" class="field"></ion-input>
+      <ion-input
+        label="Card Number"
+        labelPlacement="stacked"
+        fill="outline"
+        inputmode="numeric"
+        maxlength="23"
+        placeholder="1234 5678 9012 3456"
+        [(ngModel)]="cardNumber"
+        (ionInput)="onCardNumberInput()"
+        class="field"
+      ></ion-input>
+      <div class="field-row">
+        <ion-input
+          label="Expiry (MM/YY)"
+          labelPlacement="stacked"
+          fill="outline"
+          inputmode="numeric"
+          maxlength="5"
+          placeholder="MM/YY"
+          [(ngModel)]="cardExpiry"
+          (ionInput)="onCardExpiryInput()"
+          class="field"
+        ></ion-input>
+        <ion-input
+          label="CVC"
+          labelPlacement="stacked"
+          fill="outline"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="123"
+          [(ngModel)]="cardCvc"
+          (ionInput)="onCardCvcInput()"
+          class="field"
+        ></ion-input>
+      </div>
+      <p class="card-note">
+        <ion-icon name="lock-closed-outline"></ion-icon> Demo checkout — only the last 4 digits are kept.
+      </p>
+    </div>
+
+    <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Your Box</h2>
+    <div class="box-items">
+      <div class="box-item" *ngFor="let it of b.items">
+        <img [src]="it.image | imgUrl" [alt]="it.name" />
+        <div class="bi-text">
+          <span class="bi-name">{{ it.name }}</span>
+          <span class="bi-meta">x{{ it.quantity }} · ₱{{ it.price | number: '1.2-2' }}</span>
+        </div>
+        <span class="bi-sub">₱{{ it.price * it.quantity | number: '1.2-2' }}</span>
+      </div>
+    </div>
+
+    <div class="letter" *ngIf="b.letter">
+      <ion-icon name="gift-outline"></ion-icon>
+      <span>{{ b.letter }}</span>
+    </div>
+
+    <div class="summary">
+      <div class="row"><span>Subtotal ({{ b.item_count }} items)</span><span>₱{{ b.subtotal | number: '1.2-2' }}</span></div>
+      <div class="row" *ngIf="b.box_price > 0"><span>Box</span><span>₱{{ b.box_price | number: '1.2-2' }}</span></div>
+      <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
+      <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
+    </div>
+
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      [disabled]="submitting() || blocked()"
+      (click)="placeOrder()"
+    >
+      {{ submitting() ? 'Placing Order...' : 'Place Order' }}
+    </ion-button>
+  </ng-container>
+</ion-content>

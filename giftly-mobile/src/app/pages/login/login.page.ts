@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -6,8 +6,11 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonButtons,
+  IonBackButton,
   IonContent,
   IonInput,
+  IonInputPasswordToggle,
   IonButton,
   ToastController,
 } from '@ionic/angular';
@@ -18,7 +21,20 @@ import { AuthService } from '../../core/auth.service';
   selector: 'app-login',
   templateUrl: 'login.page.html',
   styleUrls: ['login.page.scss'],
-  imports: [CommonModule, FormsModule, RouterLink, IonHeader, IonToolbar, IonTitle, IonContent, IonInput, IonButton],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonInput,
+    IonInputPasswordToggle,
+    IonButton,
+  ],
 })
 export class LoginPage {
   private auth = inject(AuthService);
@@ -27,14 +43,18 @@ export class LoginPage {
 
   email = '';
   password = '';
-  submitting = false;
+  // Signal, not a plain field: mutating a plain field inside an async/await
+  // continuation isn't guaranteed to schedule a re-render in this Angular/
+  // Ionic version (the button was observed staying stuck on "Logging in..."
+  // after the request settled) — a signal write always does.
+  readonly submitting = signal(false);
 
   async login(): Promise<void> {
     if (!this.email || !this.password) {
       await this.toast('Please enter your email and password.');
       return;
     }
-    this.submitting = true;
+    this.submitting.set(true);
     try {
       await this.auth.login(this.email, this.password);
       this.router.navigateByUrl('/tabs/home');
@@ -42,7 +62,7 @@ export class LoginPage {
       const message = err?.error?.error ?? 'Login failed. Please check your credentials.';
       await this.toast(message);
     } finally {
-      this.submitting = false;
+      this.submitting.set(false);
     }
   }
 

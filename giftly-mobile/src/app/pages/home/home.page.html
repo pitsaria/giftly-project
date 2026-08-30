@@ -1,21 +1,105 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      <img src="assets/giftly/giftly-logo.png" alt="Giftly" class="brand-logo" />
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-top-bar></app-top-bar>
 
 <ion-content [fullscreen]="true">
-  <div class="hero-scroller">
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="greeting">Hello, {{ auth.user()?.name || 'there' }}!</div>
+
+  <div class="hero-scroller" (scroll)="onHeroScroll($event)">
     <div class="hero-slide" *ngFor="let slide of slides" [style.background]="slide.gradient">
-      <img [src]="slide.image" [alt]="slide.title" class="hero-image" width="220" height="220" />
-      <h1>{{ slide.title }} <span>{{ slide.highlight }}</span></h1>
-      <p>{{ slide.subtitle }}</p>
-      <ion-button class="giftly-btn-primary" (click)="goToShop()">
-        Shop Now
-        <ion-icon slot="end" name="arrow-forward-outline"></ion-icon>
-      </ion-button>
+      <div class="hero-text">
+        <h1>{{ slide.lead }} <span>{{ slide.highlight }}</span> {{ slide.trail }}</h1>
+        <p>{{ slide.subtitle }}</p>
+        <ion-button class="giftly-btn-primary" routerLink="/build-a-box">Build your Box</ion-button>
+      </div>
+      <img [src]="slide.image" [alt]="slide.lead" class="hero-image" width="120" height="120" />
+    </div>
+  </div>
+
+  <div class="hero-dots">
+    <span class="dot" *ngFor="let slide of slides; let i = index" [class.active]="activeSlide() === i"></span>
+  </div>
+
+  <div class="resume-card" *ngIf="recentOrder() as order" (click)="trackRecentOrder()">
+    <div class="resume-icon"><ion-icon name="gift-outline"></ion-icon></div>
+    <div class="resume-body">
+      <div class="resume-title">Continue where you left off</div>
+      <div class="resume-meta">Order #GLY-{{ order.id }} · {{ statusLabel(order.status) }}</div>
+    </div>
+    <ion-button size="small" fill="outline" class="resume-btn">Track Order</ion-button>
+  </div>
+
+  <div class="section-block">
+    <div class="section-head">
+      <h2>Shop by Category</h2>
+      <a routerLink="/tabs/shop">See all</a>
+    </div>
+
+    <div class="category-scroller" *ngIf="loadingCategories()">
+      <div class="category-tile skeleton" *ngFor="let i of categorySkeletonRows">
+        <ion-skeleton-text [animated]="true" class="skeleton-circle"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 60px"></ion-skeleton-text>
+      </div>
+    </div>
+
+    <div class="category-scroller" *ngIf="!loadingCategories()">
+      <div class="category-tile" *ngFor="let cat of categories(); let i = index" (click)="goToShop(cat.id)">
+        <div class="category-icon" [ngClass]="categoryTileClass(i)">
+          <ion-icon name="pricetag-outline"></ion-icon>
+        </div>
+        <span class="category-name">{{ cat.name }}</span>
+      </div>
+      <p class="empty-msg" *ngIf="!categories().length">No categories yet.</p>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-head">
+      <h2>Featured Products</h2>
+      <a (click)="goToShop()">See all</a>
+    </div>
+
+    <div class="featured-scroller" *ngIf="loadingFeatured()">
+      <div class="featured-card skeleton" *ngFor="let i of skeletonRows">
+        <ion-skeleton-text [animated]="true" class="skeleton-image"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 80%"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 50%"></ion-skeleton-text>
+      </div>
+    </div>
+
+    <div class="featured-scroller" *ngIf="!loadingFeatured()">
+      <div class="featured-card" *ngFor="let product of featured()" (click)="goToShop()">
+        <div class="image-wrap">
+          <img [src]="product.image | imgUrl" [alt]="product.name" />
+        </div>
+        <div class="f-name">{{ product.name }}</div>
+        <div class="f-rating" *ngIf="product.review_count">
+          <ion-icon name="star"></ion-icon>
+          <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+        </div>
+        <div class="f-footer">
+          <span class="f-price">₱{{ product.price }}</span>
+          <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
+            <ion-icon name="add-circle"></ion-icon>
+          </button>
+        </div>
+      </div>
+      <p class="empty-msg" *ngIf="!featured().length">No products yet — check back soon!</p>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <h2 class="promos-title">Special Promotions</h2>
+    <div class="promo-grid">
+      <div class="promo-card" [ngClass]="promo.className" *ngFor="let promo of promos">
+        <div class="promo-text">
+          <div class="promo-title">{{ promo.title }}<br />{{ promo.highlight }}</div>
+          <div class="promo-desc">{{ promo.desc }}</div>
+        </div>
+        <ion-icon [name]="promo.icon" class="promo-icon"></ion-icon>
+      </div>
     </div>
   </div>
 

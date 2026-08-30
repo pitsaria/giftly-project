@@ -1,0 +1,70 @@
+<app-top-bar></app-top-bar>
+
+<ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="page-title">My Orders</div>
+
+  <div class="logged-out" *ngIf="!auth.isLoggedIn()">
+    <p>Log in to view your order history.</p>
+    <ion-button class="giftly-btn-primary" routerLink="/login">Login</ion-button>
+  </div>
+
+  <ng-container *ngIf="auth.isLoggedIn()">
+    <div class="filter-row">
+      <ion-chip [outline]="filter() !== 'all'" [color]="filter() === 'all' ? 'primary' : undefined" (click)="setFilter('all')">
+        <ion-label>All Orders</ion-label>
+      </ion-chip>
+      <ion-chip [outline]="filter() !== 'pending'" [color]="filter() === 'pending' ? 'primary' : undefined" (click)="setFilter('pending')">
+        <ion-label>Processing</ion-label>
+      </ion-chip>
+      <ion-chip [outline]="filter() !== 'shipped'" [color]="filter() === 'shipped' ? 'primary' : undefined" (click)="setFilter('shipped')">
+        <ion-label>Shipped</ion-label>
+      </ion-chip>
+      <ion-chip [outline]="filter() !== 'delivered'" [color]="filter() === 'delivered' ? 'primary' : undefined" (click)="setFilter('delivered')">
+        <ion-label>Delivered</ion-label>
+      </ion-chip>
+      <ion-chip [outline]="filter() !== 'cancelled'" [color]="filter() === 'cancelled' ? 'primary' : undefined" (click)="setFilter('cancelled')">
+        <ion-label>Cancelled</ion-label>
+      </ion-chip>
+    </div>
+
+    <div class="order-list" *ngIf="loading()">
+      <div class="order-card skeleton" *ngFor="let i of skeletonRows">
+        <ion-skeleton-text [animated]="true" class="skeleton-thumb"></ion-skeleton-text>
+        <div class="order-body">
+          <ion-skeleton-text [animated]="true" style="width: 50%"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 35%"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 25%"></ion-skeleton-text>
+        </div>
+      </div>
+      <p class="slow-load-msg" *ngIf="slowLoad()">Still loading — the server may be waking up from sleep, this can take up to a minute...</p>
+    </div>
+
+    <div class="error-state" *ngIf="!loading() && error()">
+      <p>{{ error() }}</p>
+      <ion-button fill="outline" (click)="load()">Try Again</ion-button>
+    </div>
+
+    <div class="order-list" *ngIf="!loading() && !error()">
+      <div class="order-card" *ngFor="let o of filtered()">
+        <div class="order-thumb">
+          <ion-icon name="gift-outline"></ion-icon>
+        </div>
+        <div class="order-body">
+          <div class="order-head">
+            <span class="order-id">Order #GLY-{{ o.id }}</span>
+            <span class="status" [class]="'status-' + o.status">{{ statusLabel(o.status) }}</span>
+          </div>
+          <div class="order-meta">{{ o.created_at | date: 'mediumDate' }}</div>
+          <div class="order-total">₱{{ o.total_amount }}</div>
+          <div class="cancel-flag" *ngIf="o.cancel_status === 'requested'">Cancellation requested</div>
+        </div>
+        <ion-button size="small" fill="outline" class="track-btn" (click)="trackOrder(o)">Track Order</ion-button>
+      </div>
+      <p class="empty-msg" *ngIf="!filtered().length">No orders in this category yet.</p>
+    </div>
+  </ng-container>
+</ion-content>

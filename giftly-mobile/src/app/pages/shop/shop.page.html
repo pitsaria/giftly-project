@@ -1,8 +1,24 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Shop</ion-title>
-  </ion-toolbar>
-  <ion-toolbar>
+<app-top-bar (search)="toggleSearch()"></app-top-bar>
+
+<ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="page-title">{{ segmentTitles[productType()] }}</div>
+
+  <ion-segment
+    class="type-segment"
+    scrollable
+    [value]="productType()"
+    (ionChange)="selectType($event.detail.value)"
+  >
+    <ion-segment-button value="catalog"><ion-label>Shop</ion-label></ion-segment-button>
+    <ion-segment-button value="occasion_box"><ion-label>Occasion Boxes</ion-label></ion-segment-button>
+    <ion-segment-button value="basket"><ion-label>Baskets</ion-label></ion-segment-button>
+  </ion-segment>
+
+  <ion-toolbar class="search-toolbar" *ngIf="searchVisible">
     <ion-searchbar
       [(ngModel)]="search"
       (ionInput)="onSearch()"
@@ -10,15 +26,13 @@
       debounce="400"
     ></ion-searchbar>
   </ion-toolbar>
-</ion-header>
 
-<ion-content [fullscreen]="true">
   <div class="category-row">
     <ion-chip [outline]="selectedCategory !== null" [color]="selectedCategory === null ? 'primary' : undefined" (click)="selectCategory(null)">
-      <ion-label>All Items</ion-label>
+      <ion-label>Our Collection</ion-label>
     </ion-chip>
     <ion-chip
-      *ngFor="let cat of categories"
+      *ngFor="let cat of categories()"
       [outline]="selectedCategory !== cat.id"
       [color]="selectedCategory === cat.id ? 'primary' : undefined"
       (click)="selectCategory(cat.id)"
@@ -27,16 +41,20 @@
     </ion-chip>
   </div>
 
-  <div class="product-grid" *ngIf="products.length; else emptyState">
-    <div class="product-card" *ngFor="let product of products" (click)="openProduct(product)">
+  <div class="product-grid" *ngIf="products().length">
+    <div class="product-card" *ngFor="let product of products()" (click)="openProduct(product)">
       <div class="image-wrap">
-        <img [src]="uploadsUrl + '/' + product.image" [alt]="product.name" />
+        <img [src]="product.image | imgUrl" [alt]="product.name" />
         <button class="heart-btn" [class.active]="isWishlisted(product)" (click)="toggleWishlist(product, $event)">
           <ion-icon [name]="isWishlisted(product) ? 'heart' : 'heart-outline'"></ion-icon>
         </button>
         <div class="out-of-stock-ribbon" *ngIf="product.quantity <= 0">Out of Stock</div>
       </div>
       <div class="p-name">{{ product.name }}</div>
+      <div class="p-rating" *ngIf="product.review_count">
+        <ion-icon name="star" *ngFor="let s of stars(product)"></ion-icon>
+        <span>({{ product.review_count }})</span>
+      </div>
       <div class="p-price">₱{{ product.price }}</div>
       <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
         <ion-icon name="add-circle"></ion-icon>
@@ -44,17 +62,23 @@
     </div>
   </div>
 
-  <ng-template #emptyState>
-    <div class="empty-state" *ngIf="!loading">
-      <p>No products found.</p>
+  <div class="product-grid" *ngIf="loading() && !products().length">
+    <div class="skeleton-card" *ngFor="let i of skeletonRows">
+      <ion-skeleton-text [animated]="true" class="skeleton-image"></ion-skeleton-text>
+      <ion-skeleton-text [animated]="true" style="width: 70%"></ion-skeleton-text>
+      <ion-skeleton-text [animated]="true" style="width: 40%"></ion-skeleton-text>
     </div>
-  </ng-template>
+  </div>
 
-  <div class="ion-text-center" *ngIf="loading">
+  <div class="empty-state" *ngIf="!loading() && !products().length">
+    <p>No products found.</p>
+  </div>
+
+  <div class="ion-text-center" *ngIf="loading() && products().length">
     <ion-spinner name="crescent"></ion-spinner>
   </div>
 
-  <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="page >= totalPages">
+  <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="page >= totalPages()">
     <ion-infinite-scroll-content loadingSpinner="crescent"></ion-infinite-scroll-content>
   </ion-infinite-scroll>
 </ion-content>

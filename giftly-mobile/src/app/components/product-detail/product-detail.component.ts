@@ -1,30 +1,24 @@
 import { Component, Input, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonButtons,
-  IonButton,
-  IonIcon,
-  IonContent,
-  ModalController,
-  ToastController,
-} from '@ionic/angular';
+import { IonButton, IonIcon, IonContent, ModalController, ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, heart, heartOutline, removeOutline, addOutline } from 'ionicons/icons';
+import { closeOutline, heart, heartOutline, removeOutline, addOutline, star } from 'ionicons/icons';
 import { Product } from '../../core/models';
 import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { AuthService } from '../../core/auth.service';
-import { environment } from '../../../environments/environment';
+import { ImgUrlPipe } from '../../shared/img-url.pipe';
+import { ProductReviewsComponent } from '../product-reviews/product-reviews.component';
 
-// Mirrors giftly_project/add_to_cart_modal.php.
+// Mirrors giftly_project/add_to_cart_modal.php. Presented as a draggable
+// bottom sheet (see shop.page.ts's modalCtrl.create breakpoints) rather than
+// a full page, so there's no ion-header here — just a floating close button
+// over the product image.
 @Component({
   selector: 'app-product-detail',
   templateUrl: 'product-detail.component.html',
   styleUrls: ['product-detail.component.scss'],
-  imports: [CommonModule, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent],
+  imports: [CommonModule, IonButton, IonIcon, IonContent, ImgUrlPipe, ProductReviewsComponent],
 })
 export class ProductDetailComponent {
   @Input({ required: true }) product!: Product;
@@ -37,10 +31,14 @@ export class ProductDetailComponent {
 
   readonly quantity = signal(1);
   readonly adding = signal(false);
-  readonly uploadsUrl = environment.uploadsUrl;
 
   constructor() {
-    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline });
+    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline, star });
+  }
+
+  ratingStars(): number[] {
+    const avg = Math.round(Number(this.product.avg_rating ?? 0));
+    return Array.from({ length: Math.min(5, Math.max(0, avg)) });
   }
 
   isWishlisted(): boolean {

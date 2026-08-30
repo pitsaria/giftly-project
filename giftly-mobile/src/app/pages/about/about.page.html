@@ -1,0 +1,50 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>About Giftly</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ab-hero">
+    <span class="kicker">Our Story</span>
+    <h1>Wrapped with intention, sent with <span>love</span>.</h1>
+    <p>
+      Giftly began with one badly-wrapped present and a simple conviction: the way a gift arrives is
+      part of the gift. Today we're a small team building boxes we'd be proud to receive ourselves.
+    </p>
+  </div>
+
+  <section class="ab-section">
+    <h2>The people behind Giftly</h2>
+    <div class="owners">
+      <div class="owner" *ngFor="let o of owners">
+        <div class="avatar">{{ initials(o.name) }}</div>
+        <h3>{{ o.name }}</h3>
+        <div class="role">{{ o.role }}</div>
+        <p>{{ o.bio }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ab-section">
+    <h2>What we care about</h2>
+    <div class="values">
+      <div class="value" *ngFor="let v of values">
+        <ion-icon [name]="v.icon"></ion-icon>
+        <h3>{{ v.title }}</h3>
+        <p>{{ v.text }}</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="ab-cta">
+    <h2>Ready to send something lovely?</h2>
+    <p>Build your own box, piece by piece — or browse our ready-made ones.</p>
+    <ion-button class="giftly-btn-primary" routerLink="/build-a-box">
+      <ion-icon slot="start" name="gift-outline"></ion-icon> Start building
+    </ion-button>
+  </div>
+</ion-content>

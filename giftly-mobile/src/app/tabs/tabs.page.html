@@ -1,5 +1,5 @@
 <ion-tabs>
-  <ion-tab-bar slot="bottom">
+  <ion-tab-bar slot="bottom" class="giftly-tab-bar">
     <ion-tab-button tab="home" href="/tabs/home">
       <ion-icon aria-hidden="true" name="home-outline"></ion-icon>
       <ion-label>Home</ion-label>
@@ -10,10 +10,11 @@
       <ion-label>Shop</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="cart" href="/tabs/cart">
-      <ion-icon aria-hidden="true" name="cart-outline"></ion-icon>
-      <ion-label>Cart</ion-label>
-      <ion-badge *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</ion-badge>
+    <div class="fab-spacer"></div>
+
+    <ion-tab-button tab="orders" href="/tabs/orders">
+      <ion-icon aria-hidden="true" name="receipt-outline"></ion-icon>
+      <ion-label>Orders</ion-label>
     </ion-tab-button>
 
     <ion-tab-button tab="profile" href="/tabs/profile">
@@ -21,4 +22,8 @@
       <ion-label>Profile</ion-label>
     </ion-tab-button>
   </ion-tab-bar>
+
+  <button class="fab-add" slot="bottom" routerLink="/build-a-box" aria-label="Build a box">
+    <ion-icon name="add-outline"></ion-icon>
+  </button>
 </ion-tabs>

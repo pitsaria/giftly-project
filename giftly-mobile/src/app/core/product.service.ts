@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
-import { Category, Product } from './models';
+import { Category, Product, ProductType } from './models';
 
 export interface ProductPage {
   products: Product[];
@@ -14,6 +14,9 @@ export interface ProductQuery {
   search?: string;
   category?: number;
   order?: 'asc' | 'desc';
+  // 'catalog' (default on the API) = shop items; 'occasion_box' / 'basket' are
+  // the curated storefronts. Mirrors occasion-boxes.php / baskets.php.
+  type?: ProductType;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +31,7 @@ export class ProductService {
     };
     if (query.search) params['search'] = query.search;
     if (query.category) params['category'] = query.category;
+    if (query.type) params['type'] = query.type;
 
     const res = await firstValueFrom(this.api.get<ProductPage>('products', params));
     return res.data;

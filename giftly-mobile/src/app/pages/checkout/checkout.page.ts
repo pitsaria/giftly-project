@@ -6,6 +6,8 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonButtons,
+  IonBackButton,
   IonContent,
   IonButton,
   IonIcon,
@@ -17,13 +19,15 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline } from 'ionicons/icons';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline } from 'ionicons/icons';
 import { Address, CartItem } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService } from '../../core/order.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
+import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
+import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
 
 // Mirrors giftly_project/checkout_selected.php.
 // Fetched state lives in signals — guaranteed to trigger a re-render on
@@ -38,6 +42,8 @@ import { describeError } from '../../core/http-error';
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
+    IonBackButton,
     IonContent,
     IonButton,
     IonIcon,
@@ -46,6 +52,7 @@ import { describeError } from '../../core/http-error';
     IonSelect,
     IonSelectOption,
     IonSpinner,
+    PhPhoneInputComponent,
   ],
 })
 export class CheckoutPage implements OnInit {
@@ -69,17 +76,23 @@ export class CheckoutPage implements OnInit {
   addressId: number | null = null;
   address = '';
   city = '';
-  senderPhone = '';
+  senderPhoneDigits = '';
+  senderPhoneTouched = false;
   deliveryType: 'me' | 'recipient' = 'me';
   recipientName = '';
-  recipientPhone = '';
+  recipientPhoneDigits = '';
+  recipientPhoneTouched = false;
   deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().substring(0, 10);
   deliveryTime = '08:00';
   giftMessage = '';
   paymentMethod: 'cod' | 'card' = 'cod';
+  cardHolder = '';
+  cardNumber = '';
+  cardExpiry = '';
+  cardCvc = '';
 
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -121,6 +134,18 @@ export class CheckoutPage implements OnInit {
     }
   }
 
+  onCardNumberInput(): void {
+    this.cardNumber = formatCardNumber(this.cardNumber);
+  }
+
+  onCardExpiryInput(): void {
+    this.cardExpiry = formatCardExpiry(this.cardExpiry);
+  }
+
+  onCardCvcInput(): void {
+    this.cardCvc = formatCvc(this.cardCvc);
+  }
+
   selectAddress(id: number): void {
     this.addressId = id;
     const found = this.addresses().find((a) => a.id === id);
@@ -144,15 +169,48 @@ export class CheckoutPage implements OnInit {
   }
 
   async placeOrder(): Promise<void> {
-    if (!this.address || !this.city || !this.fullname) {
-      await this.toast('Please fill in your name and delivery address.');
+    // Every field is required except the gift message, mirroring
+    // checkout_selected.php's `required` attributes on the website.
+    this.senderPhoneTouched = true;
+    if (this.deliveryType === 'recipient') this.recipientPhoneTouched = true;
+
+    const missing: string[] = [];
+    if (!this.fullname.trim()) missing.push('Full Name');
+    if (!this.address.trim()) missing.push('Street Address');
+    if (!this.city.trim()) missing.push('City');
+    if (!/^\d{10}$/.test(this.senderPhoneDigits)) missing.push('Sender Phone (10 digits after +63)');
+    if (!this.deliveryDate) missing.push('Delivery Date');
+    if (!this.deliveryTime) missing.push('Delivery Time');
+    if (this.deliveryType === 'recipient') {
+      if (!this.recipientName.trim()) missing.push('Recipient Name');
+      if (!/^\d{10}$/.test(this.recipientPhoneDigits)) missing.push('Recipient Phone (10 digits after +63)');
+    }
+    if (missing.length) {
+      await this.toast(`Please fill in: ${missing.join(', ')}.`);
       return;
     }
+
+    if (this.paymentMethod === 'card') {
+      const cardError = validateCard({
+        cardHolder: this.cardHolder,
+        cardNumber: this.cardNumber,
+        cardExpiry: this.cardExpiry,
+        cardCvc: this.cardCvc,
+      });
+      if (cardError) {
+        await this.toast(cardError);
+        return;
+      }
+    }
+
     const cartItems = this.cartItems();
     if (cartItems.length === 0) {
       await this.toast('No items selected for checkout.');
       return;
     }
+
+    const senderPhone = `63${this.senderPhoneDigits}`;
+    const recipientPhone = this.deliveryType === 'recipient' ? `63${this.recipientPhoneDigits}` : undefined;
 
     this.submitting.set(true);
     try {
@@ -165,9 +223,17 @@ export class CheckoutPage implements OnInit {
         delivery_date: this.deliveryDate,
         delivery_time: this.deliveryTime.length === 5 ? `${this.deliveryTime}:00` : this.deliveryTime,
         gift_message: this.giftMessage,
-        sender_phone: this.senderPhone,
+        sender_phone: senderPhone,
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
-        recipient_phone: this.deliveryType === 'recipient' ? this.recipientPhone : undefined,
+        recipient_phone: recipientPhone,
+        ...(this.paymentMethod === 'card'
+          ? {
+              card_number: this.cardNumber,
+              card_holder: this.cardHolder,
+              card_expiry: this.cardExpiry,
+              card_cvc: this.cardCvc,
+            }
+          : {}),
       });
       this.orderSvc.lastOrder.set({
         orderId,
@@ -178,7 +244,7 @@ export class CheckoutPage implements OnInit {
         address: this.address,
         city: this.city,
         recipientName: this.deliveryType === 'recipient' ? this.recipientName : undefined,
-        recipientPhone: this.deliveryType === 'recipient' ? this.recipientPhone : undefined,
+        recipientPhone,
         giftMessage: this.giftMessage || undefined,
       });
       this.cart.selectedCartIds.set([]);

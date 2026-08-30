@@ -1,0 +1,23 @@
+<ion-header [translucent]="true" class="giftly-top-bar">
+  <ion-toolbar>
+    <a routerLink="/tabs/home" class="brand-link" slot="start">
+      <img src="assets/giftly/giftly-logo.png" alt="Giftly" class="brand-logo" />
+    </a>
+
+    <ion-buttons slot="end">
+      <ion-button *ngIf="!auth.isLoggedIn()" class="login-pill" routerLink="/login">Login</ion-button>
+      <ion-button *ngIf="auth.isLoggedIn()" fill="clear" class="icon-btn" routerLink="/tabs/profile">
+        <ion-icon slot="icon-only" name="person-circle-outline"></ion-icon>
+      </ion-button>
+
+      <ion-button fill="clear" class="icon-btn" (click)="onSearch()">
+        <ion-icon slot="icon-only" name="search-outline"></ion-icon>
+      </ion-button>
+
+      <ion-button fill="clear" class="icon-btn cart-btn" routerLink="/cart">
+        <ion-icon slot="icon-only" name="cart-outline"></ion-icon>
+        <ion-badge *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</ion-badge>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>

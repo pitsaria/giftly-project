@@ -17,6 +17,17 @@
   margin-bottom: 16px;
 }
 
+.forgot-link {
+  text-align: right;
+  margin: -8px 2px 20px;
+  font-size: 13px;
+
+  a {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+  }
+}
+
 .switch-link {
   text-align: center;
   margin-top: 20px;

@@ -1,10 +1,12 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>My Account</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-top-bar></app-top-bar>
 
 <ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="page-title">My Profile</div>
+
   <div class="logged-out" *ngIf="!auth.isLoggedIn()">
     <ion-icon name="person-outline"></ion-icon>
     <h2>You're not logged in</h2>
@@ -14,6 +16,15 @@
   </div>
 
   <ng-container *ngIf="auth.isLoggedIn()">
+    <div class="profile-summary" *ngIf="profile() as p">
+      <img *ngIf="p.profile_pic" [src]="p.profile_pic | imgUrl" alt="" class="avatar" />
+      <ion-icon *ngIf="!p.profile_pic" name="person-circle-outline" class="avatar-placeholder"></ion-icon>
+      <div class="summary-text">
+        <h2>{{ p.firstname }} {{ p.lastname }}</h2>
+        <p>{{ p.email }}</p>
+      </div>
+    </div>
+
     <ion-segment [value]="tab()" (ionChange)="switchTab($event.detail.value)" scrollable>
       <ion-segment-button value="settings">
         <ion-icon name="person-outline"></ion-icon>
@@ -23,13 +34,13 @@
         <ion-icon name="location-outline"></ion-icon>
         <ion-label>Addresses</ion-label>
       </ion-segment-button>
-      <ion-segment-button value="orders">
-        <ion-icon name="bag-outline"></ion-icon>
-        <ion-label>Orders</ion-label>
-      </ion-segment-button>
       <ion-segment-button value="wishlist">
         <ion-icon name="heart-outline"></ion-icon>
         <ion-label>Wishlist</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="boxes">
+        <ion-icon name="gift-outline"></ion-icon>
+        <ion-label>Boxes</ion-label>
       </ion-segment-button>
     </ion-segment>
 
@@ -101,32 +112,11 @@
       <p class="empty-msg" *ngIf="!addresses().length">You haven't added any addresses yet.</p>
     </div>
 
-    <!-- ORDERS -->
-    <div class="tab-panel" *ngIf="tab() === 'orders' && !loading() && !error()">
-      <div class="order-card" *ngFor="let o of orders()">
-        <div class="order-head">
-          <span>Order #{{ o.id }}</span>
-          <span class="status" [class]="'status-' + o.status">{{ o.status }}</span>
-        </div>
-        <div class="order-meta">{{ o.created_at | date: 'mediumDate' }} · ₱{{ o.total_amount }}</div>
-        <ion-button
-          size="small"
-          fill="outline"
-          color="danger"
-          *ngIf="o.status === 'pending'"
-          (click)="cancelOrder(o)"
-        >
-          Cancel Order
-        </ion-button>
-      </div>
-      <p class="empty-msg" *ngIf="!orders().length">No orders yet.</p>
-    </div>
-
     <!-- WISHLIST -->
     <div class="tab-panel" *ngIf="tab() === 'wishlist' && wishlist() && !loading() && !error()">
       <div class="wishlist-grid">
         <div class="wishlist-item" *ngFor="let p of [...wishlist()!.in_stock, ...wishlist()!.out_of_stock]">
-          <img [src]="uploadsUrl + '/' + p.image" [alt]="p.name" />
+          <img [src]="p.image | imgUrl" [alt]="p.name" />
           <div class="w-name">{{ p.name }}</div>
           <div class="w-price">₱{{ p.price }}</div>
           <div class="w-actions">
@@ -136,6 +126,57 @@
         </div>
       </div>
       <p class="empty-msg" *ngIf="!wishlist()!.total">Your wishlist is empty.</p>
+    </div>
+
+    <!-- BOXES -->
+    <div class="tab-panel" *ngIf="tab() === 'boxes' && !loading() && !error()">
+      <ion-button expand="block" class="giftly-btn-primary" routerLink="/build-a-box">
+        <ion-icon slot="start" name="gift-outline"></ion-icon> Build a new box
+      </ion-button>
+
+      <div class="box-card" *ngFor="let b of boxes()">
+        <div class="box-top">
+          <div>
+            <h4>{{ b.size_name }}</h4>
+            <span>{{ b.item_count }} / {{ b.max_items }} items</span>
+          </div>
+          <span class="box-badge" [class.cart]="b.status === 'in_cart'">
+            {{ b.status === 'in_cart' ? 'In cart' : 'Saved' }}
+          </span>
+        </div>
+
+        <div class="box-thumbs">
+          <img *ngFor="let it of b.items.slice(0, 5)" [src]="it.image | imgUrl" [alt]="it.name" />
+          <span class="more" *ngIf="b.items.length > 5">+{{ b.items.length - 5 }}</span>
+        </div>
+
+        <div class="box-issue" *ngIf="b.issues.length">{{ b.issues[0] }} Edit the box before checkout.</div>
+
+        <div class="box-foot">
+          <strong>₱{{ b.total | number: '1.2-2' }}</strong>
+          <div class="box-actions">
+            <button class="edit" (click)="editBox(b.id)"><ion-icon name="create-outline"></ion-icon> Edit</button>
+            <button class="co" [disabled]="b.issues.length" (click)="checkoutBox(b.id)">
+              <ion-icon name="lock-closed-outline"></ion-icon> Checkout
+            </button>
+            <button class="del" (click)="deleteBox(b.id)"><ion-icon name="trash-outline"></ion-icon></button>
+          </div>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="!boxes().length">You haven't built any boxes yet.</p>
+    </div>
+
+    <!-- MORE -->
+    <div class="tab-panel more-links" *ngIf="tab() === 'settings' && profile() && !loading() && !error()">
+      <a routerLink="/about">
+        <ion-icon name="information-circle-outline"></ion-icon> About Giftly
+        <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
+      </a>
+      <a routerLink="/contact">
+        <ion-icon name="mail-outline"></ion-icon> Contact us
+        <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
+      </a>
     </div>
   </ng-container>
 </ion-content>
