@@ -753,7 +753,7 @@ case 'category':
                 echo '
                 <div class="admin-card search-item">
                     <div class="card-image-wrapper">
-                        <img src="uploads/'.$row['image'].'" class="card-image" alt="Product">
+                        <img src="'.htmlspecialchars(img_url($row['image'])).'" class="card-image" alt="Product">
                         <span class="card-stock-badge '.$stock_class.'">'.$stock_status.'</span>
                     </div>
                     <div class="card-name search-name">'.$row['name'].'</div>
@@ -819,7 +819,7 @@ case 'category':
                             : '<span class="prod-cat-badge">'.$cat_name.'</span>';
                         echo '
                         <tr class="search-item">
-                            <td><img src="uploads/'.$row['image'].'" class="prod-thumb"></td>
+                            <td><img src="'.htmlspecialchars(img_url($row['image'])).'" class="prod-thumb"></td>
                             <td>
                                 <span class="search-name prod-name-cell">'.$row['name'].'</span>
                                 <span class="prod-desc-cell">'.(strlen($row['description']) > 0 ? substr($row['description'], 0, 50).'...' : 'No description').'</span>

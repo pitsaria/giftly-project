@@ -89,14 +89,12 @@ if (isset($_POST['update_product'])) {
     $category_id = mysqli_real_escape_string($conn, $category_id);
 
     if (!empty($_FILES["image"]["name"])) {
-        $target_dir = "uploads/";
-        $original_filename = $_FILES["image"]["name"];
-        $extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
-        $new_filename = "product_" . time() . "." . $extension;
-        $target_file = $target_dir . $new_filename;
+        // New image chosen — upload it to Supabase Storage (returns a full public URL).
+        $new_url = supabase_upload_image($_FILES["image"]);
 
-        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type', image='$new_filename' WHERE id=$id";
+        if ($new_url !== null) {
+            $image_esc = mysqli_real_escape_string($conn, $new_url);
+            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type', image='$image_esc' WHERE id=$id";
         } else {
             $_SESSION['product_updated'] = false;
             header("Location: admin_products.php?error=upload");

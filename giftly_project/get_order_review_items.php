@@ -37,7 +37,7 @@ while ($it = $items->fetch_assoc()) {
     ?>
     <div class="rvm-item">
         <div class="prod">
-            <img src="uploads/<?php echo htmlspecialchars($it['image']); ?>" alt="">
+            <img src="<?php echo htmlspecialchars(img_url($it['image'])); ?>" alt="">
             <strong><?php echo htmlspecialchars($it['name']); ?></strong>
         </div>
 

@@ -23,11 +23,17 @@ if (isset($_GET['id'])) {
     $result = $conn->query($sql_img);
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        $image_path = "uploads/" . $row['image'];
-        
-        // 2. Delete the image file from the folder (if it exists)
-        if (file_exists($image_path)) {
-            unlink($image_path);
+        $stored_image = $row['image'];
+
+        // 2a. Old local uploads: remove the file from the folder if it's still there
+        if ($stored_image && !preg_match('#^https?://#i', $stored_image)) {
+            $image_path = "uploads/" . $stored_image;
+            if (file_exists($image_path)) {
+                unlink($image_path);
+            }
+        // 2b. New images live in Supabase Storage — best-effort remote delete
+        } else if ($stored_image) {
+            supabase_delete_image($stored_image);
         }
     }
 

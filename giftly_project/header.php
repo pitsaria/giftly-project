@@ -13,7 +13,17 @@ if (ob_get_level() === 0) { ob_start(); }
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
+    <script>
+        // Resolve a stored product image (full URL from Supabase, or a legacy
+        // filename that lives in /uploads) to a usable <img src>.
+        window.imgUrl = function (v) {
+            v = (v == null ? '' : String(v)).trim();
+            if (!v) return '';
+            return /^https?:\/\//i.test(v) ? v : 'uploads/' + v.replace(/^\/+/, '');
+        };
+    </script>
+
     <style>
         /* --- GLOBAL STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }

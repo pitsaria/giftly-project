@@ -281,7 +281,7 @@ $showing_to = min($offset + $limit, $total_rows);
                         $thumbs = '';
                         if($thumb_res->num_rows > 0) {
                             while($t = $thumb_res->fetch_assoc()) {
-                                $thumbs .= '<img src="uploads/'.$t['image'].'" class="prod-thumb" style="margin-right:4px;">';
+                                $thumbs .= '<img src="'.htmlspecialchars(img_url($t['image'])).'" class="prod-thumb" style="margin-right:4px;">';
                             }
                         }
 

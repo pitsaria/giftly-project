@@ -515,8 +515,8 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 </div>
 
                 <!-- Image -->
-                <img src="uploads/<?php echo $row['image']; ?>" class="ci-img" alt="Product">
-                
+                <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" class="ci-img" alt="Product">
+
                 <!-- Name & Price -->
                 <div class="ci-details">
                     <div class="ci-name"><?php echo $row['name']; ?></div>
@@ -563,7 +563,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                     </div>
 
                     <!-- Image -->
-                    <img src="uploads/<?php echo $row['image']; ?>" class="ci-img" alt="Product" style="filter: grayscale(0.5);">
+                    <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" class="ci-img" alt="Product" style="filter: grayscale(0.5);">
                     
                     <!-- Name & Price -->
                     <div class="ci-details">
@@ -669,7 +669,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 foreach ($d['items'] as $bi) {
                     if ($bi['unavailable'] === 'removed') continue;
                     if ($bshown >= 5) break;
-                    echo '<img src="uploads/' . htmlspecialchars($bi['image']) . '" alt="">';
+                    echo '<img src="' . htmlspecialchars(img_url($bi['image'])) . '" alt="">';
                     $bshown++;
                 }
                 $brem = 0;

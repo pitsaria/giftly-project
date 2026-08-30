@@ -27,7 +27,7 @@ if ($edit_box) {
             'product_id' => intval($it['product_id']),
             'name'       => $it['name'],
             'price'      => floatval($it['price']),
-            'image'      => $it['image'],
+            'image'      => img_url($it['image']),
             'qty'        => intval($it['quantity']),
             'stock'      => intval($it['stock']),
         ];
@@ -797,7 +797,7 @@ function babProdCard(p) {
         : '';
     return '<div class="bab-prod-card" data-pid="' + p.id + '" data-stock="' + p.quantity + '" data-price="' + p.price + '"' +
            ' data-name="' + encodeURIComponent(p.name) + '" data-image="' + encodeURIComponent(p.image) + '">' +
-           '<div class="bab-prod-img" onclick="babQuickView(' + p.id + ')"><img src="uploads/' + p.image + '" alt=""></div>' +
+           '<div class="bab-prod-img" onclick="babQuickView(' + p.id + ')"><img src="' + p.image + '" alt=""></div>' +
            '<div class="bab-prod-name" onclick="babQuickView(' + p.id + ')">' + babEsc(p.name) + '</div>' +
            rating +
            '<div class="bab-prod-price">PHP <span>' + Number(p.price).toFixed(2) + '</span></div>' +
@@ -810,7 +810,7 @@ function babQuickView(pid) {
     const p = BAB.productCache[pid];
     if (!p) return;
     babQvPid = pid;
-    document.getElementById('babQvImg').src = 'uploads/' + p.image;
+    document.getElementById('babQvImg').src = p.image; // already resolved by img_url() in PHP
     document.getElementById('babQvImg').alt = p.name;
     document.getElementById('babQvName').textContent = p.name;
     document.getElementById('babQvPrice').innerHTML = 'PHP ' + Number(p.price).toFixed(2);
@@ -928,7 +928,7 @@ function babRender() {
         BAB.state.items.forEach(it => {
             ul.insertAdjacentHTML('beforeend',
                 '<li>' +
-                '<img src="uploads/' + it.image + '" alt="">' +
+                '<img src="' + it.image + '" alt="">' +
                 '<div class="n">' + babEsc(it.name) + '<small>' + peso(it.price) + '</small></div>' +
                 '<div class="stepper">' +
                 '<button onclick="babDec(' + it.product_id + ')">&minus;</button>' +

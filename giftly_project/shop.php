@@ -712,7 +712,7 @@ $api_url .= '&page=' . $page . '&limit=' . $limit;
     if (!empty($products)) {
     foreach($products as $row) {
         $isInStock = $row['quantity'] > 0;
-        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".$row['image']."', ".$row['price'].", ".$row['quantity'].")" : "";
+        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$row['price'].", ".$row['quantity'].")" : "";
         $cardClass = $isInStock ? 'product-card' : 'product-card out-of-stock-product';
 
         // Check if product is in wishlist
@@ -732,7 +732,7 @@ $heartClass = $isInWishlist ? 'active' : '';
         <div class="'.$cardClass.'">
             
             <div class="p-image-container" onclick="'.$onClick.'">
-                <img src="uploads/'.$row['image'].'" class="p-image" alt="'.$row['name'].'">
+                <img src="'.htmlspecialchars(img_url($row['image'])).'" class="p-image" alt="'.$row['name'].'">
                 
                 <!-- 🚀 WISHLIST HEART BUTTON -->
                 <button class="p-image-heart '.$heartClass.'" onclick="event.stopPropagation(); toggleWishlist(this, '.$row['id'].')" data-product-id="'.$row['id'].'">
@@ -891,7 +891,7 @@ $heartClass = $isInWishlist ? 'active' : '';
         currentStock = stock;
         currentQty = 1;
         document.getElementById('qtyDisplay').innerText = 1;
-        document.getElementById('modalImg').src = 'uploads/' + image;
+        document.getElementById('modalImg').src = image; // already resolved by img_url() in PHP
         document.getElementById('modalTitle').innerText = name;
         document.getElementById('modalDesc').innerText = desc || 'No description available.';
         document.getElementById('modalPrice').innerText = 'PHP ' + parseFloat(price).toFixed(2);

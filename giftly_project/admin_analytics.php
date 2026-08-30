@@ -248,7 +248,7 @@ $oos_count = (int) ($conn->query("SELECT COUNT(*) AS c FROM products WHERE quant
             <?php if ($top_products && $top_products->num_rows > 0): ?>
                 <?php while ($p = $top_products->fetch_assoc()): ?>
                 <div class="an-list-item">
-                    <img src="uploads/<?php echo htmlspecialchars($p['image']); ?>" alt="">
+                    <img src="<?php echo htmlspecialchars(img_url($p['image'])); ?>" alt="">
                     <div class="info">
                         <h4><?php echo htmlspecialchars($p['name']); ?></h4>
                         <p><?php echo (int) $p['qty']; ?> sold</p>
@@ -291,7 +291,7 @@ $oos_count = (int) ($conn->query("SELECT COUNT(*) AS c FROM products WHERE quant
                 $q = (int) $p['quantity'];
             ?>
             <div class="an-stock-item">
-                <img src="uploads/<?php echo htmlspecialchars($p['image']); ?>" alt="">
+                <img src="<?php echo htmlspecialchars(img_url($p['image'])); ?>" alt="">
                 <div class="info">
                     <h4><?php echo htmlspecialchars($p['name']); ?></h4>
                     <p><?php echo htmlspecialchars($p['cat']); ?></p>

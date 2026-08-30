@@ -406,7 +406,7 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                     
                     <div class="product-card">
                         <div class="p-image-container">
-                            <img src="uploads/<?php echo $row['image']; ?>" alt="Product" class="p-image">
+                            <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" alt="Product" class="p-image">
                         </div>
                         
                         <div class="<?php echo $current_color; ?>">

@@ -2,6 +2,10 @@
 // 1. Connect to database (PostgreSQL, e.g. Render Postgres)
 require_once __DIR__ . '/db_pg_compat.php';
 
+// Image storage helper (Supabase Storage + img_url()). No DB dependency; loaded
+// here so img_url() is available on every page that has a DB connection.
+require_once __DIR__ . '/supabase_storage.php';
+
 $databaseUrl = getenv('DATABASE_URL');
 $sslmode = getenv('DB_SSLMODE') ?: null;
 if ($databaseUrl) {

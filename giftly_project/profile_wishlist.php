@@ -403,8 +403,8 @@ $total_items = count($in_stock_items) + count($out_of_stock_items);
         <?php foreach($in_stock_items as $item): ?>
         <div class="wishlist-item" id="wishlist_<?php echo $item['wishlist_id']; ?>">
             
-            <img src="uploads/<?php echo $item['image']; ?>" class="wishlist-item-img" alt="<?php echo $item['name']; ?>">
-            
+            <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="wishlist-item-img" alt="<?php echo $item['name']; ?>">
+
             <div class="wishlist-item-name"><?php echo $item['name']; ?></div>
             
             <span class="stock-badge in-stock">In Stock: <?php echo $item['quantity']; ?></span>
@@ -436,7 +436,7 @@ $total_items = count($in_stock_items) + count($out_of_stock_items);
         <?php foreach($out_of_stock_items as $item): ?>
         <div class="wishlist-item out-of-stock" id="wishlist_<?php echo $item['wishlist_id']; ?>">
             
-            <img src="uploads/<?php echo $item['image']; ?>" class="wishlist-item-img" alt="<?php echo $item['name']; ?>" style="filter: grayscale(0.5);">
+            <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="wishlist-item-img" alt="<?php echo $item['name']; ?>" style="filter: grayscale(0.5);">
             
             <div class="wishlist-item-name"><?php echo $item['name']; ?></div>
             

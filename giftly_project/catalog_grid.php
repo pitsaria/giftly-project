@@ -196,13 +196,13 @@ if (isset($_SESSION['user_id'])) {
                 $rvs = reviews_summary($conn, $id);
                 $onClick = $inStock
                     ? htmlspecialchars(
-                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode($row['image']) . ", " . (float) $row['price'] . ", " . (int) $row['quantity'] . ")",
+                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $row['price'] . ", " . (int) $row['quantity'] . ")",
                         ENT_QUOTES)
                     : "";
             ?>
             <div class="cat-card <?php echo $inStock ? '' : 'oos'; ?>">
                 <div class="ci-img-box" onclick="<?php echo $onClick; ?>">
-                    <img src="uploads/<?php echo htmlspecialchars($row['image']); ?>" alt="<?php echo htmlspecialchars($row['name']); ?>">
+                    <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" alt="<?php echo htmlspecialchars($row['name']); ?>">
                     <button class="ci-heart <?php echo $isWish ? 'active' : ''; ?>" data-product-id="<?php echo $id; ?>"
                             onclick="event.stopPropagation(); catWishlist(this, <?php echo $id; ?>)">
                         <i class="fas fa-heart"></i><i class="far fa-heart"></i>
@@ -292,7 +292,7 @@ let catId = 0, catQtyVal = 1, catStock = 0;
 function catOpen(id, name, desc, image, price, stock) {
     catId = id; catStock = stock; catQtyVal = 1;
     document.getElementById('catQtyDisplay').innerText = 1;
-    document.getElementById('catModalImg').src = 'uploads/' + image;
+    document.getElementById('catModalImg').src = image; // already resolved by img_url() in PHP
     document.getElementById('catModalTitle').innerText = name;
     document.getElementById('catModalDesc').innerText = desc || 'No description available.';
     document.getElementById('catModalPrice').innerText = 'PHP ' + parseFloat(price).toFixed(2);

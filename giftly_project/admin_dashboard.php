@@ -239,7 +239,7 @@ include 'admin_header.php';
             <?php if ($top_products->num_rows > 0): ?>
                 <?php while($row = $top_products->fetch_assoc()): ?>
                 <div class="product-list-item">
-                    <img src="uploads/<?php echo $row['image']; ?>" class="pl-img">
+                    <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" class="pl-img">
                     <div class="pl-info">
                         <h4><?php echo $row['name']; ?></h4>
                         <p>Sold: <?php echo $row['total_sold']; ?> units</p>

@@ -145,7 +145,7 @@ $items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN pro
                 <td>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <?php if($item['image']): ?>
-                            <img src="uploads/<?php echo $item['image']; ?>" style="width:40px; height:40px; object-fit:cover; border-radius:8px;">
+                            <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:8px;">
                         <?php endif; ?>
                         <?php echo $item['name']; ?>
                     </div>

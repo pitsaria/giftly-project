@@ -77,7 +77,7 @@ while ($res && $r = $res->fetch_assoc()) {
             foreach ($d['items'] as $it) {
                 if ($it['unavailable'] === 'removed') continue;
                 if ($shown >= 6) break;
-                echo '<img src="uploads/' . htmlspecialchars($it['image']) . '" alt="">';
+                echo '<img src="' . htmlspecialchars(img_url($it['image'])) . '" alt="">';
                 $shown++;
             }
             $remaining = count($d['items']) - $shown;

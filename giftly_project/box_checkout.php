@@ -435,7 +435,7 @@ unset($_SESSION['box_checkout_error']);
             <h4>Your Box</h4>
             <?php foreach ($data['items'] as $it): ?>
                 <div class="co-item">
-                    <img src="uploads/<?php echo htmlspecialchars($it['image']); ?>" alt="">
+                    <img src="<?php echo htmlspecialchars(img_url($it['image'])); ?>" alt="">
                     <div class="nm"><?php echo htmlspecialchars($it['name']); ?>
                         <small>x<?php echo $it['quantity']; ?> · PHP <?php echo number_format($it['price'], 2); ?></small>
                     </div>

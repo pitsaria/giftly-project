@@ -72,33 +72,35 @@ if ($quantity > 9999) {
     exit();
 }
     
-    $target_dir = "uploads/";
-    $original_filename = $_FILES["image"]["name"];
-    $extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
-    $new_filename = "product_" . time() . "." . $extension;
-    $target_file = $target_dir . $new_filename;
+    // Upload the image to Supabase Storage; $new_filename holds the full public URL.
+    $new_filename = supabase_upload_image($_FILES["image"] ?? []);
 
-    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$new_filename', '$product_type')";
-        if ($conn->query($sql) === TRUE) {
-            // Resolve the new product id and record its allowed box sizes
-            $new_pid = intval($conn->insert_id);
-            if ($new_pid <= 0) {
-                $img_esc = $conn->real_escape_string($new_filename);
-                $pr = $conn->query("SELECT id FROM products WHERE image = '$img_esc' ORDER BY id DESC LIMIT 1");
-                if ($pr && $pr->num_rows > 0) $new_pid = intval($pr->fetch_assoc()['id']);
-            }
-            if ($new_pid > 0) {
-                foreach ($box_size_ids as $bsid) {
-                    $bsid = intval($bsid);
-                    $conn->query("INSERT INTO product_box_sizes (product_id, box_size_id)
-                                  VALUES ($new_pid, $bsid) ON CONFLICT DO NOTHING");
-                }
-            }
-            $_SESSION['product_added'] = true;
-            header("Location: admin_add_product.php");
-            exit();
+    if ($new_filename === null) {
+        $_SESSION['product_error'] = "Image upload failed. Please try again with a JPG or PNG.";
+        header("Location: admin_add_product.php");
+        exit();
+    }
+
+    $image_esc = mysqli_real_escape_string($conn, $new_filename);
+    $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$image_esc', '$product_type')";
+    if ($conn->query($sql) === TRUE) {
+        // Resolve the new product id and record its allowed box sizes
+        $new_pid = intval($conn->insert_id);
+        if ($new_pid <= 0) {
+            $img_esc = $conn->real_escape_string($new_filename);
+            $pr = $conn->query("SELECT id FROM products WHERE image = '$img_esc' ORDER BY id DESC LIMIT 1");
+            if ($pr && $pr->num_rows > 0) $new_pid = intval($pr->fetch_assoc()['id']);
         }
+        if ($new_pid > 0) {
+            foreach ($box_size_ids as $bsid) {
+                $bsid = intval($bsid);
+                $conn->query("INSERT INTO product_box_sizes (product_id, box_size_id)
+                              VALUES ($new_pid, $bsid) ON CONFLICT DO NOTHING");
+            }
+        }
+        $_SESSION['product_added'] = true;
+        header("Location: admin_add_product.php");
+        exit();
     }
 }
 

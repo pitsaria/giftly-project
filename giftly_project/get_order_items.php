@@ -72,7 +72,7 @@ if (isset($_GET['order_id'])) {
             $total += $sub;
             echo '
             <div style="display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid #f5f5f5;">
-                <img src="uploads/'.$row['image'].'" style="width: 50px; height: 50px; object-fit: contain; background: #fafafa; border-radius: 12px; padding: 5px;">
+                <img src="'.htmlspecialchars(img_url($row['image'])).'" style="width: 50px; height: 50px; object-fit: contain; background: #fafafa; border-radius: 12px; padding: 5px;">
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 15px; color: #222;">'.$row['name'].'</div>
                     <div style="font-size: 13px; color: #888;">Qty: '.$row['quantity'].'</div>

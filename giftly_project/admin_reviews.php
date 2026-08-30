@@ -144,7 +144,7 @@ function admin_stars($n) {
         <div class="rvA-card <?php echo $hidden ? 'hidden' : ''; ?>">
             <div class="rvA-head">
                 <div class="rvA-prod">
-                    <img src="uploads/<?php echo htmlspecialchars($r['product_image']); ?>" alt="">
+                    <img src="<?php echo htmlspecialchars(img_url($r['product_image'])); ?>" alt="">
                     <?php echo htmlspecialchars($r['product_name']); ?>
                     <?php if ($hidden): ?><span class="rvA-tag h">Hidden</span><?php endif; ?>
                 </div>

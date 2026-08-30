@@ -1065,7 +1065,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
             
             <?php foreach($items_list as $item): ?>
     <div class="os-item" id="row_<?php echo $item['cart_id']; ?>" data-stock="<?php echo $item['stock_quantity']; ?>">
-        <img src="uploads/<?php echo $item['image']; ?>" class="os-img">
+        <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="os-img">
         <div class="os-details">
             <div class="os-name"><?php echo $item['name']; ?></div>
             <div class="os-price">PHP <?php echo number_format($item['price'], 2); ?> each</div>
