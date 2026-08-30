@@ -197,6 +197,95 @@ case 'cart/verify-stock':
         }
         break;
 
+    case 'orders/received':
+        require_once 'services/OrderService.php';
+        $order = new OrderService($conn);
+        if ($method == 'PUT' && isset($_GET['id'])) {
+            $order->markReceived($_GET['id'], $headers);
+        } else {
+            sendError('Missing order ID', 400);
+        }
+        break;
+
+    // === BUILD-A-BOX SERVICE ===
+    case 'box/sizes':
+        require_once 'services/BoxService.php';
+        $box = new BoxService($conn);
+        if ($method == 'GET') {
+            $box->sizes();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'box/products':
+        require_once 'services/BoxService.php';
+        $box = new BoxService($conn);
+        if ($method == 'GET') {
+            $box->products($_GET);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'boxes':
+        require_once 'services/BoxService.php';
+        $box = new BoxService($conn);
+        if ($method == 'GET') {
+            $box->listBoxes($headers);
+        } elseif ($method == 'POST') {
+            $box->save($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'boxes/single':
+        require_once 'services/BoxService.php';
+        $box = new BoxService($conn);
+        if ($method == 'GET' && isset($_GET['id'])) {
+            $box->getBox($_GET['id'], $headers);
+        } elseif ($method == 'DELETE' && isset($_GET['id'])) {
+            $box->deleteBox($_GET['id'], $headers);
+        } else {
+            sendError('Missing box ID or method not allowed', 400);
+        }
+        break;
+
+    case 'boxes/checkout':
+        require_once 'services/BoxService.php';
+        $box = new BoxService($conn);
+        if ($method == 'POST') {
+            $box->checkout($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    // === REVIEW SERVICE ===
+    case 'reviews':
+        require_once 'services/ReviewService.php';
+        $review = new ReviewService($conn);
+        if ($method == 'GET' && isset($_GET['product_id'])) {
+            $review->get($_GET['product_id'], $headers);
+        } elseif ($method == 'POST') {
+            $review->create($input, $headers);
+        } else {
+            sendError('Missing product ID or method not allowed', 400);
+        }
+        break;
+
+    // === CONTACT SERVICE ===
+    case 'contact':
+        require_once 'services/ContactService.php';
+        $contact = new ContactService($conn);
+        if ($method == 'POST') {
+            $contact->create($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === WISHLIST SERVICE ===
     case 'wishlist':
         require_once 'services/WishlistService.php';

@@ -54,6 +54,14 @@ orders_ensure_schema($conn);
 require_once __DIR__ . '/../../reviews_lib.php';
 reviews_ensure_schema($conn);
 
+// Ensure Build-a-Box tables exist (box builder in the mobile app)
+require_once __DIR__ . '/../../build_a_box_lib.php';
+bab_ensure_schema($conn);
+
+// Ensure contact_messages exists (Contact form in the mobile app)
+require_once __DIR__ . '/../../contact_lib.php';
+contact_ensure_schema($conn);
+
 // Function to send JSON response
 function sendResponse($data, $status = 200) {
     http_response_code($status);

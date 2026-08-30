@@ -98,6 +98,59 @@ class AuthService {
         sendSuccess(null, 'Logged out successfully');
     }
 
+    // 📧 FORGOT PASSWORD — mirrors forgot_password_ajax.php's token generation,
+    // adapted for the API: returns the token directly instead of an emailed
+    // link, since this project has no outbound mail configured either way.
+    public function forgotPassword($input) {
+        $email = $input['email'] ?? '';
+
+        if (empty($email)) {
+            sendError('Please enter your email address.');
+        }
+
+        $emailEsc = mysqli_real_escape_string($this->conn, $email);
+        $check = $this->conn->query("SELECT id FROM users WHERE email = '$emailEsc'");
+        if (!$check || $check->num_rows == 0) {
+            sendError('Email address not found in our system.', 404);
+        }
+
+        $token = bin2hex(random_bytes(50));
+        // Unlike the website's copy of this flow, token_expiry is actually
+        // enforced below in resetPassword() — so this is a real, short-lived
+        // window rather than dead configuration.
+        $expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $this->conn->query("UPDATE users SET reset_token = '$token', token_expiry = '$expiry' WHERE email = '$emailEsc'");
+
+        sendSuccess(['token' => $token], 'Reset code generated. Use it to set a new password within the next hour.');
+    }
+
+    // 🔑 RESET PASSWORD — mirrors reset_password_ajax.php, with the added
+    // token_expiry check that script never actually performed.
+    public function resetPassword($input) {
+        $token = $input['token'] ?? '';
+        $password = $input['password'] ?? '';
+
+        if (empty($token) || empty($password)) {
+            sendError('Please fill in all fields.');
+        }
+
+        $tokenEsc = mysqli_real_escape_string($this->conn, $token);
+        $check = $this->conn->query("SELECT id, token_expiry FROM users WHERE reset_token = '$tokenEsc'");
+        if (!$check || $check->num_rows == 0) {
+            sendError('Invalid or expired reset code. Please request a new one.', 400);
+        }
+
+        $row = $check->fetch_assoc();
+        if (empty($row['token_expiry']) || strtotime($row['token_expiry']) < time()) {
+            sendError('Invalid or expired reset code. Please request a new one.', 400);
+        }
+
+        $hashed = password_hash($password, PASSWORD_DEFAULT);
+        $this->conn->query("UPDATE users SET password = '$hashed', reset_token = NULL, token_expiry = NULL WHERE reset_token = '$tokenEsc'");
+
+        sendSuccess(null, 'Password reset successfully! You can now log in.');
+    }
+
     // ✅ VERIFY TOKEN / SESSION
     public function verify($headers) {
         $user_id = AuthHelper::resolveUserId($this->conn, $headers);

@@ -70,17 +70,40 @@ class OrderService {
         $recipient_phone = $input['recipient_phone'] ?? null;
         $sender_phone = $input['sender_phone'] ?? null;
 
+        // Card payment: validate here, but only ever keep the last 4 digits + name
+        // (mirrors checkout_selected.php's card block).
+        $card_last4 = null;
+        $card_holder = null;
+        if ($payment_method === 'card') {
+            $card_digits = preg_replace('/\D/', '', $input['card_number'] ?? '');
+            $card_holder_raw = trim($input['card_holder'] ?? '');
+            $card_exp = trim($input['card_expiry'] ?? '');
+            $card_cvc = preg_replace('/\D/', '', $input['card_cvc'] ?? '');
+            $card_ok = strlen($card_digits) >= 13 && strlen($card_digits) <= 19
+                && $card_holder_raw !== ''
+                && preg_match('#^(0[1-9]|1[0-2])\s*/\s*([0-9]{2})$#', $card_exp)
+                && strlen($card_cvc) >= 3 && strlen($card_cvc) <= 4;
+            if (!$card_ok) {
+                sendError('Please enter a valid card number, name, expiry (MM/YY) and CVC.');
+            }
+            $card_last4 = substr($card_digits, -4);
+            $card_holder = $this->conn->real_escape_string(mb_substr($card_holder_raw, 0, 120));
+        }
+
         // Calculate shipping
-        $shipping_fee = ($total_amount < 300) ? 50 : 0;
+        $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
         $grand_total = $total_amount + $shipping_fee;
+
+        $card_last4_sql = $card_last4 !== null ? "'" . $card_last4 . "'" : 'NULL';
+        $card_holder_sql = $card_holder !== null ? "'" . $card_holder . "'" : 'NULL';
 
         // Insert order
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city,
                                     payment_method, delivery_date, delivery_time, gift_message,
-                                    recipient_name, recipient_phone, sender_phone)
+                                    recipient_name, recipient_phone, sender_phone, card_last4, card_holder)
                 VALUES ($user_id, $grand_total, 'pending', '$fullname', '$address', '$city',
                         '$payment_method', '$delivery_date', '$delivery_time', '$gift_message',
-                        '$recipient_name', '$recipient_phone', '$sender_phone')";
+                        '$recipient_name', '$recipient_phone', '$sender_phone', $card_last4_sql, $card_holder_sql)";
         
         if ($this->conn->query($sql)) {
             $order_id = $this->conn->insert_id;
@@ -154,6 +177,24 @@ class OrderService {
         }
     }
     
+    // ✅ CONFIRM ORDER RECEIVED (unlocks reviewing the items)
+    public function markReceived($id, $headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+        }
+
+        $id = intval($id);
+        $this->conn->query("UPDATE orders SET received_at = CURRENT_TIMESTAMP
+                            WHERE id = $id AND user_id = $user_id
+                              AND status = 'delivered' AND received_at IS NULL");
+        if ($this->conn->affected_rows > 0) {
+            sendSuccess(null, 'Thanks for confirming! You can now review the items you received.');
+        } else {
+            sendError('Could not update this order.');
+        }
+    }
+
     // Helper: Get user ID from Bearer token (mobile) or session (website)
     private function getUserId($headers) {
         return AuthHelper::resolveUserId($this->conn, $headers);
