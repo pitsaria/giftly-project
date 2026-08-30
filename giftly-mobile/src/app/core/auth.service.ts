@@ -76,6 +76,25 @@ export class AuthService {
     await firstValueFrom(this.api.post('auth/reset-password', { token, password }));
   }
 
+  // The server's Google Web client ID, or '' when Google sign-in is disabled.
+  async googleClientId(): Promise<string> {
+    try {
+      const res = await firstValueFrom(this.api.get<{ client_id: string }>('auth/google'));
+      return res.data.client_id ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  // Exchange a Google ID token (from GIS) for a Giftly session.
+  async googleLogin(credential: string): Promise<{ user: User }> {
+    const res = await firstValueFrom(
+      this.api.post<{ token: string; user: User }>('auth/google', { credential })
+    );
+    await this.setSession(res.data.token, res.data.user);
+    return { user: res.data.user };
+  }
+
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.api.post('auth/logout', {}));

@@ -17,6 +17,7 @@ import {
 import { AuthService } from '../../core/auth.service';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
 import { PasswordStrengthInputComponent } from '../../shared/password-strength-input/password-strength-input.component';
+import { GoogleSigninComponent } from '../../shared/google-signin/google-signin.component';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,6 +46,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     IonButton,
     PhPhoneInputComponent,
     PasswordStrengthInputComponent,
+    GoogleSigninComponent,
   ],
 })
 export class RegisterPage {
@@ -115,6 +117,18 @@ export class RegisterPage {
     } catch (err: any) {
       const message = err?.error?.error ?? 'Registration failed. Please try again.';
       await this.toast(message);
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  async registerWithGoogle(credential: string): Promise<void> {
+    this.submitting.set(true);
+    try {
+      await this.auth.googleLogin(credential);
+      this.router.navigateByUrl('/tabs/home');
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? 'Google sign-in failed. Please try again.');
     } finally {
       this.submitting.set(false);
     }

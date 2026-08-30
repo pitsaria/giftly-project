@@ -15,6 +15,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { AuthService } from '../../core/auth.service';
+import { GoogleSigninComponent } from '../../shared/google-signin/google-signin.component';
 
 // Mirrors giftly_project/modal_login.php.
 @Component({
@@ -34,6 +35,7 @@ import { AuthService } from '../../core/auth.service';
     IonInput,
     IonInputPasswordToggle,
     IonButton,
+    GoogleSigninComponent,
   ],
 })
 export class LoginPage {
@@ -61,6 +63,18 @@ export class LoginPage {
     } catch (err: any) {
       const message = err?.error?.error ?? 'Login failed. Please check your credentials.';
       await this.toast(message);
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  async loginWithGoogle(credential: string): Promise<void> {
+    this.submitting.set(true);
+    try {
+      await this.auth.googleLogin(credential);
+      this.router.navigateByUrl('/tabs/home');
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? 'Google sign-in failed. Please try again.');
     } finally {
       this.submitting.set(false);
     }

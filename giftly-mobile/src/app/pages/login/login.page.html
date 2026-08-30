@@ -39,6 +39,8 @@
     {{ submitting() ? 'Logging in...' : 'Login' }}
   </ion-button>
 
+  <app-google-signin (credential)="loginWithGoogle($event)"></app-google-signin>
+
   <p class="switch-link">
     Don't have an account? <a routerLink="/register">Sign up</a>
   </p>
