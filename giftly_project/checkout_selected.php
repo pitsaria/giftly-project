@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include_once 'orders_lib.php';
+orders_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -120,6 +122,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $delivery_date = mysqli_real_escape_string($conn, $_POST['delivery_date']);
     $delivery_time = mysqli_real_escape_string($conn, $_POST['delivery_time']);
 
+    // --- Card payment: validate, but only ever keep the last 4 digits + name ---
+    $card_last4 = null;
+    $card_holder = null;
+    if ($payment === 'card') {
+        $card_digits = preg_replace('/\D/', '', $_POST['card_number'] ?? '');
+        $card_holder_raw = trim($_POST['card_holder'] ?? '');
+        $card_exp = trim($_POST['card_expiry'] ?? '');
+        $card_cvc = preg_replace('/\D/', '', $_POST['card_cvc'] ?? '');
+        $card_ok = strlen($card_digits) >= 13 && strlen($card_digits) <= 19
+            && $card_holder_raw !== ''
+            && preg_match('#^(0[1-9]|1[0-2])\s*/\s*([0-9]{2})$#', $card_exp)
+            && strlen($card_cvc) >= 3 && strlen($card_cvc) <= 4;
+        if (!$card_ok) {
+            echo '<div style="max-width:560px;margin:150px auto 60px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;">'
+               . '<div style="font-size:52px;color:#f9a825;margin-bottom:14px;"><i class="fas fa-credit-card"></i></div>'
+               . '<h2 style="font-size:22px;color:#222;margin-bottom:8px;">Check your card details</h2>'
+               . '<p style="color:#888;line-height:1.7;margin-bottom:22px;">Please go back and enter a valid card number, name, expiry (MM/YY) and CVC.</p>'
+               . '<a href="javascript:history.back()" style="padding:13px 34px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">&larr; Go back</a>'
+               . '</div>';
+            include 'footer.php';
+            exit();
+        }
+        $card_last4 = substr($card_digits, -4);
+        $card_holder = mysqli_real_escape_string($conn, mb_substr($card_holder_raw, 0, 120));
+    }
+
     $ids_string = implode(',', array_map('intval', $selected_ids));
     $cart_result = $conn->query("SELECT c.product_id, c.quantity, p.price 
                                  FROM carts c 
@@ -139,8 +167,10 @@ $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
 $grand_total_with_shipping = $total_amount + $shipping_fee;
 
         // ✅ PLACE ORDER DIRECTLY (API not working yet)
-    $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, sender_phone, address, city, recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time) 
-            VALUES ($user_id, $grand_total_with_shipping, 'pending', '$fullname', '$sender_phone', '$address', '$city', '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time')";
+    $card_last4_sql  = $card_last4  !== null ? "'" . $card_last4 . "'"  : "NULL";
+    $card_holder_sql = $card_holder !== null ? "'" . $card_holder . "'" : "NULL";
+    $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, sender_phone, address, city, recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time, card_last4, card_holder)
+            VALUES ($user_id, $grand_total_with_shipping, 'pending', '$fullname', '$sender_phone', '$address', '$city', '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time', $card_last4_sql, $card_holder_sql)";
     
     if ($conn->query($sql) === TRUE) {
         $order_id = $conn->insert_id;
@@ -1001,6 +1031,28 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                             Credit / Debit Card
                         </div>
                     </div>
+
+                    <div id="cardFields" style="display:none; margin-top:16px; padding:18px; border:1.5px dashed #ffc1cc; border-radius:14px; background:#fff8fa;">
+                        <div class="form-group">
+                            <label>Name on Card</label>
+                            <input type="text" name="card_holder" id="cardHolder" class="form-input" autocomplete="cc-name" placeholder="e.g. Juan Dela Cruz">
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>Card Number</label>
+                            <input type="text" name="card_number" id="cardNumber" class="form-input" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456" maxlength="23">
+                        </div>
+                        <div class="form-row" style="margin-top:12px;">
+                            <div class="form-group">
+                                <label>Expiry (MM/YY)</label>
+                                <input type="text" name="card_expiry" id="cardExpiry" class="form-input" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label>CVC</label>
+                                <input type="text" name="card_cvc" id="cardCvc" class="form-input" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4">
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:#999;margin-top:8px;"><i class="fas fa-lock"></i> Demo checkout — only the last 4 digits are kept with your order.</div>
+                    </div>
                 </div>
             </div>
         </form>
@@ -1368,7 +1420,12 @@ function openConfirmModal() {
         }
         return;
     }
-    
+
+    // Card details (only checked when paying by card)
+    if (!validateCardIfNeeded()) {
+        return;
+    }
+
     // All validations passed - show confirm modal
     isLeaving = true; 
     document.getElementById('confirmModal').style.display = 'flex';
@@ -1388,6 +1445,46 @@ function submitOrder() {
         document.getElementById('payCOD').classList.remove('selected');
         document.getElementById('payCard').classList.remove('selected');
         document.getElementById('pay' + (method === 'cod' ? 'COD' : 'Card')).classList.add('selected');
+
+        var cf = document.getElementById('cardFields');
+        if (cf) {
+            cf.style.display = (method === 'card') ? 'block' : 'none';
+            ['cardHolder', 'cardNumber', 'cardExpiry', 'cardCvc'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.required = (method === 'card');
+            });
+        }
+    }
+
+    /* --- card field formatting + validation --- */
+    (function () {
+        var num = document.getElementById('cardNumber');
+        var exp = document.getElementById('cardExpiry');
+        var cvc = document.getElementById('cardCvc');
+        if (num) num.addEventListener('input', function () {
+            var v = this.value.replace(/\D/g, '').slice(0, 19);
+            this.value = v.replace(/(.{4})/g, '$1 ').trim();
+        });
+        if (exp) exp.addEventListener('input', function () {
+            var v = this.value.replace(/\D/g, '').slice(0, 4);
+            this.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v;
+        });
+        if (cvc) cvc.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 4);
+        });
+    })();
+
+    function validateCardIfNeeded() {
+        if (document.getElementById('paymentMethodInput').value !== 'card') return true;
+        var digits = (document.getElementById('cardNumber').value || '').replace(/\D/g, '');
+        var expv = (document.getElementById('cardExpiry').value || '').trim();
+        var cvcv = (document.getElementById('cardCvc').value || '').replace(/\D/g, '');
+        var holder = (document.getElementById('cardHolder').value || '').trim();
+        if (!holder) { alert('Please enter the name on the card.'); return false; }
+        if (digits.length < 13 || digits.length > 19) { alert('Please enter a valid card number.'); return false; }
+        if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expv)) { alert('Card expiry must be in MM/YY format.'); return false; }
+        if (cvcv.length < 3 || cvcv.length > 4) { alert('Please enter a valid CVC.'); return false; }
+        return true;
     }
 
     function selectDelivery(type) {

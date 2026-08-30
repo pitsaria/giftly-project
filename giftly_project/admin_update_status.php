@@ -20,9 +20,18 @@ if (isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST[
     $order_id = intval($_POST['order_id']); // Force it to be a safe integer
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
 
+    // A delivered / cancelled order is final — reject any further status change.
+    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
+    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
+    if (in_array($cur_status, ['delivered', 'cancelled'], true)) {
+        $_SESSION['order_update_error'] = 'This order is already ' . $cur_status . ' — its status can no longer be changed.';
+        header("Location: admin_orders.php");
+        exit();
+    }
+
     // Run the update
     $sql = "UPDATE orders SET status = '$new_status' WHERE id = $order_id";
-    
+
     if ($conn->query($sql) === TRUE) {
         // Set the success flag
         $_SESSION['order_updated'] = true;

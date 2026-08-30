@@ -19,12 +19,28 @@ if ($user_data['role'] !== 'admin') {
 // --- HANDLE STATUS UPDATE DIRECTLY IN THIS FILE ---
 $show_updated = false;
 $flash = null;
+if (!empty($_SESSION['order_update_error'])) {
+    $flash = ['error', $_SESSION['order_update_error']];
+    unset($_SESSION['order_update_error']);
+}
 if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_POST['status'])) {
     $order_id = intval($_POST['order_id']);
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
-    $sql = "UPDATE orders SET status = '$new_status' WHERE id = $order_id";
-    if ($conn->query($sql) === TRUE) {
-        $show_updated = true; // Show the banner right here
+    $allowed_statuses = ['pending', 'shipped', 'delivered'];
+
+    // A delivered (or cancelled) order is final — its status can't be changed anymore.
+    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
+    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
+
+    if (in_array($cur_status, ['delivered', 'cancelled'], true)) {
+        $flash = ['error', 'This order is marked "' . $cur_status . '" and its status can no longer be changed.'];
+    } elseif (!in_array($new_status, $allowed_statuses, true)) {
+        $flash = ['error', 'Invalid status.'];
+    } else {
+        $sql = "UPDATE orders SET status = '$new_status' WHERE id = $order_id";
+        if ($conn->query($sql) === TRUE) {
+            $show_updated = true; // Show the banner right here
+        }
     }
 }
 
@@ -277,6 +293,10 @@ $showing_to = min($offset + $limit, $total_rows);
                         } elseif ($row['status'] === 'cancelled') {
                             $status_cell = '<span class="status-badge" style="background:#f5f5f5;color:#999;text-decoration:line-through;">Cancelled</span>'
                                 . ($cs === 'approved' ? '<div style="margin-top:4px;font-size:11px;color:#aaa;">request approved</div>' : '');
+                        } elseif ($row['status'] === 'delivered') {
+                            // Delivered is final — no more status changes allowed.
+                            $status_cell = '<span class="status-badge status-delivered">Delivered</span>'
+                                . '<div style="margin-top:4px;font-size:11px;color:#aaa;"><i class="fas fa-lock" style="margin-right:3px;"></i>final</div>';
                         } else {
                             $status_cell = '<form action="admin_orders.php" method="POST" style="margin:0; display:inline;">'
                                 . '<input type="hidden" name="order_id" value="'.$row['id'].'">'

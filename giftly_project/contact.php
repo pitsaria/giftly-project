@@ -19,8 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
         $e = $conn->real_escape_string(mb_substr($email, 0, 160));
         $s = $conn->real_escape_string(mb_substr($subject, 0, 160));
         $m = $conn->real_escape_string(mb_substr($message, 0, 4000));
-        $conn->query("INSERT INTO contact_messages (name, email, subject, message)
-                      VALUES ('$n', '$e', '$s', '$m')");
+        $now_utc = gmdate('Y-m-d H:i:s'); // store UTC; admin display converts to local time
+        $conn->query("INSERT INTO contact_messages (name, email, subject, message, created_at)
+                      VALUES ('$n', '$e', '$s', '$m', '$now_utc')");
         $_SESSION['contact_sent'] = true;
         header('Location: contact.php?sent=1');
         exit();

@@ -290,6 +290,35 @@ if ($edit_box) {
         .bab-right { width: 100%; }
         .bab-panel { position: static; }
     }
+
+    /* --- product quick-view (description + ratings, like the shop) --- */
+    .bab-prod-card .bab-prod-img, .bab-prod-card .bab-prod-name { cursor: pointer; }
+    .bab-prod-rating { font-size: 11.5px; color: #999; margin-bottom: 8px; }
+    .bab-prod-rating .rv-stars { color: #ffb400; font-size: 11.5px; letter-spacing: 0.5px; }
+    .bab-prod-grid.list-view .bab-prod-rating { display: none; }
+
+    .bab-qv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 999999; padding: 20px; }
+    .bab-qv-box { background: #fff; border-radius: 28px; max-width: 780px; width: 100%; max-height: 90vh; box-shadow: 0 25px 60px rgba(0,0,0,0.2); position: relative; display: flex; flex-wrap: wrap; overflow: hidden; animation: babUp 0.3s ease; }
+    .bab-qv-close { position: absolute; top: 14px; right: 18px; font-size: 24px; color: #999; cursor: pointer; z-index: 3; background: none; border: none; }
+    .bab-qv-close:hover { color: #ff8ba7; }
+    .bab-qv-left { flex: 0.9; min-width: 260px; background: #fafafa; padding: 34px; display: flex; align-items: center; justify-content: center; align-self: stretch; }
+    .bab-qv-left img { max-width: 100%; max-height: 280px; object-fit: contain; }
+    .bab-qv-right { flex: 1.1; min-width: 280px; padding: 34px 32px; display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+    .bab-qv-right h3 { font-size: 22px; font-weight: 700; color: #222; margin-bottom: 6px; }
+    .bab-qv-price { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 12px; }
+    .bab-qv-price span { color: #888; font-weight: 500; font-size: 14px; }
+    .bab-qv-desc { font-size: 14px; color: #666; line-height: 1.65; margin-bottom: 14px; }
+    .bab-qv-stock { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+    .bab-qv-add { width: 100%; padding: 12px 0; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins'; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .bab-qv-add:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
+    .bab-qv-add:disabled { background: #ddd; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+    #modalReviews { width: 100%; max-height: 230px; overflow-y: auto; margin-top: 8px; }
+    #modalReviews .rv-list-scroll { max-height: none; overflow: visible; }
+    @media (max-width: 640px) {
+        .bab-qv-left { align-self: auto; }
+        .bab-qv-right { max-height: none; overflow: visible; }
+        #modalReviews { max-height: none; overflow: visible; }
+    }
 </style>
 
 <div class="bab-wrap">
@@ -441,6 +470,23 @@ if ($edit_box) {
 
 <div class="bab-toast" id="babToast"></div>
 
+<!-- product quick-view -->
+<div class="bab-qv-overlay" id="babQv">
+    <div class="bab-qv-box">
+        <button class="bab-qv-close" onclick="babCloseQv()" aria-label="Close">&times;</button>
+        <div class="bab-qv-left"><img id="babQvImg" src="" alt=""></div>
+        <div class="bab-qv-right">
+            <h3 id="babQvName"></h3>
+            <div class="bab-qv-price" id="babQvPrice"></div>
+            <div class="bab-qv-desc" id="babQvDesc"></div>
+            <div class="bab-qv-stock" id="babQvStock"></div>
+            <button class="bab-qv-add" id="babQvAddBtn" onclick="babQvAddToBox()"><i class="fas fa-plus"></i> Add to box</button>
+            <div id="modalReviews"></div>
+        </div>
+    </div>
+</div>
+<script src="reviews_widget.js"></script>
+
 <script>
 const BAB = {
     loggedIn: <?php echo $logged_in ? 'true' : 'false'; ?>,
@@ -453,7 +499,8 @@ const BAB = {
     lastSnapshot: '',
     dirty: false,
     pendingNav: null,
-    eligibleIds: null
+    eligibleIds: null,
+    productCache: {}
 };
 if (!BAB.state.cardStyle) BAB.state.cardStyle = 'simple';
 BAB.lastSnapshot = JSON.stringify(BAB.state);
@@ -704,7 +751,10 @@ function babLoadProducts() {
         if (d.products.length === 0) {
             grid.innerHTML = '<div class="bab-empty"><i class="fas fa-box-open" style="font-size:36px;display:block;margin-bottom:10px;color:#ddd;"></i>No gifts match this box &amp; filter.</div>';
         }
-        d.products.forEach(p => grid.insertAdjacentHTML('beforeend', babProdCard(p)));
+        d.products.forEach(p => {
+            BAB.productCache[p.id] = p;
+            grid.insertAdjacentHTML('beforeend', babProdCard(p));
+        });
         babRenderPager();
         babSyncGridButtons();
     });
@@ -729,14 +779,69 @@ function babRenderPager() {
     el.innerHTML = html;
 }
 
+function babStarsHtml(avg) {
+    avg = Number(avg) || 0;
+    let h = '';
+    for (let i = 1; i <= 5; i++) {
+        if (avg >= i) h += '<i class="fas fa-star"></i>';
+        else if (avg >= i - 0.5) h += '<i class="fas fa-star-half"></i>';
+        else h += '<i class="far fa-star"></i>';
+    }
+    return '<span class="rv-stars">' + h + '</span>';
+}
+
 function babProdCard(p) {
+    const rating = (p.rating_count > 0)
+        ? '<div class="bab-prod-rating" onclick="babQuickView(' + p.id + ')">' + babStarsHtml(p.rating) +
+          ' <span>(' + p.rating_count + ')</span></div>'
+        : '';
     return '<div class="bab-prod-card" data-pid="' + p.id + '" data-stock="' + p.quantity + '" data-price="' + p.price + '"' +
            ' data-name="' + encodeURIComponent(p.name) + '" data-image="' + encodeURIComponent(p.image) + '">' +
-           '<div class="bab-prod-img"><img src="uploads/' + p.image + '" alt=""></div>' +
-           '<div class="bab-prod-name">' + babEsc(p.name) + '</div>' +
+           '<div class="bab-prod-img" onclick="babQuickView(' + p.id + ')"><img src="uploads/' + p.image + '" alt=""></div>' +
+           '<div class="bab-prod-name" onclick="babQuickView(' + p.id + ')">' + babEsc(p.name) + '</div>' +
+           rating +
            '<div class="bab-prod-price">PHP <span>' + Number(p.price).toFixed(2) + '</span></div>' +
            '<div class="foot" id="foot_' + p.id + '"></div></div>';
 }
+
+/* ---------- product quick-view ---------- */
+let babQvPid = 0;
+function babQuickView(pid) {
+    const p = BAB.productCache[pid];
+    if (!p) return;
+    babQvPid = pid;
+    document.getElementById('babQvImg').src = 'uploads/' + p.image;
+    document.getElementById('babQvImg').alt = p.name;
+    document.getElementById('babQvName').textContent = p.name;
+    document.getElementById('babQvPrice').innerHTML = 'PHP ' + Number(p.price).toFixed(2);
+    document.getElementById('babQvDesc').textContent = p.description || 'No description available.';
+    const stockEl = document.getElementById('babQvStock');
+    const addBtn = document.getElementById('babQvAddBtn');
+    const inBox = BAB.state.items.find(i => i.product_id === pid);
+    if (p.quantity > 0) {
+        stockEl.style.color = '#2e7d32';
+        stockEl.textContent = 'In stock: ' + p.quantity + ' available' + (inBox ? ' · ' + inBox.qty + ' in your box' : '');
+        addBtn.disabled = false;
+        addBtn.innerHTML = inBox ? '<i class="fas fa-plus"></i> Add one more' : '<i class="fas fa-plus"></i> Add to box';
+    } else {
+        stockEl.style.color = '#d32f2f';
+        stockEl.textContent = 'Out of stock';
+        addBtn.disabled = true;
+        addBtn.innerHTML = '<i class="fas fa-times-circle"></i> Unavailable';
+    }
+    document.getElementById('babQv').style.display = 'flex';
+    if (window.loadProductReviews) loadProductReviews(pid);
+}
+function babCloseQv() { document.getElementById('babQv').style.display = 'none'; }
+function babQvAddToBox() {
+    if (!babQvPid) return;
+    const inBox = BAB.state.items.find(i => i.product_id === babQvPid);
+    if (inBox) babInc(babQvPid);
+    else babAdd(babQvPid);
+    babCloseQv();
+}
+document.getElementById('babQv').addEventListener('click', function (e) { if (e.target === this) babCloseQv(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') babCloseQv(); });
 function babEsc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function babSyncGridButtons() {

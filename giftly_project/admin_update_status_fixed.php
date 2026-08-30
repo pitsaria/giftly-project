@@ -16,6 +16,15 @@ if ($user_data['role'] !== 'admin') {
 if (isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST['status'])) {
     $order_id = intval($_POST['order_id']);
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
+
+    // Delivered / cancelled orders are final.
+    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
+    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
+    if (in_array($cur_status, ['delivered', 'cancelled'], true)) {
+        header("Location: admin_orders.php");
+        exit();
+    }
+
     $sql = "UPDATE orders SET status = '$new_status' WHERE id = $order_id";
     
     if ($conn->query($sql) === TRUE) {

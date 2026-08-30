@@ -2,8 +2,17 @@
 // Unread contact-message count for the sidebar badge (safe if table is absent)
 $sidebar_unread_msgs = 0;
 if (isset($conn)) {
-    $__um = @$conn->query("SELECT COUNT(*) AS c FROM contact_messages WHERE is_read = FALSE");
-    if ($__um) $sidebar_unread_msgs = (int) $__um->fetch_assoc()['c'];
+    if (file_exists(__DIR__ . '/contact_lib.php')) {
+        include_once __DIR__ . '/contact_lib.php';
+        if (function_exists('contact_ensure_schema')) {
+            contact_ensure_schema($conn);
+            $sidebar_unread_msgs = contact_unread_count($conn);
+        }
+    }
+    if ($sidebar_unread_msgs === 0) {
+        $__um = @$conn->query("SELECT COUNT(*) AS c FROM contact_messages WHERE is_read = FALSE AND archived = FALSE");
+        if ($__um) $sidebar_unread_msgs = (int) $__um->fetch_assoc()['c'];
+    }
 }
 ?>
 <!-- ADMIN SIDEBAR -->
@@ -73,13 +82,13 @@ if (isset($conn)) {
             </a>
         </li>
         <li>
-            <a href="#" class="disabled-link">
+            <a href="admin_users.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_users.php') ? 'active' : ''; ?>">
                 <i class="fas fa-users"></i>
                 <span>Users</span>
             </a>
         </li>
         <li>
-            <a href="#" class="disabled-link">
+            <a href="admin_analytics.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_analytics.php') ? 'active' : ''; ?>">
                 <i class="fas fa-chart-line"></i>
                 <span>Analytics</span>
             </a>

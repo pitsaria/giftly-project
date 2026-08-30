@@ -629,15 +629,19 @@ function isInWishlist($product_id, $wishlist_ids) {
 .p-rating .rv-stars { font-size: 12px; }
 .p-rating span { color: #aaa; }
 
-/* --- MODAL: reviews scroll on the right, image stays put --- */
+/* --- MODAL: keep the quick-view the same size with or without reviews.
+       Only the reviews block scrolls (bounded), so the modal doesn't stretch. --- */
 .modal-box { max-height: 90vh; }
 .modal-left { align-self: stretch; }
 .modal-right { max-height: 90vh; overflow-y: auto; }
-#modalReviews { width: 100%; }
+#modalReviews { width: 100%; max-height: 240px; overflow-y: auto; margin-top: 4px; }
+#modalReviews .rv-wrap { margin-top: 14px; padding-top: 14px; }
+#modalReviews .rv-list-scroll { max-height: none; overflow: visible; }
 @media (max-width: 640px) {
     .modal-box { overflow-y: auto; }
     .modal-left { align-self: auto; }
     .modal-right { max-height: none; overflow: visible; }
+    #modalReviews { max-height: none; overflow: visible; }
 }
 </style>
 

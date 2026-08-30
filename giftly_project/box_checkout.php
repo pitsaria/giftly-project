@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include 'build_a_box_lib.php';
+include_once 'orders_lib.php';
 bab_ensure_schema($conn);
+orders_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -61,6 +63,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $delivery_time  = mysqli_real_escape_string($conn, $_POST['delivery_time']);
         $delivery_type  = isset($_POST['delivery_type']) ? $_POST['delivery_type'] : 'me';
 
+        // Card payment: validate here, but only ever keep the last 4 digits + name.
+        $card_last4 = '';
+        $card_holder = '';
+        if ($payment === 'card') {
+            $digits = preg_replace('/\D/', '', $_POST['card_number'] ?? '');
+            if (strlen($digits) < 13 || strlen($digits) > 19) throw new Exception('Please enter a valid card number.');
+            $card_holder_raw = trim($_POST['card_holder'] ?? '');
+            if ($card_holder_raw === '') throw new Exception('Please enter the name on the card.');
+            $exp = trim($_POST['card_expiry'] ?? '');
+            if (!preg_match('#^(0[1-9]|1[0-2])\s*/\s*([0-9]{2})$#', $exp, $mm)) throw new Exception('Card expiry must be in MM/YY format.');
+            $exp_y = 2000 + (int) $mm[2];
+            $exp_m = (int) $mm[1];
+            if ($exp_y < (int) date('Y') || ($exp_y === (int) date('Y') && $exp_m < (int) date('n'))) throw new Exception('That card has expired.');
+            $cvc = preg_replace('/\D/', '', $_POST['card_cvc'] ?? '');
+            if (strlen($cvc) < 3 || strlen($cvc) > 4) throw new Exception('Please enter a valid CVC.');
+            $card_last4 = substr($digits, -4);
+            $card_holder = mysqli_real_escape_string($conn, mb_substr($card_holder_raw, 0, 120));
+        }
+
         // The box letter (with its card style) becomes the order's gift message
         $lr = $conn->query("SELECT letter, card_style FROM boxes WHERE id = $box_id AND user_id = $user_id");
         $lrow = $lr ? $lr->fetch_assoc() : [];
@@ -87,9 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $grand_total  = $total_amount + $shipping_fee + floatval($box['box_price']);
 
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, sender_phone, address, city,
-                    recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time)
+                    recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time,
+                    card_last4, card_holder)
                 VALUES ($user_id, $grand_total, 'pending', '$fullname', '$sender_phone', '$address', '$city',
-                    '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time')";
+                    '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time',
+                    " . ($card_last4 !== '' ? "'$card_last4'" : "NULL") . ", " . ($card_holder !== '' ? "'$card_holder'" : "NULL") . ")";
         if (!$conn->query($sql)) throw new Exception('Failed to create order: ' . $conn->error);
         $order_id = intval($conn->insert_id);
         if ($order_id <= 0) {
@@ -152,6 +175,13 @@ if (isset($_GET['success']) && isset($_SESSION['box_order_ok'])) {
         .btn-orders { padding:14px 35px; border-radius:50px; background:#fff; color:#555; text-decoration:none; font-weight:600; border:2px solid #eee; display:inline-block; }
         .success-buttons { display:flex; gap:15px; justify-content:center; flex-wrap:wrap; }
     </style>
+    <script>
+        try {
+            Object.keys(sessionStorage).forEach(function (k) {
+                if (k.indexOf('boxCheckout_') === 0) sessionStorage.removeItem(k);
+            });
+        } catch (e) {}
+    </script>
     <div class="success-wrapper">
         <div class="success-card">
             <div class="success-badge"><i class="fas fa-gift"></i></div>
@@ -245,6 +275,11 @@ unset($_SESSION['box_checkout_error']);
     .co-btn { width: 100%; padding: 15px; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: 0.2s; }
     .co-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
     .co-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .co-edit-box { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; padding: 12px; border: 2px solid #ffc1cc; border-radius: 50px; color: #ff8ba7; font-weight: 600; font-size: 14px; text-decoration: none; transition: 0.2s; background: #fff; }
+    .co-edit-box:hover { background: #fff0f5; transform: translateY(-2px); }
+    #cardFields { display: none; margin-top: 14px; padding: 16px; border: 1.5px dashed #ffc1cc; border-radius: 14px; background: #fff8fa; }
+    #cardFields.show { display: block; }
+    #cardFields .hint { font-size: 12px; color: #999; margin-top: 4px; }
     .co-letter { background: #fff5f7; border-left: 3px solid #ff8ba7; border-radius: 12px; padding: 12px 16px; font-style: italic; color: #555; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
     .co-alert { background: #fdeded; border: 1px solid #ffc1cc; color: #d32f2f; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; }
     @media (max-width: 880px) { .co-right { width: 100%; } .co-card { position: static; } }
@@ -365,6 +400,32 @@ unset($_SESSION['box_checkout_error']);
                     <label class="co-opt sel" id="payCod" onclick="coPay('cod')"><i class="fas fa-money-bill-wave" style="display:block;margin-bottom:4px;"></i> Cash on Delivery</label>
                     <label class="co-opt" id="payCard" onclick="coPay('card')"><i class="fas fa-credit-card" style="display:block;margin-bottom:4px;"></i> Credit / Debit Card</label>
                 </div>
+
+                <div id="cardFields">
+                    <div class="co-row">
+                        <div class="co-grp">
+                            <label>Name on Card</label>
+                            <input type="text" name="card_holder" id="cardHolder" class="co-input" autocomplete="cc-name" placeholder="e.g. Juan Dela Cruz">
+                        </div>
+                    </div>
+                    <div class="co-row">
+                        <div class="co-grp">
+                            <label>Card Number</label>
+                            <input type="text" name="card_number" id="cardNumber" class="co-input" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456" maxlength="23">
+                        </div>
+                    </div>
+                    <div class="co-row">
+                        <div class="co-grp">
+                            <label>Expiry (MM/YY)</label>
+                            <input type="text" name="card_expiry" id="cardExpiry" class="co-input" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5">
+                        </div>
+                        <div class="co-grp">
+                            <label>CVC</label>
+                            <input type="text" name="card_cvc" id="cardCvc" class="co-input" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4">
+                        </div>
+                    </div>
+                    <div class="hint"><i class="fas fa-lock"></i> Demo checkout — only the last 4 digits are kept with your order.</div>
+                </div>
             </div>
         </form>
     </div>
@@ -408,9 +469,9 @@ unset($_SESSION['box_checkout_error']);
             <button type="submit" form="boxOrderForm" class="co-btn" <?php echo $blocked ? 'disabled' : ''; ?>>
                 <i class="fas fa-lock"></i> Place Order
             </button>
-            <div style="text-align:center;margin-top:10px;">
-                <a href="build-a-box.php?box_id=<?php echo $box_id; ?>" style="font-size:12px;color:#999;">Edit this box</a>
-            </div>
+            <a href="build-a-box.php?box_id=<?php echo $box_id; ?>" class="co-edit-box">
+                <i class="fas fa-pen-to-square"></i> Edit this box
+            </a>
         </div>
     </div>
 </div>
@@ -430,6 +491,12 @@ unset($_SESSION['box_checkout_error']);
         document.getElementById('payCod').classList.toggle('sel', p === 'cod');
         document.getElementById('payCard').classList.toggle('sel', p === 'card');
         document.getElementById('payInput').value = p;
+        const cf = document.getElementById('cardFields');
+        cf.classList.toggle('show', p === 'card');
+        ['cardHolder', 'cardNumber', 'cardExpiry', 'cardCvc'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) el.required = (p === 'card');
+        });
     }
     function coFillAddr() {
         const o = document.getElementById('savedAddr').selectedOptions[0];
@@ -442,13 +509,92 @@ unset($_SESSION['box_checkout_error']);
         d.setDate(d.getDate() + 3);
         document.getElementById('coDate').min = d.toISOString().split('T')[0];
     })();
+
+    /* --- card field formatting --- */
+    (function () {
+        const num = document.getElementById('cardNumber');
+        const exp = document.getElementById('cardExpiry');
+        const cvc = document.getElementById('cardCvc');
+        if (num) num.addEventListener('input', function () {
+            let v = this.value.replace(/\D/g, '').slice(0, 19);
+            this.value = v.replace(/(.{4})/g, '$1 ').trim();
+        });
+        if (exp) exp.addEventListener('input', function () {
+            let v = this.value.replace(/\D/g, '').slice(0, 4);
+            this.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v;
+        });
+        if (cvc) cvc.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 4);
+        });
+    })();
+
     document.getElementById('boxOrderForm').addEventListener('submit', function (e) {
         const t = document.getElementById('coTime').value;
         if (t && (t < '08:00' || t > '20:00')) {
             e.preventDefault();
             alert('Delivery time must be between 8:00 AM and 8:00 PM.');
+            return;
         }
+        if (document.getElementById('payInput').value === 'card') {
+            const digits = (document.getElementById('cardNumber').value || '').replace(/\D/g, '');
+            const expv = (document.getElementById('cardExpiry').value || '').trim();
+            const cvcv = (document.getElementById('cardCvc').value || '').replace(/\D/g, '');
+            const holder = (document.getElementById('cardHolder').value || '').trim();
+            if (!holder) { e.preventDefault(); alert('Please enter the name on the card.'); return; }
+            if (digits.length < 13 || digits.length > 19) { e.preventDefault(); alert('Please enter a valid card number.'); return; }
+            if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expv)) { e.preventDefault(); alert('Card expiry must be in MM/YY format.'); return; }
+            if (cvcv.length < 3 || cvcv.length > 4) { e.preventDefault(); alert('Please enter a valid CVC.'); return; }
+        }
+        if (window.__clearBoxCheckout) window.__clearBoxCheckout();
     });
+
+    /* --- keep what the customer typed if they pop back to edit the box --- */
+    (function () {
+        const form = document.getElementById('boxOrderForm');
+        if (!form) return;
+        const KEY = 'boxCheckout_<?php echo (int) $box_id; ?>';
+        const fields = ['fullname', 'sender_phone', 'delivery_type', 'recipient_name', 'recipient_phone',
+                        'address', 'city', 'delivery_date', 'delivery_time', 'payment_method', 'card_holder', 'card_expiry'];
+
+        function collect() {
+            const data = {};
+            fields.forEach(function (name) {
+                const el = form.elements[name];
+                if (!el) return;
+                if (el.length && el[0] && el[0].type === 'radio') {
+                    const checked = form.querySelector('input[name="' + name + '"]:checked');
+                    data[name] = checked ? checked.value : '';
+                } else {
+                    data[name] = el.value;
+                }
+            });
+            return data;
+        }
+        function save() { try { sessionStorage.setItem(KEY, JSON.stringify(collect())); } catch (e) {} }
+
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(KEY) || '{}');
+            if (saved && Object.keys(saved).length) {
+                Object.keys(saved).forEach(function (name) {
+                    if (!saved[name]) return;
+                    const el = form.elements[name];
+                    if (!el) return;
+                    if (el.length && el[0] && el[0].type === 'radio') {
+                        const radio = form.querySelector('input[name="' + name + '"][value="' + saved[name] + '"]');
+                        if (radio) radio.checked = true;
+                    } else {
+                        el.value = saved[name];
+                    }
+                });
+                if (saved.delivery_type) coDelivery(saved.delivery_type);
+                if (saved.payment_method) coPay(saved.payment_method);
+            }
+        } catch (e) {}
+
+        form.addEventListener('input', save);
+        form.addEventListener('change', save);
+        window.__clearBoxCheckout = function () { try { sessionStorage.removeItem(KEY); } catch (e) {} };
+    })();
 </script>
 
 <?php include 'footer.php'; ?>

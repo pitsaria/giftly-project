@@ -7,10 +7,12 @@
 include 'db_connect.php';
 include 'build_a_box_lib.php';
 include 'catalog_lib.php';
+include_once 'reviews_lib.php';
 header('Content-Type: application/json');
 
 bab_ensure_schema($conn);
 catalog_ensure_schema($conn);
+reviews_ensure_schema($conn);
 
 $size_id  = isset($_GET['size_id']) ? intval($_GET['size_id']) : 0;
 $search   = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -70,13 +72,16 @@ $res = $conn->query("
 
 $products = [];
 while ($res && $row = $res->fetch_assoc()) {
+    $rv = function_exists('reviews_summary') ? reviews_summary($conn, intval($row['id'])) : ['avg' => 0, 'count' => 0];
     $products[] = [
-        'id'          => intval($row['id']),
-        'name'        => $row['name'],
-        'description' => $row['description'],
-        'price'       => floatval($row['price']),
-        'image'       => $row['image'],
-        'quantity'    => intval($row['quantity']),
+        'id'           => intval($row['id']),
+        'name'         => $row['name'],
+        'description'  => $row['description'],
+        'price'        => floatval($row['price']),
+        'image'        => $row['image'],
+        'quantity'     => intval($row['quantity']),
+        'rating'       => round((float) $rv['avg'], 1),
+        'rating_count' => (int) $rv['count'],
     ];
 }
 

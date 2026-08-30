@@ -19,7 +19,7 @@ if (!function_exists('orders_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v2'])) {
             return;
         }
 
@@ -33,8 +33,16 @@ if (!function_exists('orders_ensure_schema')) {
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_admin_note TEXT");
         }
 
+        // Card payments: we only ever keep the last 4 digits + cardholder name.
+        $cc = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'orders' AND column_name = 'card_last4'");
+        if (!($cc && $cc->num_rows > 0)) {
+            $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_last4 VARCHAR(4)");
+            $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_holder VARCHAR(120)");
+        }
+
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['orders_schema_ok'] = true;
+            $_SESSION['orders_schema_ok_v2'] = true;
         }
     }
 
