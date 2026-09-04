@@ -47,11 +47,11 @@ $__n = admin_notif_counts($conn);
         <?php if ($__n['total'] === 0): ?>
             <div class="admin-bell-empty"><i class="fas fa-circle-check" style="color:#66bb6a;"></i> You're all caught up.</div>
         <?php else: ?>
-            <?php if ($__n['messages'] > 0): ?>
-            <a class="admin-bell-item" href="admin_messages.php?filter=unread">
-                <span class="ic" style="background:#fff0f5;color:#ff8ba7;"><i class="fas fa-envelope"></i></span>
-                <span><?php echo $__n['messages']; ?> unread message<?php echo $__n['messages'] === 1 ? '' : 's'; ?></span>
-                <span class="n"><?php echo $__n['messages']; ?></span>
+            <?php if ($__n['new_orders'] > 0): ?>
+            <a class="admin-bell-item" href="admin_orders.php">
+                <span class="ic" style="background:#fff0f5;color:#ff8ba7;"><i class="fas fa-shopping-bag"></i></span>
+                <span><?php echo $__n['new_orders']; ?> new order<?php echo $__n['new_orders'] === 1 ? '' : 's'; ?></span>
+                <span class="n"><?php echo $__n['new_orders']; ?></span>
             </a>
             <?php endif; ?>
             <?php if ($__n['cancels'] > 0): ?>
@@ -66,6 +66,20 @@ $__n = admin_notif_counts($conn);
                 <span class="ic" style="background:#e3f2fd;color:#1976d2;"><i class="fas fa-credit-card"></i></span>
                 <span><?php echo $__n['unpaid']; ?> order<?php echo $__n['unpaid'] === 1 ? '' : 's'; ?> awaiting payment</span>
                 <span class="n"><?php echo $__n['unpaid']; ?></span>
+            </a>
+            <?php endif; ?>
+            <?php if ($__n['new_reviews'] > 0): ?>
+            <a class="admin-bell-item" href="admin_reviews.php">
+                <span class="ic" style="background:#fff8e6;color:#e0a800;"><i class="fas fa-star"></i></span>
+                <span><?php echo $__n['new_reviews']; ?> new review<?php echo $__n['new_reviews'] === 1 ? '' : 's'; ?></span>
+                <span class="n"><?php echo $__n['new_reviews']; ?></span>
+            </a>
+            <?php endif; ?>
+            <?php if ($__n['messages'] > 0): ?>
+            <a class="admin-bell-item" href="admin_messages.php?filter=unread">
+                <span class="ic" style="background:#fff0f5;color:#ff8ba7;"><i class="fas fa-envelope"></i></span>
+                <span><?php echo $__n['messages']; ?> unread message<?php echo $__n['messages'] === 1 ? '' : 's'; ?></span>
+                <span class="n"><?php echo $__n['messages']; ?></span>
             </a>
             <?php endif; ?>
         <?php endif; ?>

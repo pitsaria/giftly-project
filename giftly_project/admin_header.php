@@ -13,6 +13,14 @@ if (isset($conn)) {
         include_once __DIR__ . '/paymongo_lib.php';
         if (function_exists('pay_ensure_schema')) pay_ensure_schema($conn);
     }
+    if (file_exists(__DIR__ . '/reviews_lib.php')) {
+        include_once __DIR__ . '/reviews_lib.php';
+        if (function_exists('reviews_ensure_schema')) reviews_ensure_schema($conn);
+    }
+    if (file_exists(__DIR__ . '/contact_lib.php')) {
+        include_once __DIR__ . '/contact_lib.php';
+        if (function_exists('contact_ensure_schema')) contact_ensure_schema($conn);
+    }
 }
 ?>
 <!DOCTYPE html>

@@ -2,6 +2,7 @@
 // Sidebar badge counts (safe if tables are absent)
 $sidebar_unread_msgs = 0;
 $sidebar_order_alerts = 0;
+$sidebar_review_alerts = 0;
 if (isset($conn)) {
     if (file_exists(__DIR__ . '/contact_lib.php')) {
         include_once __DIR__ . '/contact_lib.php';
@@ -13,8 +14,9 @@ if (isset($conn)) {
         include_once __DIR__ . '/admin_notif_lib.php';
         if (function_exists('admin_notif_counts')) {
             $__n = admin_notif_counts($conn);
-            $sidebar_unread_msgs  = $__n['messages'];
-            $sidebar_order_alerts = $__n['orders'];
+            $sidebar_unread_msgs   = $__n['messages'];
+            $sidebar_order_alerts  = $__n['orders'];
+            $sidebar_review_alerts = $__n['reviews'];
         }
     }
     if ($sidebar_unread_msgs === 0) {
@@ -73,6 +75,9 @@ $__sb_badge = 'margin-left:auto; background:#ff8ba7; color:#fff; font-size:11px;
             <a href="admin_reviews.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_reviews.php') ? 'active' : ''; ?>">
                 <i class="fas fa-star"></i>
                 <span>Reviews</span>
+                <?php if ($sidebar_review_alerts > 0): ?>
+                    <span style="<?php echo $__sb_badge; ?>"><?php echo $sidebar_review_alerts; ?></span>
+                <?php endif; ?>
             </a>
         </li>
         <li>

@@ -8,6 +8,10 @@ $user_id = (int) $_SESSION['user_id'];
 $u = $conn->query("SELECT role FROM users WHERE id = $user_id");
 if (!$u || ($u->fetch_assoc()['role'] ?? '') !== 'admin') { header("Location: shop.php"); exit(); }
 
+// clear the "new reviews" notification badge
+include_once 'admin_notif_lib.php';
+if (function_exists('admin_notif_mark_seen')) admin_notif_mark_seen('reviews');
+
 // --- actions (redirect after) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rid = (int) ($_POST['review_id'] ?? 0);

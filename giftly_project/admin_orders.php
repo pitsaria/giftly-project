@@ -18,6 +18,10 @@ if ($user_data['role'] !== 'admin') {
     exit();
 }
 
+// clear the "new orders" notification badge
+include_once 'admin_notif_lib.php';
+if (function_exists('admin_notif_mark_seen')) admin_notif_mark_seen('orders');
+
 // --- HANDLE STATUS UPDATE DIRECTLY IN THIS FILE ---
 $show_updated = false;
 $flash = null;
