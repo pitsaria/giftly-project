@@ -21,17 +21,22 @@ class CartService {
         
         $sql = "SELECT c.id as cart_id, c.quantity,
                        p.id, p.name, p.description, p.price, p.image, p.category_id,
-                       p.quantity as stock
+                       p.quantity as stock, p.is_active
                 FROM carts c
                 JOIN products p ON c.product_id = p.id
                 WHERE c.user_id = $user_id";
-        
+
         $result = $this->conn->query($sql);
         $items = [];
         $total = 0;
-        
+
         while ($row = $result->fetch_assoc()) {
-            $subtotal = $row['price'] * $row['quantity'];
+            // Product deactivated by the shop while it sat in the cart — keep it
+            // visible so the customer can remove it, but never count it.
+            $unavailable = array_key_exists('is_active', $row)
+                && in_array($row['is_active'], [false, 'f', '0', 0], true);
+            $row['unavailable'] = $unavailable;
+            $subtotal = $unavailable ? 0 : $row['price'] * $row['quantity'];
             $total += $subtotal;
             $row['subtotal'] = $subtotal;
             $items[] = $row;
@@ -169,9 +174,9 @@ class CartService {
         $ids_string = implode(',', $cart_ids);
         
         // Check stock for selected items
-        $query = "SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock 
-                  FROM carts c 
-                  JOIN products p ON c.product_id = p.id 
+        $query = "SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock, p.is_active
+                  FROM carts c
+                  JOIN products p ON c.product_id = p.id
                   WHERE c.user_id = $user_id AND c.id IN ($ids_string)";
         
         $result = $this->conn->query($query);
@@ -190,7 +195,24 @@ class CartService {
             $available = intval($row['available_stock']);
             $cart_id = $row['cart_id'];
             $product_name = $row['name'];
-            
+
+            // Deactivated while in the cart — block, but leave it in the cart so
+            // the customer removes it deliberately (mirrors verify_stock_ajax.php).
+            $inactive = array_key_exists('is_active', $row)
+                && in_array($row['is_active'], [false, 'f', '0', 0], true);
+            if ($inactive) {
+                $can_proceed = false;
+                $stock_issues[] = [
+                    'cart_id' => $cart_id,
+                    'product_name' => $product_name,
+                    'requested' => $requested,
+                    'available' => 0,
+                    'action' => 'blocked',
+                    'unavailable' => true,
+                ];
+                continue;
+            }
+
             if ($requested > $available) {
                 $can_proceed = false;
                 

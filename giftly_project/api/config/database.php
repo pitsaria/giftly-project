@@ -62,6 +62,14 @@ bab_ensure_schema($conn);
 require_once __DIR__ . '/../../contact_lib.php';
 contact_ensure_schema($conn);
 
+// Ensure addresses.is_default exists (saved-address default + labels)
+require_once __DIR__ . '/../../address_lib.php';
+addr_ensure_schema($conn);
+
+// Ensure orders.payment_status / payment_ref / paid_at exist (PayMongo online payments)
+require_once __DIR__ . '/../../paymongo_lib.php';
+pay_ensure_schema($conn);
+
 // Function to send JSON response
 function sendResponse($data, $status = 200) {
     http_response_code($status);

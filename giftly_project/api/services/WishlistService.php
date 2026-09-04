@@ -31,7 +31,10 @@ class WishlistService {
         $in_stock = [];
         $out_of_stock = [];
         while ($row = $result->fetch_assoc()) {
-            if ($row['quantity'] > 0) {
+            $inactive = array_key_exists('is_active', $row)
+                && in_array($row['is_active'], [false, 'f', '0', 0], true);
+            $row['unavailable'] = $inactive;
+            if (!$inactive && $row['quantity'] > 0) {
                 $in_stock[] = $row;
             } else {
                 $out_of_stock[] = $row;

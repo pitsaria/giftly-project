@@ -10,6 +10,7 @@ require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../build_a_box_lib.php';
 require_once __DIR__ . '/../../catalog_lib.php';
 require_once __DIR__ . '/../../reviews_lib.php';
+require_once __DIR__ . '/../../paymongo_lib.php';
 
 class BoxService {
     private $conn;
@@ -19,6 +20,7 @@ class BoxService {
         bab_ensure_schema($conn);
         catalog_ensure_schema($conn);
         reviews_ensure_schema($conn);
+        pay_ensure_schema($conn);
     }
 
     private function getUserId($headers) {
@@ -51,7 +53,8 @@ class BoxService {
             sendError('Invalid box size.');
         }
 
-        $where = "pbs.box_size_id = $size_id AND p.quantity > 0 AND p.product_type = 'catalog'";
+        $where = "pbs.box_size_id = $size_id AND p.quantity > 0 AND p.product_type = 'catalog'"
+               . (function_exists('catalog_visible_filter') ? catalog_visible_filter('p.') : '');
         if ($search !== '') {
             $s = $this->conn->real_escape_string($search);
             $where .= " AND p.name ILIKE '%$s%'";
@@ -285,7 +288,7 @@ class BoxService {
             $box = $bres->fetch_assoc();
             if ($box['status'] === 'ordered') throw new Exception('This box has already been ordered.');
 
-            $ires = $this->conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock
+            $ires = $this->conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock, p.is_active
                                         FROM box_items bi JOIN products p ON p.id = bi.product_id
                                         WHERE bi.box_id = $box_id FOR UPDATE");
             $items = [];
@@ -293,7 +296,9 @@ class BoxService {
             while ($ires && $r = $ires->fetch_assoc()) {
                 $req = intval($r['quantity']);
                 $av  = intval($r['stock']);
-                if ($req > $av) {
+                if (array_key_exists('is_active', $r) && in_array($r['is_active'], [false, 'f', '0', 0], true)) {
+                    $stock_errors[] = "{$r['name']} is no longer available.";
+                } elseif ($req > $av) {
                     $stock_errors[] = $av <= 0
                         ? "{$r['name']} is out of stock."
                         : "{$r['name']}: only {$av} left (box needs {$req}).";
@@ -380,10 +385,28 @@ class BoxService {
 
             $this->conn->commit();
 
+            // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---
+            $checkout_url = '';
+            $pay_error = '';
+            if ($payment === 'online'
+                && function_exists('paymongo_configured') && paymongo_configured()) {
+                $er = $this->conn->query("SELECT email FROM users WHERE id = $user_id");
+                $email = ($er && $er->num_rows) ? ($er->fetch_assoc()['email'] ?? '') : '';
+                $checkout_url = paymongo_create_checkout(
+                    $this->conn, $order_id, (float) $grand_total,
+                    $input['fullname'] ?? '', $email, $input['sender_phone'] ?? ''
+                );
+                if ($checkout_url === '') {
+                    $pay_error = paymongo_last_error() ?: 'Payment could not be started.';
+                }
+            }
+
             sendSuccess([
                 'order_id'      => $order_id,
                 'grand_total'   => $grand_total,
                 'payment'       => $payment,
+                'checkout_url'  => $checkout_url,
+                'pay_error'     => $pay_error,
                 'delivery_date' => $input['delivery_date'] ?? $delivery_date,
                 'delivery_time' => $input['delivery_time'] ?? $delivery_time,
                 'address'       => ($input['address'] ?? '') . ', ' . ($input['city'] ?? ''),

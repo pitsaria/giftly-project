@@ -84,6 +84,39 @@ switch($path) {
         }
         break;
 
+    case 'auth/verify-otp':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->verifyOtp($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'auth/resend-otp':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->resendOtp($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    // === PAYMENTS (PayMongo) ===
+    case 'paymongo/config':
+        if ($method == 'GET') {
+            $enabled = function_exists('paymongo_configured') && paymongo_configured();
+            sendSuccess([
+                'enabled' => $enabled,
+                'methods' => $enabled && function_exists('paymongo_methods') ? paymongo_methods() : [],
+            ]);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === PRODUCT SERVICE ===
     case 'products':
         require_once 'services/ProductService.php';
@@ -219,6 +252,16 @@ case 'cart/verify-stock':
         }
         break;
 
+    case 'orders/payment':
+        require_once 'services/OrderService.php';
+        $order = new OrderService($conn);
+        if ($method == 'GET' && isset($_GET['id'])) {
+            $order->paymentStatus($_GET, $headers);
+        } else {
+            sendError('Missing order ID', 400);
+        }
+        break;
+
     // === BUILD-A-BOX SERVICE ===
     case 'box/sizes':
         require_once 'services/BoxService.php';
@@ -337,6 +380,16 @@ case 'cart/verify-stock':
         $addressSvc = new AddressService($conn);
         if ($method == 'DELETE' && isset($_GET['id'])) {
             $addressSvc->delete($_GET['id'], $headers);
+        } else {
+            sendError('Missing address ID or method not allowed', 400);
+        }
+        break;
+
+    case 'addresses/default':
+        require_once 'services/AddressService.php';
+        $addressSvc = new AddressService($conn);
+        if ($method == 'PUT' && isset($_GET['id'])) {
+            $addressSvc->setDefault($_GET['id'], $headers);
         } else {
             sendError('Missing address ID or method not allowed', 400);
         }

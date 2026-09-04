@@ -3,24 +3,33 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../paymongo_lib.php';
+require_once __DIR__ . '/../../mail_lib.php';
 
 class OrderService {
     private $conn;
-    
+
     public function __construct($conn) {
         $this->conn = $conn;
+        pay_ensure_schema($conn);
     }
-    
+
     // 📋 GET ORDERS
     public function getOrders($headers, $params) {
         $user_id = $this->getUserId($headers);
         if (!$user_id) {
             sendError('Unauthorized', 401);
         }
-        
+
+        // The website cancels abandoned online orders on page views; the app
+        // never triggers that, so sweep here (cheap, throttled inside).
+        if (function_exists('pay_sweep_stale')) {
+            pay_sweep_stale($this->conn);
+        }
+
         $limit = isset($params['limit']) ? intval($params['limit']) : 10;
         $offset = isset($params['offset']) ? intval($params['offset']) : 0;
-        
+
         $sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
         $result = $this->conn->query($sql);
         
@@ -45,17 +54,25 @@ class OrderService {
             sendError('No items selected');
         }
         
-        $ids_string = implode(',', $selected_ids);
-        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, p.price 
-                                           FROM carts c 
-                                           JOIN products p ON c.product_id = p.id 
+        $ids_string = implode(',', array_map('intval', $selected_ids));
+        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, p.price, p.name, p.is_active
+                                           FROM carts c
+                                           JOIN products p ON c.product_id = p.id
                                            WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
-        
+
         $total_amount = 0;
         $items = [];
         while ($row = $cart_result->fetch_assoc()) {
+            // Pulled from sale while it sat in the cart — block the whole order.
+            if (array_key_exists('is_active', $row)
+                && in_array($row['is_active'], [false, 'f', '0', 0], true)) {
+                sendError($row['name'] . ' is no longer available. Please remove it from your cart.');
+            }
             $total_amount += $row['price'] * $row['quantity'];
             $items[] = $row;
+        }
+        if (count($items) === 0 || $total_amount <= 0) {
+            sendError('Your cart is empty. Add at least one item before checking out.');
         }
         
         // Order details
@@ -106,23 +123,86 @@ class OrderService {
                         '$recipient_name', '$recipient_phone', '$sender_phone', $card_last4_sql, $card_holder_sql)";
         
         if ($this->conn->query($sql)) {
-            $order_id = $this->conn->insert_id;
-            
+            $order_id = (int) $this->conn->insert_id;
+            if ($order_id <= 0) {
+                $q = $this->conn->query("SELECT id FROM orders WHERE user_id = $user_id ORDER BY id DESC LIMIT 1");
+                $order_id = $q ? (int) $q->fetch_assoc()['id'] : 0;
+            }
+
             // Insert order items
             foreach ($items as $item) {
-                $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) 
+                $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price)
                                     VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']})");
                 // Update stock
                 $this->conn->query("UPDATE products SET quantity = quantity - {$item['quantity']} WHERE id = {$item['product_id']}");
             }
-            
+
             // Clear cart
             $this->conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
-            
-            sendSuccess(['order_id' => $order_id], 'Order placed successfully!');
+
+            // --- ONLINE PAYMENT: open a PayMongo hosted checkout ---
+            $checkout_url = '';
+            $pay_error = '';
+            if ($payment_method === 'online'
+                && function_exists('paymongo_configured') && paymongo_configured()) {
+                $er = $this->conn->query("SELECT email FROM users WHERE id = $user_id");
+                $email = ($er && $er->num_rows) ? ($er->fetch_assoc()['email'] ?? '') : '';
+                $checkout_url = paymongo_create_checkout(
+                    $this->conn, $order_id, (float) $grand_total,
+                    $input['fullname'] ?? '', $email, $input['sender_phone'] ?? ''
+                );
+                if ($checkout_url === '') {
+                    $pay_error = paymongo_last_error() ?: 'Payment could not be started.';
+                }
+            } elseif ($payment_method === 'cod' && function_exists('send_order_email')) {
+                @send_order_email($this->conn, $order_id, false);
+            }
+
+            sendSuccess([
+                'order_id'     => $order_id,
+                'checkout_url' => $checkout_url,
+                'pay_error'    => $pay_error,
+            ], 'Order placed successfully!');
         } else {
             sendError('Failed to place order: ' . $this->conn->error);
         }
+    }
+
+    // GET orders/payment?id=[&url=1]  — payment status; add url=1 to also mint a
+    // fresh PayMongo checkout URL for an unpaid online order ("Pay now" /
+    // "reopen"). Polling omits url=1 to avoid a PayMongo call every few seconds.
+    public function paymentStatus($params, $headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+        }
+        $id = intval($params['id'] ?? 0);
+        $r = $this->conn->query("SELECT * FROM orders WHERE id = $id AND user_id = $user_id");
+        $order = ($r && $r->num_rows) ? $r->fetch_assoc() : null;
+        if (!$order) {
+            sendError('Order not found', 404);
+        }
+
+        $payment_status = $order['payment_status'] ?? 'unpaid';
+        $checkout_url = '';
+        if (!empty($params['url'])
+            && $payment_status !== 'paid'
+            && ($order['status'] ?? '') !== 'cancelled'
+            && ($order['payment_method'] ?? 'cod') !== 'cod'
+            && function_exists('paymongo_configured') && paymongo_configured()) {
+            $er = $this->conn->query("SELECT email FROM users WHERE id = $user_id");
+            $email = ($er && $er->num_rows) ? ($er->fetch_assoc()['email'] ?? '') : '';
+            $checkout_url = paymongo_create_checkout(
+                $this->conn, $id, (float) $order['total_amount'],
+                $order['fullname'] ?? '', $email, $order['sender_phone'] ?? ''
+            );
+        }
+
+        sendSuccess([
+            'payment_status' => $payment_status,
+            'status'         => $order['status'] ?? 'pending',
+            'checkout_url'   => $checkout_url,
+        ]);
     }
     
     // 🔍 GET ORDER DETAILS

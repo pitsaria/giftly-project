@@ -4,54 +4,187 @@
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../auth_lib.php';
+require_once __DIR__ . '/../../mail_lib.php';
 
 class AuthService {
     private $conn;
-    
+
     public function __construct($conn) {
         $this->conn = $conn;
     }
-    
+
     // 🔐 LOGIN
     public function login($input) {
         $email = $input['email'] ?? '';
         $password = $input['password'] ?? '';
-        
+
         if (empty($email) || empty($password)) {
             sendError('Email and password are required');
         }
-        
-        $sql = "SELECT * FROM users WHERE email = '$email'";
-        $result = $this->conn->query($sql);
-        
-        if ($result->num_rows == 0) {
+
+        $emailEsc = $this->conn->real_escape_string($email);
+        $result = $this->conn->query("SELECT * FROM users WHERE email = '$emailEsc'");
+
+        if (!$result || $result->num_rows == 0) {
             sendError('Email not found', 404);
         }
-        
+
         $user = $result->fetch_assoc();
-        
+
         if (!password_verify($password, $user['password'])) {
             sendError('Incorrect password', 401);
         }
-        
-        // Generate a Bearer token for standalone clients (mobile app)
+
+        // Email OTP step — only when the server can actually send email
+        // (mirrors auth_lib.php's otp_enabled()). Google sign-in always skips it.
+        if (function_exists('otp_enabled') && otp_enabled()) {
+            [$otp_ref, $sent] = $this->startOtp($user);
+            if ($sent) {
+                sendSuccess([
+                    'otp_required' => true,
+                    'otp_ref'      => $otp_ref,
+                    'email_masked' => otp_mask_email($user['email']),
+                ], 'Enter the code we emailed you.');
+            }
+            // Couldn't send the code — log in directly rather than locking them out.
+        }
+
+        $this->finishLogin($user);
+    }
+
+    // POST auth/verify-otp  { otp_ref, code }
+    public function verifyOtp($input) {
+        $this->ensureOtpRef();
+        $ref  = $this->conn->real_escape_string(trim($input['otp_ref'] ?? ''));
+        $code = preg_replace('/\D/', '', (string) ($input['code'] ?? ''));
+
+        if ($ref === '') {
+            sendError('Your sign-in session expired. Please log in again.');
+        }
+        if (strlen($code) !== 6) {
+            sendError('Enter the 6-digit code.');
+        }
+
+        $r = $this->conn->query("SELECT * FROM login_otps WHERE otp_ref = '$ref' ORDER BY id DESC LIMIT 1");
+        $row = ($r && $r->num_rows) ? $r->fetch_assoc() : null;
+        if (!$row) {
+            sendError('No code on file. Send a new one.');
+        }
+        if (strtotime($row['expires_at']) < time()) {
+            $this->conn->query("DELETE FROM login_otps WHERE otp_ref = '$ref'");
+            sendError('That code expired. Send a new one.');
+        }
+        if ((int) $row['attempts'] >= 5) {
+            $this->conn->query("DELETE FROM login_otps WHERE otp_ref = '$ref'");
+            sendError('Too many attempts. Please log in again.');
+        }
+        if (!password_verify($code, $row['code_hash'])) {
+            $rid = (int) $row['id'];
+            $this->conn->query("UPDATE login_otps SET attempts = attempts + 1 WHERE id = $rid");
+            sendError('That code is incorrect.');
+        }
+
+        $this->conn->query("DELETE FROM login_otps WHERE otp_ref = '$ref'");
+
+        $uid = (int) $row['user_id'];
+        $ur = $this->conn->query("SELECT * FROM users WHERE id = $uid");
+        $user = ($ur && $ur->num_rows) ? $ur->fetch_assoc() : null;
+        if (!$user) {
+            sendError('Account not found.', 404);
+        }
+        $this->finishLogin($user);
+    }
+
+    // POST auth/resend-otp  { otp_ref }
+    public function resendOtp($input) {
+        $this->ensureOtpRef();
+        $ref = $this->conn->real_escape_string(trim($input['otp_ref'] ?? ''));
+        if ($ref === '') {
+            sendError('Your sign-in session expired. Please log in again.');
+        }
+        $r = $this->conn->query("SELECT * FROM login_otps WHERE otp_ref = '$ref' ORDER BY id DESC LIMIT 1");
+        $row = ($r && $r->num_rows) ? $r->fetch_assoc() : null;
+        if (!$row) {
+            sendError('Your sign-in session expired. Please log in again.');
+        }
+        if (time() - strtotime($row['created_at']) < 30) {
+            sendError('Please wait a few seconds before requesting another code.');
+        }
+        $uid = (int) $row['user_id'];
+        $ur = $this->conn->query("SELECT * FROM users WHERE id = $uid");
+        $user = ($ur && $ur->num_rows) ? $ur->fetch_assoc() : null;
+        if (!$user) {
+            sendError('Account not found.', 404);
+        }
+        [, $sent] = $this->startOtp($user, $ref);
+        if ($sent) {
+            sendSuccess(['otp_ref' => $ref], 'A new code is on its way.');
+        }
+        sendError("Couldn't send the code right now. Try again shortly.");
+    }
+
+    // Generate + email a 6-digit code, stored on a login_otps row keyed by
+    // otp_ref (stateless — the website uses the session instead). Reuses an
+    // existing $ref on resend. Returns [otp_ref, sent].
+    private function startOtp($user, $ref = '') {
+        $this->ensureOtpRef();
+        $uid = (int) $user['id'];
+        if ($ref === '') {
+            $ref = bin2hex(random_bytes(16));
+        }
+        $ref_esc = $this->conn->real_escape_string($ref);
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $hash = $this->conn->real_escape_string(password_hash($code, PASSWORD_DEFAULT));
+        $exp  = date('Y-m-d H:i:s', time() + 600);
+
+        $inner = '<p style="color:#555;font-size:14px;line-height:1.6;">Use this code to finish signing in. It expires in 10 minutes.</p>'
+               . '<div style="font-size:34px;font-weight:700;letter-spacing:8px;color:#ff8ba7;text-align:center;margin:22px 0;padding:14px;background:#fff5f7;border-radius:12px;">' . $code . '</div>'
+               . '<p style="color:#999;font-size:12.5px;">If you didn\'t try to sign in, you can ignore this email and your password stays safe.</p>';
+        $sent = mail_send($user['email'], 'Your Giftly sign-in code: ' . $code, mail_wrap('Verify your sign-in', $inner));
+        if (!$sent) {
+            return [$ref, false];
+        }
+
+        $this->conn->query("DELETE FROM login_otps WHERE user_id = $uid");
+        $this->conn->query("INSERT INTO login_otps (user_id, code_hash, expires_at, otp_ref)
+                            VALUES ($uid, '$hash', '$exp', '$ref_esc')");
+        return [$ref, true];
+    }
+
+    // login_otps predates otp_ref on stores set up before the mobile OTP flow.
+    private function ensureOtpRef() {
+        static $ok = false;
+        if ($ok) return;
+        $ok = true;
+        auth_ensure_schema($this->conn);
+        $c = $this->conn->query("SELECT 1 FROM information_schema.columns
+                                 WHERE table_name = 'login_otps' AND column_name = 'otp_ref'");
+        if (!$c || $c->num_rows === 0) {
+            $this->conn->query("ALTER TABLE login_otps ADD COLUMN IF NOT EXISTS otp_ref VARCHAR(64)");
+        }
+    }
+
+    // Issue a Bearer token + sync the website session, then respond.
+    private function finishLogin($user) {
         $token = AuthHelper::issueToken($this->conn, $user['id']);
 
-        // Website still relies on the session
-        session_start();
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['name'];
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['user_id']    = $user['id'];
+        $_SESSION['user_name']  = $user['name'];
         $_SESSION['user_email'] = $user['email'];
-        $_SESSION['role'] = $user['role'];
-        
+        $_SESSION['role']       = $user['role'];
+
         sendSuccess([
             'token' => $token,
-            'user' => [
-                'id' => $user['id'],
-                'name' => $user['name'],
+            'user'  => [
+                'id'    => $user['id'],
+                'name'  => $user['name'],
                 'email' => $user['email'],
-                'role' => $user['role']
-            ]
+                'role'  => $user['role'],
+            ],
         ], 'Login successful');
     }
     
