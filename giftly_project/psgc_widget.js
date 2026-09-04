@@ -1,49 +1,38 @@
-/* Cascading Philippine address picker (Region -> Province -> City/Mun -> Barangay).
-   Data via psgc.php (server-side proxy of the free PSGC API).
-   Each .psgc-widget dispatches a `psgc:change` CustomEvent with
+/* Cascading Philippine address picker: Region -> Province -> City/Municipality,
+   plus a free-text Barangay field.
+
+   Uses a single bundled dataset (ph_places.json — regions/provinces/cities from
+   the PSGC). No external API, so nothing to time out or rate-limit.
+
+   Each .psgc-widget dispatches `psgc:change` with
    detail = { region, province, city, barangay } (names). */
 (function () {
-    var NCR = '130000000';
+    var DATA = null;
+    var loading = null;
+
+    function loadData() {
+        if (DATA) return Promise.resolve(DATA);
+        if (loading) return loading;
+        loading = fetch('ph_places.json', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { DATA = d; return d; })
+            .catch(function () { return null; });
+        return loading;
+    }
 
     function opt(v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; return o; }
 
-    function reset(sel, ph) {
-        sel.innerHTML = '';
-        sel.appendChild(opt('', ph));
-        sel.disabled = true;
-    }
     function fill(sel, items, ph) {
         sel.innerHTML = '';
         sel.appendChild(opt('', ph));
-        (items || []).forEach(function (i) {
-            var o = opt(i.code, i.name);
-            o.dataset.name = i.name;
+        items.forEach(function (i) {
+            var o = opt(i.c, i.n);
+            o.dataset.name = i.n;
             sel.appendChild(o);
         });
-        sel.disabled = !items || items.length === 0;
-        return sel.disabled;
+        sel.disabled = items.length === 0;
     }
-
-    // fetch a list; one automatic retry; returns [] on failure
-    function getList(qs, tries) {
-        tries = tries || 0;
-        return fetch('psgc.php?' + qs, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (Array.isArray(d)) return d;
-                if (d && Array.isArray(d.list)) return d.list;
-                return [];
-            })
-            .catch(function () { return []; })
-            .then(function (list) {
-                if (list.length === 0 && tries < 1) {
-                    return new Promise(function (res) { setTimeout(res, 600); })
-                        .then(function () { return getList(qs, tries + 1); });
-                }
-                return list;
-            });
-    }
-
+    function reset(sel, ph) { sel.innerHTML = ''; sel.appendChild(opt('', ph)); sel.disabled = true; }
     function selName(sel) {
         var o = sel.options[sel.selectedIndex];
         return (o && o.value) ? (o.dataset.name || o.textContent) : '';
@@ -56,75 +45,54 @@
         var city = document.getElementById(p + '_city');
         var brgy = document.getElementById(p + '_brgy');
         var errEl = root.querySelector('.psgc-err');
-        if (!reg || !prov || !city || !brgy) return;
+        if (!reg || !prov || !city) return;
 
         function showErr(msg) { if (errEl) { errEl.textContent = msg || ''; errEl.style.display = msg ? 'block' : 'none'; } }
 
         function dispatch() {
+            var b = brgy ? brgy.value.trim().replace(/^(brgy\.?|barangay|bgy\.?)\s+/i, '') : '';
             root.dispatchEvent(new CustomEvent('psgc:change', {
                 bubbles: true,
                 detail: {
-                    region: selName(reg), province: selName(prov),
-                    city: selName(city), barangay: selName(brgy)
+                    region:   selName(reg),
+                    province: selName(prov),
+                    city:     selName(city),
+                    barangay: b
                 }
             }));
         }
 
-        getList('type=regions').then(function (d) {
-            fill(reg, d, 'Region…');
-            if (d.length === 0) showErr('Couldn’t load the location list right now — you can type your address in the fields below.');
+        loadData().then(function (d) {
+            if (!d) { showErr('Couldn’t load the location list — please type your address in the fields below.'); return; }
+            fill(reg, d.regions, 'Region…');
         });
 
-        function loadCitiesFor(kind, code) {
-            city.disabled = true;
-            return getList('type=' + kind + '&code=' + code).then(function (d) {
-                var stuck = fill(city, d, 'City / Municipality…');
-                showErr(stuck ? 'Couldn’t load cities — type your city/municipality below.' : '');
-                return d;
-            });
-        }
-
         reg.addEventListener('change', function () {
-            reset(prov, 'Province…'); reset(city, 'City / Municipality…'); reset(brgy, 'Barangay…');
-            showErr('');
+            reset(prov, 'Province…'); reset(city, 'City / Municipality…');
             dispatch();
-            if (!reg.value) return;
+            if (!reg.value || !DATA) return;
 
-            if (reg.value === NCR) {
+            var provinces = DATA.provinces.filter(function (x) { return x.r === reg.value; });
+            if (provinces.length === 0) {
+                // NCR / provinceless region — cities hang directly off the region
                 prov.disabled = true;
-                loadCitiesFor('cities-region', reg.value);
-                return;
+                var cs = DATA.cities.filter(function (x) { return x.r === reg.value; });
+                fill(city, cs, 'City / Municipality…');
+            } else {
+                fill(prov, provinces, 'Province…');
             }
-            getList('type=provinces&code=' + reg.value).then(function (d) {
-                if (d.length === 0) {
-                    // some regions expose cities directly
-                    loadCitiesFor('cities-region', reg.value);
-                } else {
-                    fill(prov, d, 'Province…');
-                }
-            });
         });
 
         prov.addEventListener('change', function () {
-            reset(city, 'City / Municipality…'); reset(brgy, 'Barangay…');
-            showErr('');
+            reset(city, 'City / Municipality…');
             dispatch();
-            if (!prov.value) return;
-            loadCitiesFor('cities', prov.value).then(function (d) {
-                if (d.length === 0) loadCitiesFor('cities-region', reg.value); // fallback
-            });
+            if (!prov.value || !DATA) return;
+            var cs = DATA.cities.filter(function (x) { return x.p === prov.value; });
+            fill(city, cs, 'City / Municipality…');
         });
 
-        city.addEventListener('change', function () {
-            reset(brgy, 'Barangay…');
-            dispatch();
-            if (!city.value) return;
-            getList('type=barangays&code=' + city.value).then(function (d) {
-                fill(brgy, d, 'Barangay…');
-            });
-        });
-
-        brgy.addEventListener('change', dispatch);
+        city.addEventListener('change', dispatch);
+        if (brgy) brgy.addEventListener('input', dispatch);
     }
 
     window.PSGC = {
