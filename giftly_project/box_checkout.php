@@ -405,16 +405,25 @@ unset($_SESSION['box_checkout_error']);
                 </div>
                 <?php endif; ?>
 
+                <?php $psgc_id = 'bx'; include 'psgc_widget.php'; ?>
+
                 <div class="co-row">
                     <div class="co-grp">
-                        <label>Street Address</label>
-                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="Street address" required>
+                        <label>House / Unit / Street</label>
+                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="e.g. Blk 1 Lot 2, Rizal St." required>
                     </div>
                     <div class="co-grp">
-                        <label>City / Province</label>
-                        <input type="text" name="city" id="coCity" class="co-input" placeholder="City, Province" required>
+                        <label>Barangay, City, Province</label>
+                        <input type="text" name="city" id="coCity" class="co-input" placeholder="filled by the picker above" required>
                     </div>
                 </div>
+                <script>
+                    document.getElementById('bx_psgc').addEventListener('psgc:change', function (e) {
+                        var d = e.detail;
+                        var line = [d.barangay ? 'Brgy. ' + d.barangay : '', d.city, d.province].filter(Boolean).join(', ');
+                        if (line) document.getElementById('coCity').value = line;
+                    });
+                </script>
                 <div class="co-row">
                     <div class="co-grp">
                         <label>Delivery Date</label>

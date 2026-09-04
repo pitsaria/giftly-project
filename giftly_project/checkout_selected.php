@@ -1060,17 +1060,25 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
     </div>
 </div>
 
-                <!-- HIDDEN FIELDS TO STORE THE SELECTED ADDRESS DATA -->
+                <?php $psgc_id = 'co'; include 'psgc_widget.php'; ?>
+
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Street Address</label>
-                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="Street address" required>
+                        <label>House / Unit / Street</label>
+                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="e.g. Blk 1 Lot 2, Rizal St." required>
                     </div>
                     <div class="form-group">
-                        <label>City / Province</label>
-                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="City, Province" required>
+                        <label>Barangay, City, Province</label>
+                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="filled by the picker above" required>
                     </div>
                 </div>
+                <script>
+                    document.getElementById('co_psgc').addEventListener('psgc:change', function (e) {
+                        var d = e.detail;
+                        var line = [d.barangay ? 'Brgy. ' + d.barangay : '', d.city, d.province].filter(Boolean).join(', ');
+                        if (line) document.getElementById('checkoutCity').value = line;
+                    });
+                </script>
 
                 <div class="form-row">
     <div class="form-group">
