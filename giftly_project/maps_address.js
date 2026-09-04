@@ -1,58 +1,100 @@
-/* Google Places Autocomplete for PH addresses.
-   Loaded by maps_address.php; the Maps JS API calls giftlyMapsInit() when ready.
-   Each .maps-address element dispatches a `maps:address` CustomEvent with
+/* Address autocomplete via Photon (photon.komoot.io) — free OpenStreetMap
+   geocoder, no key, no billing. Each .maps-address element dispatches a
+   `maps:address` CustomEvent with
    detail = { street, barangay, city, province, region, zip, formatted }. */
+(function () {
+    // rough Philippines bounding box, to bias results
+    var PH_BBOX = '116.7,4.5,127.0,21.2';
 
-function giftlyMapsInit() {
-    if (!(window.google && google.maps && google.maps.places)) return;
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
-    document.querySelectorAll('.maps-address-input').forEach(function (input) {
-        if (input.dataset.acInited) return;
-        input.dataset.acInited = '1';
+    function debounce(fn, ms) {
+        var t;
+        return function () {
+            var args = arguments, ctx = this;
+            clearTimeout(t);
+            t = setTimeout(function () { fn.apply(ctx, args); }, ms);
+        };
+    }
 
-        // don't let Enter (choosing a suggestion) submit the form
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') e.preventDefault();
-        });
+    function parse(pr) {
+        var street   = [pr.housenumber, pr.street].filter(Boolean).join(' ')
+                        || (pr.type === 'street' ? pr.name : '')
+                        || pr.name || '';
+        var barangay = pr.locality || pr.suburb || pr.quarter || pr.neighbourhood || '';
+        var city     = pr.city || pr.town || pr.municipality || '';
+        var county   = pr.county || '';
+        var region   = pr.state || '';
+        var province = /district/i.test(county) ? region : (county || region);
+        var zip      = pr.postcode || '';
+        if (!city && barangay && county && !/district/i.test(county)) { city = county; }
+        return { street: street, barangay: barangay, city: city, province: province, region: region, zip: zip };
+    }
 
-        var ac = new google.maps.places.Autocomplete(input, {
-            componentRestrictions: { country: 'ph' },
-            fields: ['address_components', 'formatted_address'],
-            types: ['geocode']
-        });
+    function initWidget(root) {
+        var p = root.dataset.prefix;
+        var input = document.getElementById(p + '_search');
+        var list  = document.getElementById(p + '_list');
+        if (!input || !list) return;
 
-        ac.addListener('place_changed', function () {
-            var place = ac.getPlace();
-            if (!place || !place.address_components) return;
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
 
-            function get(type) {
-                var c = place.address_components.find(function (x) { return x.types.indexOf(type) > -1; });
-                return c ? c.long_name : '';
-            }
+        var run = debounce(function () {
+            var q = input.value.trim();
+            if (q.length < 3) { list.style.display = 'none'; list.innerHTML = ''; return; }
+            fetch('https://photon.komoot.io/api/?limit=7&lang=en&bbox=' + PH_BBOX + '&q=' + encodeURIComponent(q),
+                  { referrerPolicy: 'no-referrer' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var feats = (d.features || []).filter(function (f) {
+                        return (f.properties || {}).countrycode === 'PH';
+                    });
+                    list._feats = feats;
+                    if (!feats.length) {
+                        list.innerHTML = '<div class="maps-ac-empty">No matches — type your address in the fields below.</div>';
+                    } else {
+                        list.innerHTML = feats.map(function (f, i) {
+                            var pr = f.properties;
+                            var main = [pr.name, pr.street].filter(function (v, idx, a) { return v && a.indexOf(v) === idx; }).join(', ')
+                                       || pr.street || pr.name || pr.locality || 'Address';
+                            var sub = [pr.locality, pr.city || pr.county, pr.state, pr.postcode].filter(Boolean).join(', ');
+                            return '<div class="maps-ac-item" data-i="' + i + '"><strong>' + esc(main) + '</strong><span>' + esc(sub) + '</span></div>';
+                        }).join('');
+                    }
+                    list.style.display = 'block';
+                })
+                .catch(function () { list.style.display = 'none'; });
+        }, 300);
 
-            var street   = [get('street_number'), get('route')].filter(Boolean).join(' ');
-            var barangay = get('sublocality_level_1') || get('neighborhood') || get('sublocality');
-            var city     = get('locality') || get('administrative_area_level_3') || get('administrative_area_level_2');
-            var province = get('administrative_area_level_2');
-            var region   = get('administrative_area_level_1');
-            var zip      = get('postal_code');
+        input.addEventListener('input', run);
+        input.addEventListener('focus', function () { if (list.innerHTML) list.style.display = 'block'; });
 
-            if (province && province === city) province = '';   // Google sometimes repeats the city
-
-            var root = input.closest('.maps-address');
-            if (!root) return;
+        list.addEventListener('click', function (e) {
+            var item = e.target.closest('.maps-ac-item');
+            if (!item || !list._feats) return;
+            var d = parse(list._feats[+item.dataset.i].properties);
+            input.value = [d.street, d.barangay, d.city].filter(Boolean).join(', ');
+            list.style.display = 'none';
             root.dispatchEvent(new CustomEvent('maps:address', {
                 bubbles: true,
                 detail: {
-                    street: street, barangay: barangay, city: city,
-                    province: province, region: region, zip: zip,
-                    formatted: place.formatted_address || ''
+                    street: d.street, barangay: d.barangay, city: d.city,
+                    province: d.province, region: d.region, zip: d.zip,
+                    formatted: [d.street, d.barangay, d.city, d.province, d.zip].filter(Boolean).join(', ')
                 }
             }));
         });
-    });
-}
-window.giftlyMapsInit = giftlyMapsInit;
 
-// if the API script finished before this file (cached), init now
-if (window.google && google.maps && google.maps.places) giftlyMapsInit();
+        document.addEventListener('click', function (e) {
+            if (!root.contains(e.target)) list.style.display = 'none';
+        });
+    }
+
+    function init() {
+        document.querySelectorAll('.maps-address').forEach(function (w) {
+            if (!w.dataset.inited) { w.dataset.inited = '1'; initWidget(w); }
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
