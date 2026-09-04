@@ -1,6 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonApp, IonRouterOutlet } from '@ionic/angular';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { AuthService } from './core/auth.service';
 
 const MIN_SPLASH_MS = 1100;
@@ -19,7 +21,16 @@ export class AppComponent {
   readonly splashHiding = signal(false);
 
   constructor() {
+    this.applyNativeChrome();
     this.init();
+  }
+
+  // Dark icons/text on the app's light toolbar; no status-bar overlay so
+  // content doesn't slide under the clock. No-op on the web build.
+  private applyNativeChrome(): void {
+    if (!Capacitor.isNativePlatform()) return;
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: '#fcfcfc' }).catch(() => {});
   }
 
   private async init(): Promise<void> {
