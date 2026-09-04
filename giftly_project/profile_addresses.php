@@ -1,32 +1,68 @@
 <?php
-$user_id = $_SESSION['user_id'];
+$user_id = (int) $_SESSION['user_id'];
+include_once 'address_lib.php';
+addr_ensure_schema($conn);
 
 // Handle Deletion
 if (isset($_GET['delete_address'])) {
-    $id = $_GET['delete_address'];
+    $id = (int) $_GET['delete_address'];
+    $was_default = false;
+    $dr = $conn->query("SELECT is_default FROM addresses WHERE id = $id AND user_id = $user_id");
+    if ($dr && $dr->num_rows) $was_default = addr_is_default($dr->fetch_assoc()['is_default']);
+
     $conn->query("DELETE FROM addresses WHERE id = $id AND user_id = $user_id");
-    
-    // 🚨 REPLACE header() WITH THIS:
+
+    // if we removed the default, promote the newest remaining address
+    if ($was_default) {
+        $nx = $conn->query("SELECT id FROM addresses WHERE user_id = $user_id ORDER BY id DESC LIMIT 1");
+        if ($nx && $nx->num_rows) addr_set_default($conn, $user_id, (int) $nx->fetch_assoc()['id']);
+    }
+
+    echo '<meta http-equiv="refresh" content="0; url=profile.php?tab=addresses">';
+    exit();
+}
+
+// Handle "set as default"
+if (isset($_POST['set_default_address'])) {
+    addr_set_default($conn, $user_id, (int) $_POST['set_default_address']);
     echo '<meta http-equiv="refresh" content="0; url=profile.php?tab=addresses">';
     exit();
 }
 
 // Handle Adding
 if (isset($_POST['add_address'])) {
-    $label = mysqli_real_escape_string($conn, $_POST['label']); // Grab the label
-    $address = mysqli_real_escape_string($conn, $_POST['address']);
-    $city = mysqli_real_escape_string($conn, $_POST['city']);
+    $label_choice = $_POST['label_choice'] ?? 'Home';
+    if ($label_choice === 'Other') {
+        $label_raw = trim($_POST['label_other'] ?? '');
+        if ($label_raw === '') $label_raw = 'Other';
+    } else {
+        $label_raw = in_array($label_choice, addr_labels(), true) ? $label_choice : 'Home';
+    }
+    $label    = mysqli_real_escape_string($conn, mb_substr($label_raw, 0, 50));
+    $address  = mysqli_real_escape_string($conn, $_POST['address']);
+    $city     = mysqli_real_escape_string($conn, $_POST['city']);
     $province = mysqli_real_escape_string($conn, $_POST['province']);
-    $zip = mysqli_real_escape_string($conn, $_POST['zip']);
-    
-    // ✅ Update the SQL to include 'label'
-    $conn->query("INSERT INTO addresses (user_id, label, address, city, province, zip) VALUES ($user_id, '$label', '$address', '$city', '$province', '$zip')");
-    
+    $zip      = mysqli_real_escape_string($conn, $_POST['zip']);
+
+    // first address for this user, or "make default" ticked -> becomes default
+    $existing = (int) ($conn->query("SELECT COUNT(*) AS c FROM addresses WHERE user_id = $user_id")->fetch_assoc()['c'] ?? 0);
+    $make_default = ($existing === 0) || !empty($_POST['make_default']);
+
+    $conn->query("INSERT INTO addresses (user_id, label, address, city, province, zip)
+                  VALUES ($user_id, '$label', '$address', '$city', '$province', '$zip')");
+    if ($make_default) {
+        $new_id = (int) $conn->insert_id;
+        if ($new_id <= 0) {
+            $new_id = (int) ($conn->query("SELECT id FROM addresses WHERE user_id = $user_id ORDER BY id DESC LIMIT 1")->fetch_assoc()['id'] ?? 0);
+        }
+        if ($new_id > 0) addr_set_default($conn, $user_id, $new_id);
+    }
+
     echo '<meta http-equiv="refresh" content="0; url=profile.php?tab=addresses">';
     exit();
 }
 
-$addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY id DESC");
+$addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY is_default DESC, id DESC");
 ?>
 
 <style>
@@ -110,10 +146,17 @@ $addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDE
 <div id="addAddressForm" style="display: none; ...">
     <form action="profile.php?tab=addresses" method="POST">
         
-        <!-- ✅ CORRECT PLACEMENT: Label is now INSIDE the form -->
         <div class="form-group" style="margin-bottom: 15px;">
-            <label>Address Label (e.g. Home, Office, Mom's House)</label>
-            <input type="text" name="label" class="form-input" placeholder="e.g. Home" required>
+            <label>Address Label</label>
+            <select name="label_choice" id="labelChoice" class="form-input" onchange="document.getElementById('labelOtherWrap').style.display = this.value === 'Other' ? 'block' : 'none';">
+                <option value="Home">🏠 Home</option>
+                <option value="Office">🏢 Office</option>
+                <option value="Other">✏️ Other…</option>
+            </select>
+        </div>
+        <div class="form-group" id="labelOtherWrap" style="margin-bottom: 15px; display: none;">
+            <label>Custom label</label>
+            <input type="text" name="label_other" class="form-input" placeholder="e.g. Mom's House">
         </div>
 
         <div class="form-group" style="margin-bottom: 15px;">
@@ -134,21 +177,39 @@ $addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDE
                 <input type="text" name="zip" class="form-input" required>
             </div>
         </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:#555; margin-bottom:14px; cursor:pointer;">
+            <input type="checkbox" name="make_default" value="1"> Set as my default address
+        </label>
         <button type="submit" name="add_address" class="btn-save" style="padding: 10px 24px; font-size:14px; margin:0;">Save Address</button>
         <button type="button" onclick="document.getElementById('addAddressForm').style.display='none'" style="padding: 10px 24px; border-radius: 50px; border: 1px solid #eee; background: #fff; cursor: pointer; font-weight: 500; margin-left: 10px;">Cancel</button>
     </form>
 </div>
 
 <?php if ($addresses->num_rows > 0): ?>
-    <?php while($row = $addresses->fetch_assoc()): ?>
-        <div class="address-card">
-    <div>
-        <h4><?php echo $row['label']; ?> <!-- 🚨 SHOW THE LABEL HERE --></h4>
-        <p><?php echo $row['address'] . ', ' . $row['city'] . ', ' . $row['province'] . ' ' . $row['zip']; ?></p>
-    </div>
-                       <a href="javascript:void(0)" onclick="openDeleteModal(<?php echo $row['id']; ?>)">
-                <button class="btn-small btn-danger"><i class="fas fa-trash"></i> Delete</button>
-            </a>
+    <?php while($row = $addresses->fetch_assoc()):
+        $is_def = addr_is_default($row['is_default']);
+    ?>
+        <div class="address-card" style="<?php echo $is_def ? 'border-color:#ffc1cc; background:#fff8fa;' : ''; ?>">
+            <div>
+                <h4>
+                    <?php echo htmlspecialchars($row['label'] ?: 'Address'); ?>
+                    <?php if ($is_def): ?>
+                        <span style="display:inline-block; margin-left:6px; background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%); color:#fff; font-size:10px; font-weight:700; padding:2px 9px; border-radius:50px; vertical-align:middle;">DEFAULT</span>
+                    <?php endif; ?>
+                </h4>
+                <p><?php echo htmlspecialchars($row['address'] . ', ' . $row['city'] . ', ' . $row['province'] . ' ' . $row['zip']); ?></p>
+            </div>
+            <div style="display:flex; gap:8px; flex-shrink:0;">
+                <?php if (!$is_def): ?>
+                <form method="POST" action="profile.php?tab=addresses" style="margin:0;">
+                    <input type="hidden" name="set_default_address" value="<?php echo (int) $row['id']; ?>">
+                    <button type="submit" class="btn-small btn-pink" style="white-space:nowrap;"><i class="fas fa-star"></i> Set default</button>
+                </form>
+                <?php endif; ?>
+                <a href="javascript:void(0)" onclick="openDeleteModal(<?php echo (int) $row['id']; ?>)">
+                    <button class="btn-small btn-danger"><i class="fas fa-trash"></i></button>
+                </a>
+            </div>
         </div>
     <?php endwhile; ?>
 <?php else: ?>

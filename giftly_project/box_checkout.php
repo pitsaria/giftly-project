@@ -3,9 +3,11 @@ include 'db_connect.php';
 include 'build_a_box_lib.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
+include_once 'address_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
+addr_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -253,7 +255,7 @@ if ($data['box']['status'] === 'ordered') {
 $blocked = count($data['issues']) > 0;
 
 $user_row = $conn->query("SELECT name, phone FROM users WHERE id = $user_id")->fetch_assoc();
-$addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY id DESC");
+$addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY is_default DESC, id DESC");
 
 $subtotal = $data['subtotal'];
 $box_price = floatval($data['box']['box_price']);
@@ -377,11 +379,14 @@ unset($_SESSION['box_checkout_error']);
                         <label>Saved Address</label>
                         <select id="savedAddr" class="co-input" onchange="coFillAddr()">
                             <option value="">Choose a saved address</option>
-                            <?php while ($a = $addresses_query->fetch_assoc()): ?>
+                            <?php while ($a = $addresses_query->fetch_assoc()):
+                                $a_def = addr_is_default($a['is_default']);
+                            ?>
                                 <option value="<?php echo $a['id']; ?>"
+                                    <?php echo $a_def ? 'data-default="1"' : ''; ?>
                                     data-address="<?php echo htmlspecialchars($a['address']); ?>"
                                     data-city="<?php echo htmlspecialchars($a['city'] . ', ' . $a['province']); ?>">
-                                    <?php echo htmlspecialchars(($a['label'] ?? 'Address') . ' — ' . $a['address'] . ', ' . $a['city']); ?>
+                                    <?php echo htmlspecialchars(($a['label'] ?: 'Address') . ' — ' . $a['address'] . ', ' . $a['city']) . ($a_def ? ' (default)' : ''); ?>
                                 </option>
                             <?php endwhile; ?>
                         </select>
@@ -536,6 +541,16 @@ unset($_SESSION['box_checkout_error']);
         document.getElementById('coAddr').value = o.dataset.address || '';
         document.getElementById('coCity').value = o.dataset.city || '';
     }
+    /* preselect the default saved address */
+    (function () {
+        const sel = document.getElementById('savedAddr');
+        if (!sel) return;
+        const def = sel.querySelector('option[data-default="1"]');
+        if (def && !document.getElementById('coAddr').value) {
+            sel.value = def.value;
+            coFillAddr();
+        }
+    })();
     (function () {
         const d = new Date();
         d.setDate(d.getDate() + 3);

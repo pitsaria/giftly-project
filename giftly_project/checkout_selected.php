@@ -2,8 +2,10 @@
 include 'db_connect.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
+include_once 'address_lib.php';
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
+addr_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -395,7 +397,7 @@ if($total_sum > 0 && $total_sum < 300) {
 $grand_total_with_shipping = $total_sum + $shipping_fee;
 
 // 🚀 FETCH USER'S SAVED ADDRESSES
-$addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY id DESC");
+$addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY is_default DESC, id DESC");
 ?>
 
 <style>
@@ -1002,13 +1004,16 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         <div class="custom-select-wrapper">
             <select name="address_id" id="addressSelect" class="custom-select" onchange="fillAddressFields()">
                 <option value="">🏠 Choose a saved address</option>
-                <?php while($addr = $addresses_query->fetch_assoc()): ?>
-                    <option value="<?php echo $addr['id']; ?>" 
-                            data-address="<?php echo $addr['address']; ?>"
-                            data-city="<?php echo $addr['city']; ?>"
-                            data-province="<?php echo $addr['province']; ?>"
-                            data-zip="<?php echo $addr['zip']; ?>">
-                        <?php echo ($addr['label'] ?? 'Address') . ' - ' . $addr['address'] . ', ' . $addr['city']; ?>
+                <?php while($addr = $addresses_query->fetch_assoc()):
+                    $addr_def = addr_is_default($addr['is_default']);
+                ?>
+                    <option value="<?php echo $addr['id']; ?>"
+                            <?php echo $addr_def ? 'data-default="1"' : ''; ?>
+                            data-address="<?php echo htmlspecialchars($addr['address']); ?>"
+                            data-city="<?php echo htmlspecialchars($addr['city']); ?>"
+                            data-province="<?php echo htmlspecialchars($addr['province']); ?>"
+                            data-zip="<?php echo htmlspecialchars($addr['zip']); ?>">
+                        <?php echo htmlspecialchars(($addr['label'] ?: 'Address') . ' — ' . $addr['address'] . ', ' . $addr['city']) . ($addr_def ? ' (default)' : ''); ?>
                     </option>
                 <?php endwhile; ?>
             </select>
@@ -1817,7 +1822,7 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
     function fillAddressFields() {
         let select = document.getElementById('addressSelect');
         let selectedOption = select.options[select.selectedIndex];
-        
+
         if(selectedOption.value !== "") {
             document.getElementById('checkoutAddress').value = selectedOption.getAttribute('data-address');
             document.getElementById('checkoutCity').value = selectedOption.getAttribute('data-city') + ', ' + selectedOption.getAttribute('data-province');
@@ -1826,6 +1831,17 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
             document.getElementById('checkoutCity').value = '';
         }
     }
+
+    /* --- preselect the customer's default saved address --- */
+    (function () {
+        var select = document.getElementById('addressSelect');
+        if (!select) return;
+        var def = select.querySelector('option[data-default="1"]');
+        if (def && !document.getElementById('checkoutAddress').value) {
+            select.value = def.value;
+            fillAddressFields();
+        }
+    })();
 
     /* --- TERMS AND CONDITIONS MODAL CONTROLS --- */
 function openTermsModal() {
