@@ -28,6 +28,7 @@ export class PaymentWaitingPage implements OnInit, OnDestroy {
   readonly phase = signal<Phase>('waiting');
   readonly checking = signal(false);
   private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private removeCloseListener: () => void = () => {};
   private attempts = 0;
   private readonly maxAttempts = 40; // ~2 min at 3s
 
@@ -51,10 +52,17 @@ export class PaymentWaitingPage implements OnInit, OnDestroy {
       }
       if (this.phase() === 'waiting') this.check();
     }, 3000);
+
+    // Native: the moment the customer closes the PayMongo tab, check right away
+    // instead of waiting for the next 3s tick.
+    this.removeCloseListener = this.payments.onCheckoutClosed(() => {
+      if (this.phase() === 'waiting') this.check();
+    });
   }
 
   ngOnDestroy(): void {
     this.stopPolling();
+    this.removeCloseListener();
   }
 
   private stopPolling(): void {
@@ -69,6 +77,7 @@ export class PaymentWaitingPage implements OnInit, OnDestroy {
       if (res.payment_status === 'paid') {
         this.phase.set('paid');
         this.stopPolling();
+        void this.payments.closeCheckout();
         try {
           const o = await this.orderSvc.getOrderDetails(this.orderId);
           this.orderSvc.lastOrder.set({
