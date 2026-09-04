@@ -24,13 +24,21 @@ if ($product_id <= 0) {
 }
 
 // Check if product exists and has stock
-$product_check = $conn->query("SELECT id, quantity FROM products WHERE id = $product_id");
-if ($product_check->num_rows == 0) {
+$product_check = @$conn->query("SELECT id, quantity, is_active FROM products WHERE id = $product_id");
+if (!$product_check) {
+    $product_check = $conn->query("SELECT id, quantity FROM products WHERE id = $product_id");
+}
+if (!$product_check || $product_check->num_rows == 0) {
     echo json_encode(['success' => false, 'message' => 'Product not found']);
     exit();
 }
 
 $product = $product_check->fetch_assoc();
+if (array_key_exists('is_active', $product)
+    && in_array($product['is_active'], [false, 'f', '0', 0], true)) {
+    echo json_encode(['success' => false, 'message' => 'This product is no longer available']);
+    exit();
+}
 if ($product['quantity'] <= 0) {
     echo json_encode(['success' => false, 'message' => 'Product out of stock']);
     exit();

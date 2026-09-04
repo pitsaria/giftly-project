@@ -4,9 +4,11 @@ include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
 include_once 'address_lib.php';
 include_once 'mail_lib.php';
+include_once 'catalog_lib.php';
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
+catalog_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -37,21 +39,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $ids_string = implode(',', array_map('intval', $selected_ids));
     
     // Check current stock for all selected items
-    $stock_check = $conn->query("SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock 
-                                FROM carts c 
-                                JOIN products p ON c.product_id = p.id 
+    $stock_check = $conn->query("SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock, p.is_active
+                                FROM carts c
+                                JOIN products p ON c.product_id = p.id
                                 WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
-    
+
     $has_stock_issues = false;
     $stock_errors = [];
     $items_to_update = [];
-    
+
     while ($row = $stock_check->fetch_assoc()) {
         $cart_id = $row['cart_id'];
         $requested = intval($row['requested']);
         $available = intval($row['available_stock']);
         $product_name = $row['name'];
-        
+
+        // Pulled from sale while it sat in the cart — block, keep it in the cart.
+        if (!catalog_is_active($row['is_active'] ?? true)) {
+            $has_stock_issues = true;
+            $stock_errors[] = "{$product_name} is no longer available and can't be checked out. Please remove it from your cart.";
+            continue;
+        }
+
         if ($requested > $available) {
             $has_stock_issues = true;
             if ($available <= 0) {
@@ -379,17 +388,35 @@ if(empty($selected_ids)) {
     exit();
 }
 $ids_string = implode(',', array_map('intval', $selected_ids));
-$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity 
-                             FROM carts c 
-                             JOIN products p ON c.product_id = p.id 
+$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity, p.is_active
+                             FROM carts c
+                             JOIN products p ON c.product_id = p.id
                              WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
 
 $total_sum = 0;
 $items_list = [];
+$unavailable_names = [];
 while($row = $items_query->fetch_assoc()){
+    if (!catalog_is_active($row['is_active'] ?? true)) {
+        $unavailable_names[] = $row['name'];
+        continue; // don't include it in the order summary or total
+    }
     $row['subtotal'] = $row['price'] * $row['quantity'];
     $total_sum += $row['subtotal'];
     $items_list[] = $row;
+}
+
+// If a selected item was pulled from sale, send them back to the cart to sort it out.
+if (!empty($unavailable_names)) {
+    echo '<div style="max-width:560px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
+       . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-triangle-exclamation"></i></div>'
+       . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Some items are no longer available</h2>'
+       . '<p style="color:#888;line-height:1.6;margin-bottom:6px;">' . htmlspecialchars(implode(', ', $unavailable_names)) . '</p>'
+       . '<p style="color:#888;line-height:1.6;margin-bottom:22px;">Please remove them from your cart, then check out again.</p>'
+       . '<a href="cart.php" style="padding:13px 30px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">Back to Cart</a>'
+       . '</div>';
+    include 'footer.php';
+    exit();
 }
 
 // 🚀 ADD SHIPPING FEE HERE (PHP 50 min, Free over PHP 300)

@@ -36,7 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $box = $bres->fetch_assoc();
         if ($box['status'] === 'ordered') throw new Exception('This box has already been ordered.');
 
-        $ires = $conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock
+        $bc_has_active = $conn->query("SELECT 1 FROM information_schema.columns
+                                       WHERE table_name = 'products' AND column_name = 'is_active'");
+        $bc_active_col = ($bc_has_active && $bc_has_active->num_rows > 0) ? ", p.is_active" : "";
+        $ires = $conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock$bc_active_col
                               FROM box_items bi JOIN products p ON p.id = bi.product_id
                               WHERE bi.box_id = $box_id FOR UPDATE");
         $items = [];
@@ -44,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         while ($ires && $r = $ires->fetch_assoc()) {
             $req = intval($r['quantity']);
             $av  = intval($r['stock']);
-            if ($req > $av) {
+            if (array_key_exists('is_active', $r) && in_array($r['is_active'], [false, 'f', '0', 0], true)) {
+                $stock_errors[] = "{$r['name']} is no longer available.";
+            } elseif ($req > $av) {
                 $stock_errors[] = $av <= 0
                     ? "{$r['name']} is out of stock."
                     : "{$r['name']}: only {$av} left (box needs {$req}).";

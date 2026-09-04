@@ -1,11 +1,13 @@
-<?php 
-include 'db_connect.php'; 
+<?php
+include 'db_connect.php';
+include_once 'catalog_lib.php';
+catalog_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
-include 'header.php'; 
+include 'header.php';
 $user_id = $_SESSION['user_id'];
 ?>
 
@@ -468,22 +470,23 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
         <div id="cartItemsList">
         <?php
     // ✅ DIRECT DATABASE QUERY - NO API CALL
-    $sql = "SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity 
-            FROM carts c 
-            JOIN products p ON c.product_id = p.id 
+    $sql = "SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity, p.is_active
+            FROM carts c
+            JOIN products p ON c.product_id = p.id
             WHERE c.user_id = $user_id";
     $result = $conn->query($sql);
-    
+
     $in_stock_items = [];
     $out_of_stock_items = [];
     $totalQuantity = 0;
     $stock_warnings = [];
-    
+
     while($row = $result->fetch_assoc()) {
         $totalQuantity += $row['quantity'];
-        
-        // Check for stock issues
-        if ($row['quantity'] > $row['stock_quantity']) {
+        $row['_unavailable'] = !catalog_is_active($row['is_active'] ?? true);
+
+        // Check for stock issues (skip auto-correct for items pulled from sale)
+        if (!$row['_unavailable'] && $row['quantity'] > $row['stock_quantity']) {
             $stock_warnings[] = [
                 'name' => $row['name'],
                 'requested' => $row['quantity'],
@@ -494,8 +497,8 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
             $conn->query("UPDATE carts SET quantity = $new_qty WHERE id = {$row['cart_id']} AND user_id = $user_id");
             $row['quantity'] = $new_qty;
         }
-        
-        if ($row['stock_quantity'] <= 0) {
+
+        if ($row['_unavailable'] || $row['stock_quantity'] <= 0) {
             $out_of_stock_items[] = $row;
         } else {
             $in_stock_items[] = $row;
@@ -548,9 +551,10 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
             <div class="out-of-stock-section">
                 <div class="out-of-stock-title">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Out of Stock Items
+                    Unavailable Items
                     <span style="font-size: 12px; font-weight: 400; color: #999;">(<?php echo count($out_of_stock_items); ?> items)</span>
                 </div>
+                <div style="font-size:12px; color:#999; margin:-6px 0 8px;">These can't be checked out. Remove them, or wait until they're back.</div>
             <?php
             foreach($out_of_stock_items as $row) {
                 $subtotal = $row['price'] * $row['quantity'];
@@ -569,6 +573,9 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                     <div class="ci-details">
                         <div class="ci-name"><?php echo $row['name']; ?></div>
                         <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each</div>
+                        <div style="font-size:11px; font-weight:600; color:#d32f2f; margin-top:3px;">
+                            <?php echo !empty($row['_unavailable']) ? 'No longer available' : 'Out of stock'; ?>
+                        </div>
                     </div>
 
                     <!-- Quantity & Delete (quantity controls disabled) -->

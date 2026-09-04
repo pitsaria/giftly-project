@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include_once 'catalog_lib.php';
+catalog_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'Not logged in']);
@@ -23,9 +25,9 @@ if (empty($cart_ids)) {
 $ids_string = implode(',', $cart_ids);
 
 // Check stock for selected items
-$query = "SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock 
-          FROM carts c 
-          JOIN products p ON c.product_id = p.id 
+$query = "SELECT c.id as cart_id, c.quantity as requested, p.id as product_id, p.name, p.quantity as available_stock, p.is_active
+          FROM carts c
+          JOIN products p ON c.product_id = p.id
           WHERE c.user_id = $user_id AND c.id IN ($ids_string)";
 
 $result = $conn->query($query);
@@ -39,7 +41,17 @@ while ($row = $result->fetch_assoc()) {
     $requested = intval($row['requested']);
     $available = intval($row['available_stock']);
     $product_name = $row['name'];
-    
+
+    // Deactivated by the shop while it sat in the cart — block, keep it in the cart.
+    if (!catalog_is_active($row['is_active'] ?? true)) {
+        $stock_issues[] = [
+            'cart_id' => $cart_id, 'product_name' => $product_name,
+            'requested' => $requested, 'available' => 0, 'unavailable' => true
+        ];
+        $can_proceed = false;
+        continue;
+    }
+
     if ($requested > $available) {
         $stock_issues[] = [
             'cart_id' => $cart_id,
@@ -78,7 +90,9 @@ if ($can_proceed) {
     // Build a descriptive message
     $message_parts = [];
     foreach ($stock_issues as $issue) {
-        if ($issue['available'] <= 0) {
+        if (!empty($issue['unavailable'])) {
+            $message_parts[] = "<strong>{$issue['product_name']}</strong> is no longer available. Please remove it from your cart before checking out.";
+        } elseif ($issue['available'] <= 0) {
             $message_parts[] = "<strong>{$issue['product_name']}</strong> is out of stock and has been removed from your cart.";
         } else {
             $message_parts[] = "<strong>{$issue['product_name']}</strong>: Requested {$issue['requested']}, only {$issue['available']} available. Quantity has been adjusted.";

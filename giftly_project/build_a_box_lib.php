@@ -179,9 +179,12 @@ if (!function_exists('bab_ensure_schema')) {
         $count = 0;
         $subtotal = 0.0;
 
+        $has_active = $conn->query("SELECT 1 FROM information_schema.columns
+                                    WHERE table_name = 'products' AND column_name = 'is_active'");
+        $active_col = ($has_active && $has_active->num_rows > 0) ? ", p.is_active" : "";
         $ir = $conn->query("
             SELECT bi.id AS box_item_id, bi.quantity, bi.product_id,
-                   p.name, p.price, p.image, p.quantity AS stock
+                   p.name, p.price, p.image, p.quantity AS stock$active_col
             FROM box_items bi
             LEFT JOIN products p ON p.id = bi.product_id
             WHERE bi.box_id = $box_id
@@ -190,9 +193,14 @@ if (!function_exists('bab_ensure_schema')) {
         while ($ir && $r = $ir->fetch_assoc()) {
             $qty = intval($r['quantity']);
             $r['quantity'] = $qty;
+            $prod_inactive = array_key_exists('is_active', $r)
+                && in_array($r['is_active'], [false, 'f', '0', 0], true);
             if ($r['name'] === null) {
                 $r['unavailable'] = 'removed';
                 $issues[] = 'An item in this box is no longer available and should be removed.';
+            } elseif ($prod_inactive) {
+                $r['unavailable'] = 'discontinued';
+                $issues[] = $r['name'] . ' is no longer available.';
             } elseif (intval($r['stock']) <= 0) {
                 $r['unavailable'] = 'out_of_stock';
                 $issues[] = $r['name'] . ' is out of stock.';

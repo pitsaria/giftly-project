@@ -3,23 +3,26 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
+include_once 'catalog_lib.php';
+catalog_ensure_schema($conn);
 
 $user_id = $_SESSION['user_id'];
 
 // Get wishlist items with product details
 $wishlist_query = $conn->query("
-    SELECT w.id as wishlist_id, w.created_at, p.* 
-    FROM wishlist w 
-    JOIN products p ON w.product_id = p.id 
-    WHERE w.user_id = $user_id 
+    SELECT w.id as wishlist_id, w.created_at, p.*
+    FROM wishlist w
+    JOIN products p ON w.product_id = p.id
+    WHERE w.user_id = $user_id
     ORDER BY w.created_at DESC
 ");
 
-// Separate items by stock availability
+// Separate items by availability (out of stock OR pulled from sale)
 $in_stock_items = [];
 $out_of_stock_items = [];
 while($item = $wishlist_query->fetch_assoc()) {
-    if ($item['quantity'] > 0) {
+    $item['_unavailable'] = !catalog_is_active($item['is_active'] ?? true);
+    if (!$item['_unavailable'] && $item['quantity'] > 0) {
         $in_stock_items[] = $item;
     } else {
         $out_of_stock_items[] = $item;
@@ -429,24 +432,26 @@ $total_items = count($in_stock_items) + count($out_of_stock_items);
 <div class="out-of-stock-section">
     <div class="out-of-stock-title">
         <i class="fas fa-exclamation-triangle"></i>
-        Out of Stock Items
+        Unavailable Items
         <span style="font-size: 12px; font-weight: 400; color: #999;">(<?php echo count($out_of_stock_items); ?> items)</span>
     </div>
     <div class="wishlist-grid">
-        <?php foreach($out_of_stock_items as $item): ?>
+        <?php foreach($out_of_stock_items as $item):
+            $w_unavail = !empty($item['_unavailable']);
+        ?>
         <div class="wishlist-item out-of-stock" id="wishlist_<?php echo $item['wishlist_id']; ?>">
-            
+
             <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="wishlist-item-img" alt="<?php echo $item['name']; ?>" style="filter: grayscale(0.5);">
-            
+
             <div class="wishlist-item-name"><?php echo $item['name']; ?></div>
-            
-            <span class="stock-badge out-of-stock">Out of Stock</span>
-            
+
+            <span class="stock-badge out-of-stock"><?php echo $w_unavail ? 'No longer available' : 'Out of Stock'; ?></span>
+
             <div class="wishlist-item-price" style="color: #999;">PHP <?php echo number_format($item['price'], 2); ?></div>
-            
+
             <div class="wishlist-item-actions">
                 <button class="btn-add-cart" disabled>
-                    <i class="fas fa-times-circle"></i> Out of Stock
+                    <i class="fas fa-times-circle"></i> <?php echo $w_unavail ? 'Unavailable' : 'Out of Stock'; ?>
                 </button>
                 <button class="btn-remove-wishlist" onclick="openWishlistDeleteModal(<?php echo $item['wishlist_id']; ?>, '<?php echo addslashes($item['name']); ?>')" title="Remove from wishlist">
                     <i class="fas fa-trash-alt"></i>
