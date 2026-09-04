@@ -16,6 +16,7 @@ $__pid = isset($psgc_id) && $psgc_id !== '' ? preg_replace('/[^a-z0-9_]/i', '', 
         <select id="<?php echo $__pid; ?>_city" class="psgc-sel" disabled><option value="">City / Municipality…</option></select>
         <select id="<?php echo $__pid; ?>_brgy" class="psgc-sel" disabled><option value="">Barangay…</option></select>
     </div>
+    <div class="psgc-err" style="display:none;"></div>
     <div class="psgc-hint">Pick your location to fill the fields below, then add your house / unit / street.</div>
 </div>
 
@@ -28,6 +29,7 @@ $__pid = isset($psgc_id) && $psgc_id !== '' ? preg_replace('/[^a-z0-9_]/i', '', 
     .psgc-sel:focus { border-color: #ffc1cc; }
     .psgc-sel:disabled { background: #f4f4f4; color: #999; }
     .psgc-hint { font-size: 11.5px; color: #8a8a8a; margin-top: 8px; }
+    .psgc-err { font-size: 12px; color: #d32f2f; margin-top: 8px; background: #fdeded; border-radius: 8px; padding: 8px 10px; }
     @media (max-width: 560px) { .psgc-grid { grid-template-columns: 1fr; } }
 </style>
 <script src="psgc_widget.js" defer></script>
