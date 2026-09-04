@@ -8,13 +8,24 @@
   <div class="greeting">Hello, {{ auth.user()?.name || 'there' }}!</div>
 
   <div class="hero-scroller" (scroll)="onHeroScroll($event)">
-    <div class="hero-slide" *ngFor="let slide of slides" [style.background]="slide.gradient">
+    <div
+      class="hero-slide"
+      *ngFor="let slide of slides"
+      [style.background]="slide.gradient"
+      [routerLink]="slide.link"
+      [queryParams]="slide.linkParams || null"
+    >
+      <div class="hero-glow"></div>
+      <img [src]="slide.image" [alt]="slide.lead" class="hero-image" />
       <div class="hero-text">
+        <span class="hero-kicker">{{ slide.kicker }}</span>
         <h1>{{ slide.lead }} <span>{{ slide.highlight }}</span> {{ slide.trail }}</h1>
         <p>{{ slide.subtitle }}</p>
-        <ion-button class="giftly-btn-primary" routerLink="/build-a-box">Build your Box</ion-button>
+        <span class="hero-cta">
+          {{ slide.ctaLabel }}
+          <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
+        </span>
       </div>
-      <img [src]="slide.image" [alt]="slide.lead" class="hero-image" width="120" height="120" />
     </div>
   </div>
 

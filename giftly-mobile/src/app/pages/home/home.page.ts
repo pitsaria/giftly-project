@@ -12,7 +12,16 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { giftOutline, addCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star } from 'ionicons/icons';
+import {
+  giftOutline,
+  addCircle,
+  cubeOutline,
+  carOutline,
+  leafOutline,
+  pricetagOutline,
+  star,
+  arrowForward,
+} from 'ionicons/icons';
 import { Category, Order, Product } from '../../core/models';
 import { ProductService } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
@@ -36,12 +45,16 @@ const CATEGORY_TILE_CLASSES = ['p-birthday', 'p-bundle', 'p-shipping', 'p-season
 interface HeroSlide {
   // Rendered as `lead <span>highlight</span> trail` so only one phrase
   // ("Surprise") picks up the accent color, matching the website's hero.
+  kicker: string;
   lead: string;
   highlight: string;
   trail?: string;
   subtitle: string;
   image: string;
   gradient: string;
+  ctaLabel: string;
+  link: string;
+  linkParams?: Record<string, string>;
 }
 
 interface PromoTile {
@@ -94,26 +107,37 @@ export class HomePage implements OnInit {
   // Mirrors the 3 hero slides in index.php's carousel.
   readonly slides: HeroSlide[] = [
     {
-      lead: 'Make Every',
-      highlight: 'Surprise',
-      trail: 'More Meaningful',
-      subtitle: 'Create personalized gift boxes or choose curated collections for every occasion.',
+      kicker: 'Build-a-Box',
+      lead: 'Make every',
+      highlight: 'surprise',
+      trail: 'more meaningful',
+      subtitle: 'Fill a box with hand-picked gifts and a little letter.',
       image: 'assets/giftly/giftbox.png',
-      gradient: 'linear-gradient(135deg, #FFDBDF 0%, #fff4d8 60%, #ffe9d6 100%)',
+      gradient: 'linear-gradient(135deg, #FFD9DE 0%, #ffe9d6 55%, #fff4d8 100%)',
+      ctaLabel: 'Build your Box',
+      link: '/build-a-box',
     },
     {
-      lead: 'Perfect Occasion',
-      highlight: 'Gift Boxes',
-      subtitle: 'Curated gifts for birthdays, anniversaries, weddings, and every special moment.',
+      kicker: 'Occasion Boxes',
+      lead: 'Ready-made for',
+      highlight: 'every moment',
+      subtitle: 'Curated boxes for birthdays, weddings and thank-yous.',
       image: 'assets/giftly/occasion_box.png',
-      gradient: 'linear-gradient(135deg, #D6EAF8 0%, #fff1da 60%, #F4ECF7 100%)',
+      gradient: 'linear-gradient(135deg, #D8E9F7 0%, #eef1fb 55%, #F4ECF7 100%)',
+      ctaLabel: 'Shop Occasion Boxes',
+      link: '/tabs/shop',
+      linkParams: { type: 'occasion_box' },
     },
     {
-      lead: 'Giftly Basket',
-      highlight: 'Delights',
-      subtitle: 'Beautifully arranged baskets filled with premium goodies for any celebration.',
+      kicker: 'Baskets',
+      lead: 'Giftly basket',
+      highlight: 'delights',
+      subtitle: 'Beautifully arranged baskets of premium goodies.',
       image: 'assets/giftly/giftly_basket.png',
-      gradient: 'linear-gradient(135deg, #FDEBD0 0%, #eafaf1 60%, #EBDEF0 100%)',
+      gradient: 'linear-gradient(135deg, #FCE7CE 0%, #f3f0e4 55%, #EBDEF0 100%)',
+      ctaLabel: 'Browse Baskets',
+      link: '/tabs/shop',
+      linkParams: { type: 'basket' },
     },
   ];
 
@@ -151,7 +175,7 @@ export class HomePage implements OnInit {
   ];
 
   constructor() {
-    addIcons({ giftOutline, addCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star });
+    addIcons({ giftOutline, addCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
   }
 
   onHeroScroll(ev: Event): void {

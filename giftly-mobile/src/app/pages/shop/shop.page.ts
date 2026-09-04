@@ -131,6 +131,11 @@ export class ShopPage implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const raw = params.get('category');
       this.selectedCategory = raw ? Number(raw) : null;
+      // ?type= lets Home's hero deep-link into Occasion Boxes / Baskets.
+      const type = params.get('type');
+      if (type === 'occasion_box' || type === 'basket' || type === 'catalog') {
+        this.productType.set(type);
+      }
       this.page = 1;
       this.loadProducts();
     });
