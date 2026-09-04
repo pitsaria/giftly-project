@@ -28,6 +28,7 @@ import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
+import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // Mirrors giftly_project/box_checkout.php — checkout for a single saved box.
@@ -52,6 +53,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
     IonSelectOption,
     IonSpinner,
     PhPhoneInputComponent,
+    AddressSearchComponent,
     ImgUrlPipe,
   ],
 })
@@ -139,6 +141,12 @@ export class BoxCheckoutPage implements OnInit {
       this.address = found.address;
       this.city = `${found.city}${found.province ? ', ' + found.province : ''}`;
     }
+  }
+
+  onAddressPicked(d: AddressParts): void {
+    if (d.street) this.address = d.street;
+    const line = [d.barangay, d.city, d.province || d.region].filter(Boolean).join(', ');
+    if (line) this.city = line;
   }
 
   onCardNumberInput(): void {

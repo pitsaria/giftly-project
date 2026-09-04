@@ -29,6 +29,7 @@ import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
+import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 
 // Mirrors giftly_project/checkout_selected.php.
 // Fetched state lives in signals — guaranteed to trigger a re-render on
@@ -54,6 +55,7 @@ import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-inpu
     IonSelectOption,
     IonSpinner,
     PhPhoneInputComponent,
+    AddressSearchComponent,
   ],
 })
 export class CheckoutPage implements OnInit {
@@ -158,6 +160,12 @@ export class CheckoutPage implements OnInit {
       this.address = found.address;
       this.city = found.city;
     }
+  }
+
+  onAddressPicked(d: AddressParts): void {
+    if (d.street) this.address = d.street;
+    const line = [d.barangay, d.city, d.province || d.region].filter(Boolean).join(', ');
+    if (line) this.city = line;
   }
 
   total(): number {

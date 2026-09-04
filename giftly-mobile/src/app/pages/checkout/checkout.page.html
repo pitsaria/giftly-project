@@ -38,8 +38,10 @@
     </ion-select-option>
   </ion-select>
 
+  <app-address-search (picked)="onAddressPicked($event)"></app-address-search>
+
   <ion-input label="Street Address *" labelPlacement="stacked" fill="outline" [(ngModel)]="address" class="field"></ion-input>
-  <ion-input label="City *" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
+  <ion-input label="Barangay, City, Province *" labelPlacement="stacked" fill="outline" [(ngModel)]="city" class="field"></ion-input>
 
   <app-ph-phone-input
     label="Sender Phone *"

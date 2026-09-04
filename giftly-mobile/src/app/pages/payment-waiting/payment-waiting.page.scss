@@ -10,7 +10,8 @@
     margin-bottom: 16px;
   }
 
-  ion-icon {
+  // The big status glyph — scoped so it never touches icons inside buttons.
+  > ion-icon {
     font-size: 64px;
     margin-bottom: 14px;
 
@@ -23,6 +24,10 @@
     &.wait {
       color: #f9a825;
     }
+  }
+
+  ion-button ion-icon {
+    font-size: 18px;
   }
 
   h1 {

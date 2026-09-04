@@ -1,0 +1,27 @@
+<div class="addr-search">
+  <ion-input
+    label="Search your address"
+    labelPlacement="stacked"
+    fill="outline"
+    [(ngModel)]="query"
+    (ionInput)="onInput()"
+    (ionFocus)="results().length && open.set(true)"
+    placeholder="Start typing your street, subdivision or barangay…"
+    class="field"
+  >
+    <ion-icon slot="start" name="location-outline" aria-hidden="true"></ion-icon>
+    <ion-spinner slot="end" name="dots" *ngIf="loading()"></ion-spinner>
+  </ion-input>
+
+  <div class="ac-list" *ngIf="open() && (results().length || !loading())">
+    <button type="button" class="ac-item" *ngFor="let p of results()" (click)="pick(p)">
+      <strong>{{ mainLine(p) }}</strong>
+      <span>{{ subLine(p) }}</span>
+    </button>
+    <div class="ac-empty" *ngIf="!results().length">
+      No matches — type your address in the fields below.
+    </div>
+  </div>
+
+  <div class="ac-hint">Pick a suggestion to fill the fields, then adjust the house / unit number.</div>
+</div>

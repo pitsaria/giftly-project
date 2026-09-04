@@ -46,6 +46,7 @@ import { CartService } from '../../core/cart.service';
 import { BoxService } from '../../core/box.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
+import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 
 type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
 
@@ -77,6 +78,7 @@ type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
     IonCheckbox,
     TopBarComponent,
     ImgUrlPipe,
+    AddressSearchComponent,
   ],
 })
 export class ProfilePage implements OnInit {
@@ -267,6 +269,14 @@ export class ProfilePage implements OnInit {
     } catch (err) {
       await this.toast(describeError(err));
     }
+  }
+
+  onAddressPicked(d: AddressParts): void {
+    if (d.street) this.newAddress.address = d.street;
+    if (d.barangay) this.newAddress.barangay = d.barangay;
+    this.newAddress.city = d.city || this.newAddress.city;
+    this.newAddress.province = d.province || d.region || this.newAddress.province;
+    if (d.zip) this.newAddress.zip = d.zip;
   }
 
   async setDefaultAddress(id: number): Promise<void> {

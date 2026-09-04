@@ -112,6 +112,8 @@
           class="field"
         ></ion-input>
 
+        <app-address-search (picked)="onAddressPicked($event)"></app-address-search>
+
         <ion-input label="House / Unit / Block / Lot No. (optional)" labelPlacement="stacked" fill="outline" placeholder="e.g. Blk 1 Lot 2 / Unit 4B" [(ngModel)]="newAddress.house_no" class="field"></ion-input>
         <ion-input label="Street Address" labelPlacement="stacked" fill="outline" placeholder="e.g. F. Samonte Street" [(ngModel)]="newAddress.address" class="field"></ion-input>
         <ion-input label="Barangay" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.barangay" class="field"></ion-input>
