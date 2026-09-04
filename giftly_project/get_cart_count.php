@@ -1,6 +1,7 @@
 <?php
-session_start();
-include 'db_connect.php';
+include 'db_connect.php'; // starts the session
+
+header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['count' => 0]);

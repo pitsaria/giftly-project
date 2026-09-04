@@ -30,6 +30,27 @@ if (ob_get_level() === 0) { ob_start(); }
         body { background: #fcfcfc; color: #333; padding-top: 10px; } 
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
+
+        /* --- more readable placeholder / hint text --- */
+        ::placeholder { color: #6f6f6f !important; opacity: 1; }
+        :-ms-input-placeholder { color: #6f6f6f !important; }
+        ::-ms-input-placeholder { color: #6f6f6f !important; }
+        input::placeholder, textarea::placeholder { color: #6f6f6f; opacity: 1; }
+        .field-hint, .form-hint { color: #6f6f6f !important; }
+
+        /* --- cart icon count badge --- */
+        .cart-icon-link { position: relative; display: inline-flex; }
+        .cart-badge {
+            position: absolute; top: -7px; right: -9px;
+            min-width: 18px; height: 18px; padding: 0 4px;
+            background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%);
+            color: #fff; font-size: 11px; font-weight: 700;
+            border-radius: 50px; display: none;
+            align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(254, 165, 182, 0.5);
+            line-height: 1;
+        }
+        .cart-badge.show { display: flex; }
         .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
         
         /* --- NAVBAR (Glassmorphism) --- */
@@ -196,7 +217,14 @@ if (ob_get_level() === 0) { ob_start(); }
         </ul>
 
         <div class="nav-actions">
-<a href="javascript:void(0)" onclick="openCartWithCheck()"><i class="fas fa-shopping-cart"></i></a>            
+<?php
+$header_cart_count = 0;
+if (isset($_SESSION['user_id'])) {
+    $__cc = $conn->query("SELECT COALESCE(SUM(quantity), 0) AS c FROM carts WHERE user_id = " . (int) $_SESSION['user_id']);
+    if ($__cc) $header_cart_count = (int) $__cc->fetch_assoc()['c'];
+}
+?>
+<a href="javascript:void(0)" onclick="openCartWithCheck()" class="cart-icon-link" aria-label="Cart"><i class="fas fa-shopping-cart"></i><span class="cart-badge <?php echo $header_cart_count > 0 ? 'show' : ''; ?>" id="cartBadge"><?php echo $header_cart_count; ?></span></a>
             <?php if (isset($_SESSION['user_id'])): ?>
                 <!-- User is Logged In -->
                 <a href="profile.php" class="profile-icon-link" style="display: flex; align-items: center; gap: 0;">
@@ -257,6 +285,20 @@ if (ob_get_level() === 0) { ob_start(); }
     <?php include 'modal_reauth.php'; ?>
 
     <script>
+// Refresh the cart-icon count badge (call after any add-to-cart)
+window.updateCartBadge = function () {
+    fetch('get_cart_count.php', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            var b = document.getElementById('cartBadge');
+            if (!b) return;
+            var n = parseInt(d.count, 10) || 0;
+            b.textContent = n;
+            b.classList.toggle('show', n > 0);
+        })
+        .catch(function () {});
+};
+
 function openCartWithCheck() {
     // Check if user is logged in
     fetch('check_login.php')

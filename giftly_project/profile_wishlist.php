@@ -616,6 +616,7 @@ function addToCartFromWishlist(productId, wishlistId) {
                     showCartAlert('Not enough stock available.', 'out-of-stock');
                 } else {
                     showWishlistToast('Added to cart! 🛒');
+                    if (window.updateCartBadge) window.updateCartBadge();
                 }
             })
             .catch(error => {

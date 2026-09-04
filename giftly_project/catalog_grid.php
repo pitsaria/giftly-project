@@ -387,6 +387,7 @@ function catToast() {
     const t = document.getElementById('catToast');
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2200);
+    if (window.updateCartBadge) window.updateCartBadge();
 }
 
 function catWishlist(el, productId) {

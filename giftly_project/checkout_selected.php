@@ -164,6 +164,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         $items[] = $row;
     }
 
+    // Don't create an order with nothing in it.
+    if (count($items) === 0 || $total_amount <= 0) {
+        echo '<div style="max-width:520px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
+           . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-cart-shopping"></i></div>'
+           . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Your cart is empty</h2>'
+           . '<p style="color:#888;line-height:1.6;margin-bottom:22px;">Add at least one item before checking out.</p>'
+           . '<a href="shop.php" style="padding:13px 30px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">Go to Shop</a>'
+           . '</div>';
+        include 'footer.php';
+        exit();
+    }
+
     // Calculate the final total with shipping for the database
 // Use the actual shipping fee from the checkout page
 $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;

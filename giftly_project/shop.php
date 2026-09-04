@@ -1148,6 +1148,7 @@ function buyNow() {
         setTimeout(() => {
             toast.classList.remove('show');
         }, 2500);
+        if (window.updateCartBadge) window.updateCartBadge();
     }
 
     /* --- WISHLIST TOGGLE --- */

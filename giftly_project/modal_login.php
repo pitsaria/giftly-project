@@ -98,6 +98,7 @@ if (!empty($error_msg)): ?>
 <!-- LOGIN SUCCESS MODAL -->
 <div class="confirm-modal-overlay" id="loginSuccessModal">
     <div class="confirm-modal-box">
+        <button type="button" class="confirm-modal-close" onclick="closeLoginSuccessModal()" aria-label="Close">&times;</button>
         <div class="confirm-icon"><i class="fas fa-check-circle" style="color: #66bb6a;"></i></div>
 
         <?php 
@@ -206,7 +207,14 @@ if (!empty($error_msg)): ?>
         max-width: 400px; width: 90%; text-align: center;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
         animation: fadeUp 0.3s ease;
+        position: relative;
     }
+    .confirm-modal-close {
+        position: absolute; top: 16px; right: 20px;
+        font-size: 24px; line-height: 1; color: #999; cursor: pointer;
+        background: none; border: none; transition: 0.2s;
+    }
+    .confirm-modal-close:hover { color: #ff8ba7; transform: rotate(90deg); }
     @keyframes fadeUp {
         from { transform: translateY(20px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
