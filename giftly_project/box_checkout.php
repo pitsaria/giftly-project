@@ -405,24 +405,29 @@ unset($_SESSION['box_checkout_error']);
                 </div>
                 <?php endif; ?>
 
-                <?php $psgc_id = 'bx'; include 'psgc_widget.php'; ?>
+                <?php $maps_id = 'bx'; include 'maps_address.php'; ?>
 
                 <div class="co-row">
                     <div class="co-grp">
-                        <label>House / Unit / Street</label>
-                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="e.g. Blk 1 Lot 2, Rizal St." required>
+                        <label>Street Address</label>
+                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="House / unit / street" required>
                     </div>
                     <div class="co-grp">
-                        <label>Barangay, City, Province</label>
-                        <input type="text" name="city" id="coCity" class="co-input" placeholder="filled by the picker above" required>
+                        <label>City / Province</label>
+                        <input type="text" name="city" id="coCity" class="co-input" placeholder="City, Province" required>
                     </div>
                 </div>
                 <script>
-                    document.getElementById('bx_psgc').addEventListener('psgc:change', function (e) {
-                        var d = e.detail;
-                        var line = [d.barangay ? 'Brgy. ' + d.barangay : '', d.city, d.province].filter(Boolean).join(', ');
-                        if (line) document.getElementById('coCity').value = line;
-                    });
+                    (function () {
+                        var m = document.getElementById('bx_maps');
+                        if (!m) return;
+                        m.addEventListener('maps:address', function (e) {
+                            var d = e.detail;
+                            if (d.street) document.getElementById('coAddr').value = d.street;
+                            var line = [d.barangay, d.city, d.province].filter(Boolean).join(', ');
+                            if (line) document.getElementById('coCity').value = line;
+                        });
+                    })();
                 </script>
                 <div class="co-row">
                     <div class="co-grp">

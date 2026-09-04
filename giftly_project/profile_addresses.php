@@ -159,33 +159,38 @@ $addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDE
             <input type="text" name="label_other" class="form-input" placeholder="e.g. Mom's House">
         </div>
 
-        <?php $psgc_id = 'pf'; include 'psgc_widget.php'; ?>
+        <?php $maps_id = 'pf'; include 'maps_address.php'; ?>
 
         <div class="form-group" style="margin-bottom: 15px;">
-            <label>House / Unit / Street</label>
-            <input type="text" name="address" id="pf_street" class="form-input" placeholder="e.g. Blk 1 Lot 2, Rizal St." required>
+            <label>Street Address</label>
+            <input type="text" name="address" id="pf_street" class="form-input" placeholder="House / unit / street" required>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label>City / Municipality</label>
-                <input type="text" name="city" id="pf_city" class="form-input" placeholder="filled by the picker" required>
+                <input type="text" name="city" id="pf_city" class="form-input" required>
             </div>
             <div class="form-group">
                 <label>Province</label>
-                <input type="text" name="province" id="pf_prov_out" class="form-input" placeholder="filled by the picker" required>
+                <input type="text" name="province" id="pf_prov_out" class="form-input" required>
             </div>
             <div class="form-group">
                 <label>ZIP Code</label>
-                <input type="text" name="zip" class="form-input" inputmode="numeric" maxlength="4" required>
+                <input type="text" name="zip" id="pf_zip" class="form-input" inputmode="numeric" maxlength="4" required>
             </div>
         </div>
         <script>
-            document.getElementById('pf_psgc').addEventListener('psgc:change', function (e) {
-                var d = e.detail;
-                if (d.city) document.getElementById('pf_city').value = d.barangay ? 'Brgy. ' + d.barangay + ', ' + d.city : d.city;
-                var prov = d.province || (d.region && d.region.indexOf('NCR') > -1 ? 'Metro Manila' : '');
-                if (prov) document.getElementById('pf_prov_out').value = prov;
-            });
+            (function () {
+                var m = document.getElementById('pf_maps');
+                if (!m) return;
+                m.addEventListener('maps:address', function (e) {
+                    var d = e.detail;
+                    if (d.street) document.getElementById('pf_street').value = d.street;
+                    document.getElementById('pf_city').value = [d.barangay, d.city].filter(Boolean).join(', ') || d.city || '';
+                    document.getElementById('pf_prov_out').value = d.province || d.region || '';
+                    if (d.zip) document.getElementById('pf_zip').value = d.zip;
+                });
+            })();
         </script>
         <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:#555; margin-bottom:14px; cursor:pointer;">
             <input type="checkbox" name="make_default" value="1"> Set as my default address
