@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 
         $fullname       = mysqli_real_escape_string($conn, $_POST['fullname']);
         $sender_phone   = mysqli_real_escape_string($conn, $_POST['sender_phone']);
-        $address        = mysqli_real_escape_string($conn, $_POST['address']);
+        $address        = mysqli_real_escape_string($conn, mb_substr(trim(trim($_POST['house_no'] ?? '') . ' ' . trim($_POST['address'] ?? '')), 0, 255));
         $city           = mysqli_real_escape_string($conn, $_POST['city']);
         $payment        = mysqli_real_escape_string($conn, $_POST['payment_method']);
         $delivery_date  = mysqli_real_escape_string($conn, $_POST['delivery_date']);
@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             'payment' => $_POST['payment_method'],
             'delivery_date' => $_POST['delivery_date'],
             'delivery_time' => $_POST['delivery_time'],
-            'address' => $_POST['address'] . ', ' . $_POST['city'],
+            'address' => trim(trim($_POST['house_no'] ?? '') . ' ' . trim($_POST['address'] ?? '')) . ', ' . $_POST['city'],
             'recipient' => $recipient,
             'recipient_phone' => $recipient_phone,
             'size_name' => $box['size_name'],
@@ -408,13 +408,19 @@ unset($_SESSION['box_checkout_error']);
                 <?php $maps_id = 'bx'; include 'maps_address.php'; ?>
 
                 <div class="co-row">
-                    <div class="co-grp">
-                        <label>Street Address</label>
-                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="House / unit / street" required>
+                    <div class="co-grp" style="flex:0 0 38%;">
+                        <label>House / Unit / Block / Lot No. <span style="color:#bbb;font-weight:400;">(optional)</span></label>
+                        <input type="text" name="house_no" id="coHouse" class="co-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B">
                     </div>
                     <div class="co-grp">
-                        <label>City / Province</label>
-                        <input type="text" name="city" id="coCity" class="co-input" placeholder="City, Province" required>
+                        <label>Street Address</label>
+                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="Street / subdivision" required>
+                    </div>
+                </div>
+                <div class="co-row">
+                    <div class="co-grp">
+                        <label>Barangay, City, Province</label>
+                        <input type="text" name="city" id="coCity" class="co-input" placeholder="Barangay, City, Province" required>
                     </div>
                 </div>
                 <script>
@@ -626,7 +632,7 @@ unset($_SESSION['box_checkout_error']);
         if (!form) return;
         const KEY = 'boxCheckout_<?php echo (int) $box_id; ?>';
         const fields = ['fullname', 'sender_phone', 'delivery_type', 'recipient_name', 'recipient_phone',
-                        'address', 'city', 'delivery_date', 'delivery_time', 'payment_method', 'card_holder', 'card_expiry'];
+                        'house_no', 'address', 'city', 'delivery_date', 'delivery_time', 'payment_method', 'card_holder', 'card_expiry'];
 
         function collect() {
             const data = {};

@@ -112,7 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     
     $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
     $sender_phone = mysqli_real_escape_string($conn, $_POST['sender_phone']);
-    $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $__house = trim($_POST['house_no'] ?? '');
+    $__street = trim($_POST['address'] ?? '');
+    $address = mysqli_real_escape_string($conn, mb_substr(trim($__house . ' ' . $__street), 0, 255));
     $city = mysqli_real_escape_string($conn, $_POST['city']);
     
     // ... continue with your existing order placement code ...
@@ -1063,13 +1065,19 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 <?php $maps_id = 'co'; include 'maps_address.php'; ?>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Street Address</label>
-                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="House / unit / street" required>
+                    <div class="form-group" style="flex:0 0 38%;">
+                        <label>House / Unit / Block / Lot No. <span style="color:#bbb;font-weight:400;">(optional)</span></label>
+                        <input type="text" name="house_no" id="checkoutHouse" class="form-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B">
                     </div>
                     <div class="form-group">
-                        <label>City / Province</label>
-                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="City, Province" required>
+                        <label>Street Address</label>
+                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="Street / subdivision" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Barangay, City, Province</label>
+                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="Barangay, City, Province" required>
                     </div>
                 </div>
                 <script>

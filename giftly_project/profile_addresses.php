@@ -39,7 +39,16 @@ if (isset($_POST['add_address'])) {
         $label_raw = in_array($label_choice, addr_labels(), true) ? $label_choice : 'Home';
     }
     $label    = mysqli_real_escape_string($conn, mb_substr($label_raw, 0, 50));
-    $address  = mysqli_real_escape_string($conn, $_POST['address']);
+
+    // Compose the stored street line from the detailed parts
+    $house_no = trim($_POST['house_no'] ?? '');
+    $street   = trim($_POST['address'] ?? '');
+    $barangay = trim($_POST['barangay'] ?? '');
+    $line = trim($house_no . ' ' . $street);
+    if ($barangay !== '') {
+        $line .= ($line !== '' ? ', ' : '') . (preg_match('/^(brgy|barangay|bgy)\b/i', $barangay) ? $barangay : 'Brgy. ' . $barangay);
+    }
+    $address  = mysqli_real_escape_string($conn, mb_substr($line, 0, 255));
     $city     = mysqli_real_escape_string($conn, $_POST['city']);
     $province = mysqli_real_escape_string($conn, $_POST['province']);
     $zip      = mysqli_real_escape_string($conn, $_POST['zip']);
@@ -161,15 +170,27 @@ $addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDE
 
         <?php $maps_id = 'pf'; include 'maps_address.php'; ?>
 
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label>Street Address</label>
-            <input type="text" name="address" id="pf_street" class="form-input" placeholder="House / unit / street" required>
+        <div class="form-row">
+            <div class="form-group" style="flex: 0 0 40%;">
+                <label>House / Unit / Block / Lot No. <span style="color:#bbb;font-weight:400;">(optional)</span></label>
+                <input type="text" name="house_no" id="pf_house" class="form-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B">
+            </div>
+            <div class="form-group">
+                <label>Street Address</label>
+                <input type="text" name="address" id="pf_street" class="form-input" placeholder="e.g. F. Samonte Street" required>
+            </div>
         </div>
         <div class="form-row">
+            <div class="form-group">
+                <label>Barangay</label>
+                <input type="text" name="barangay" id="pf_brgy" class="form-input" placeholder="e.g. Robles" required>
+            </div>
             <div class="form-group">
                 <label>City / Municipality</label>
                 <input type="text" name="city" id="pf_city" class="form-input" required>
             </div>
+        </div>
+        <div class="form-row">
             <div class="form-group">
                 <label>Province</label>
                 <input type="text" name="province" id="pf_prov_out" class="form-input" required>
@@ -186,7 +207,8 @@ $addresses = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDE
                 m.addEventListener('maps:address', function (e) {
                     var d = e.detail;
                     if (d.street) document.getElementById('pf_street').value = d.street;
-                    document.getElementById('pf_city').value = [d.barangay, d.city].filter(Boolean).join(', ') || d.city || '';
+                    if (d.barangay) document.getElementById('pf_brgy').value = d.barangay;
+                    document.getElementById('pf_city').value = d.city || '';
                     document.getElementById('pf_prov_out').value = d.province || d.region || '';
                     if (d.zip) document.getElementById('pf_zip').value = d.zip;
                 });
