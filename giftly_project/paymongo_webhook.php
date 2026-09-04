@@ -8,6 +8,7 @@
 
 include 'db_connect.php';
 include 'paymongo_lib.php';
+include_once 'mail_lib.php';
 pay_ensure_schema($conn);
 
 $raw = file_get_contents('php://input');
@@ -37,7 +38,9 @@ if ($order_id > 0) {
         } elseif (!empty($attr['source']['type'])) {
             $method = $attr['source']['type'];
         }
-        pay_mark_paid($conn, $order_id, $ref, $method);
+        if (pay_mark_paid($conn, $order_id, $ref, $method) && function_exists('send_order_email')) {
+            @send_order_email($conn, $order_id, true);
+        }
     }
     // Note: a single `payment.failed` is not treated as final — the shopper may
     // retry on the same checkout session. pay_sweep_stale() handles abandonment.

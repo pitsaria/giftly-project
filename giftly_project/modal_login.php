@@ -3,6 +3,9 @@
 if (isset($_SESSION['just_logged_in'])) {
     unset($_SESSION['just_logged_in']);
 }
+require_once __DIR__ . '/auth_lib.php';
+$__otp_pending = function_exists('otp_pending') && otp_pending();
+$__otp_email   = $__otp_pending ? otp_mask_email($_SESSION['pending_otp_email'] ?? '') : '';
 ?>
 
 <!-- LOGIN MODAL OVERLAY -->
@@ -13,6 +16,7 @@ if (isset($_SESSION['just_logged_in'])) {
         <div class="login-modal-split">
             <!-- LEFT: Login Form -->
             <div class="login-modal-form">
+              <div id="loginFormStep" <?php echo $__otp_pending ? 'style="display:none;"' : ''; ?>>
                 <h2 class="login-modal-title">Welcome Back</h2>
                 <p class="login-modal-sub">Sign in to access your account.</p>
 
@@ -79,6 +83,25 @@ if (!empty($error_msg)): ?>
                         Don't have an account? <a href="javascript:void(0)" onclick="closeLoginModal(false); setTimeout(openRegisterModal, 300);">Sign up</a>
                     </div>
                 </form>
+              </div><!-- /#loginFormStep -->
+
+              <div id="loginOtpStep" <?php echo $__otp_pending ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+                <h2 class="login-modal-title">Check your email</h2>
+                <p class="login-modal-sub">Enter the 6-digit code we sent to <strong id="otpEmailLabel"><?php echo htmlspecialchars($__otp_email); ?></strong>.</p>
+                <div id="otpError" style="display:none; background:#fdeded; color:#d32f2f; padding:12px 15px; border-radius:16px; margin-bottom:15px; text-align:center; font-weight:500; font-size:14px;"></div>
+                <div id="otpNotice" style="display:none; background:#e8f5e9; color:#2e7d32; padding:12px 15px; border-radius:16px; margin-bottom:15px; text-align:center; font-weight:500; font-size:14px;"></div>
+                <div class="login-input-group">
+                    <label>6-digit code</label>
+                    <input type="text" id="otpCodeInput" class="login-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="letter-spacing:6px; text-align:center; font-size:20px; font-weight:600;">
+                </div>
+                <button type="button" class="login-submit-btn" onclick="submitOtp()">Verify &amp; sign in</button>
+                <div style="text-align:center; margin-top:14px; font-size:13.5px; color:#555;">
+                    Didn't get it? <a href="javascript:void(0)" onclick="resendOtp()" class="login-forgot-link" style="display:inline;">Resend code</a>
+                </div>
+                <div style="text-align:center; margin-top:8px;">
+                    <a href="javascript:void(0)" onclick="otpBackToLogin()" style="font-size:12.5px; color:#999;">&larr; Use a different account</a>
+                </div>
+              </div><!-- /#loginOtpStep -->
             </div>
 
             <!-- RIGHT: Promotional Art -->
@@ -311,6 +334,63 @@ function closeLoginModal(clearError = false) {
         }
     }
 }
+
+/* --- OTP (email code) step --- */
+function showOtpStep() {
+    var f = document.getElementById('loginFormStep');
+    var o = document.getElementById('loginOtpStep');
+    if (f) f.style.display = 'none';
+    if (o) { o.style.display = 'block'; var i = document.getElementById('otpCodeInput'); if (i) setTimeout(function(){ i.focus(); }, 200); }
+}
+function otpSetError(msg) {
+    var e = document.getElementById('otpError');
+    if (e) { e.textContent = msg; e.style.display = msg ? 'block' : 'none'; }
+    var n = document.getElementById('otpNotice'); if (n) n.style.display = 'none';
+}
+function otpSetNotice(msg) {
+    var n = document.getElementById('otpNotice');
+    if (n) { n.textContent = msg; n.style.display = msg ? 'block' : 'none'; }
+    otpSetError('');
+}
+function submitOtp() {
+    var code = (document.getElementById('otpCodeInput').value || '').replace(/\D/g, '');
+    if (code.length !== 6) { otpSetError('Enter the 6-digit code.'); return; }
+    otpSetNotice('Verifying…');
+    fetch('verify_otp.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'code=' + encodeURIComponent(code),
+        credentials: 'same-origin'
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.status === 'success') { window.location.href = d.redirect || 'index.php'; }
+            else { otpSetError(d.message || 'That code is incorrect.'); }
+        })
+        .catch(function () { otpSetError('Network error. Please try again.'); });
+}
+function resendOtp() {
+    otpSetNotice('Sending a new code…');
+    fetch('resend_otp.php', { method: 'POST', credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.status === 'success') otpSetNotice(d.message || 'A new code is on its way.');
+            else otpSetError(d.message || "Couldn't resend the code.");
+        })
+        .catch(function () { otpSetError('Network error. Please try again.'); });
+}
+function otpBackToLogin() {
+    fetch('cancel_otp.php', { method: 'POST', credentials: 'same-origin' })
+        .catch(function () {})
+        .finally(function () { window.location.href = window.location.pathname; });
+}
+document.addEventListener('DOMContentLoaded', function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('otp') === '1' || <?php echo $__otp_pending ? 'true' : 'false'; ?>) {
+        openLoginModal();
+        showOtpStep();
+    }
+});
 
 document.getElementById('loginModal').addEventListener('click', function(e) {
     if (e.target === this) closeLoginModal(false);

@@ -4,6 +4,7 @@ include 'build_a_box_lib.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
 include_once 'address_lib.php';
+include_once 'mail_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
@@ -148,6 +149,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             $_SESSION['pay_start_error'] = paymongo_last_error() ?: 'Payment could not be started.';
             header("Location: payment_return.php?order_id=" . (int) $order_id);
             exit();
+        }
+
+        // COD confirmation email (no-op if email isn't configured)
+        if ($payment === 'cod' && function_exists('send_order_email')) {
+            @send_order_email($conn, (int) $order_id, false);
         }
 
         $_SESSION['box_order_ok'] = [

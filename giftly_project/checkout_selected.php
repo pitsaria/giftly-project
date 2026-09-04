@@ -3,6 +3,7 @@ include 'db_connect.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
 include_once 'address_lib.php';
+include_once 'mail_lib.php';
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
@@ -198,6 +199,11 @@ $grand_total_with_shipping = $total_amount + $shipping_fee;
         }
 
         $conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
+
+        // COD order confirmation email (no-op if email isn't configured)
+        if ($payment === 'cod' && function_exists('send_order_email')) {
+            @send_order_email($conn, (int) $order_id, false);
+        }
 
         // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---
         // (header.php has already been sent by this point, so redirect client-side)
