@@ -15,7 +15,7 @@
     <div class="details-box">
       <div class="row"><span>Order ID</span><strong>#{{ order.orderId }}</strong></div>
       <div class="row"><span>Total Paid</span><strong>₱{{ order.total | number: '1.2-2' }}</strong></div>
-      <div class="row"><span>Payment Method</span><strong>{{ order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Card' }}</strong></div>
+      <div class="row"><span>Payment Method</span><strong>{{ paymentLabel() }}</strong></div>
       <div class="row"><span>Delivery Date</span><strong>{{ order.deliveryDate | date: 'mediumDate' }}</strong></div>
       <div class="row"><span>Delivery Time</span><strong>{{ order.deliveryTime }}</strong></div>
       <div class="row"><span>Shipping Address</span><strong>{{ order.address }}, {{ order.city }}</strong></div>

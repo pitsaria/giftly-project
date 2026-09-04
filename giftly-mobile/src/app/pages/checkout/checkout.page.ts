@@ -23,7 +23,8 @@ import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline
 import { Address, CartItem } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { CartService } from '../../core/cart.service';
-import { OrderService } from '../../core/order.service';
+import { OrderService, PaymentMethod } from '../../core/order.service';
+import { PaymentsService } from '../../core/payments.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
@@ -59,6 +60,7 @@ export class CheckoutPage implements OnInit {
   private addressSvc = inject(AddressService);
   private cart = inject(CartService);
   private orderSvc = inject(OrderService);
+  private payments = inject(PaymentsService);
   private auth = inject(AuthService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
@@ -85,17 +87,19 @@ export class CheckoutPage implements OnInit {
   deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().substring(0, 10);
   deliveryTime = '08:00';
   giftMessage = '';
-  paymentMethod: 'cod' | 'card' = 'cod';
+  paymentMethod: PaymentMethod = 'cod';
   cardHolder = '';
   cardNumber = '';
   cardExpiry = '';
   cardCvc = '';
+  readonly onlineEnabled = signal(false);
 
   constructor() {
     addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline });
   }
 
   async ngOnInit(): Promise<void> {
+    this.payments.config().then((c) => this.onlineEnabled.set(c.enabled));
     await this.load();
   }
 
@@ -121,7 +125,8 @@ export class CheckoutPage implements OnInit {
       this.cartItems.set(cart.items.filter((i) => selectedIds.has(i.cart_id)));
 
       if (addresses.length) {
-        this.selectAddress(addresses[0].id);
+        const def = addresses.find((a) => a.is_default) ?? addresses[0];
+        this.selectAddress(def.id);
       }
     } catch (err) {
       if (token !== this.loadToken) return;
@@ -204,8 +209,12 @@ export class CheckoutPage implements OnInit {
     }
 
     const cartItems = this.cartItems();
-    if (cartItems.length === 0) {
+    if (cartItems.length === 0 || this.total() <= 0) {
       await this.toast('No items selected for checkout.');
+      return;
+    }
+    if (cartItems.some((i) => i.unavailable || i.is_active === false)) {
+      await this.toast('Remove the unavailable item(s) from your cart before checking out.');
       return;
     }
 
@@ -214,7 +223,7 @@ export class CheckoutPage implements OnInit {
 
     this.submitting.set(true);
     try {
-      const orderId = await this.orderSvc.createOrder({
+      const placed = await this.orderSvc.createOrder({
         selected_ids: cartItems.map((i) => i.cart_id),
         fullname: this.fullname,
         address: this.address,
@@ -235,8 +244,22 @@ export class CheckoutPage implements OnInit {
             }
           : {}),
       });
+
+      this.cart.selectedCartIds.set([]);
+      await this.cart.getCart();
+
+      if (this.paymentMethod === 'online') {
+        if (placed.checkoutUrl) {
+          this.payments.openCheckout(placed.checkoutUrl);
+        } else if (placed.payError) {
+          await this.toast(placed.payError);
+        }
+        this.router.navigate(['/payment-waiting'], { queryParams: { order_id: placed.orderId } });
+        return;
+      }
+
       this.orderSvc.lastOrder.set({
-        orderId,
+        orderId: placed.orderId,
         total: this.grandTotal(),
         paymentMethod: this.paymentMethod,
         deliveryDate: this.deliveryDate,
@@ -247,8 +270,6 @@ export class CheckoutPage implements OnInit {
         recipientPhone,
         giftMessage: this.giftMessage || undefined,
       });
-      this.cart.selectedCartIds.set([]);
-      await this.cart.getCart();
       this.router.navigateByUrl('/order-confirmation');
     } catch (err) {
       await this.toast(describeError(err));

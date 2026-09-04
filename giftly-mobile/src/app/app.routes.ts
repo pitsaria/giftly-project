@@ -24,6 +24,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/reset-password/reset-password.page').then((m) => m.ResetPasswordPage),
   },
   {
+    path: 'verify-otp',
+    loadComponent: () => import('./pages/verify-otp/verify-otp.page').then((m) => m.VerifyOtpPage),
+  },
+  {
     path: 'cart',
     loadComponent: () => import('./pages/cart/cart.page').then((m) => m.CartPage),
     canActivate: [authGuard],
@@ -37,6 +41,12 @@ export const routes: Routes = [
     path: 'order-confirmation',
     loadComponent: () =>
       import('./pages/order-confirmation/order-confirmation.page').then((m) => m.OrderConfirmationPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'payment-waiting',
+    loadComponent: () =>
+      import('./pages/payment-waiting/payment-waiting.page').then((m) => m.PaymentWaitingPage),
     canActivate: [authGuard],
   },
   {

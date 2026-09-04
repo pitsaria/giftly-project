@@ -90,24 +90,58 @@
       </ion-button>
 
       <div class="add-address-form" *ngIf="showAddAddress">
-        <ion-input label="Label (e.g. Home)" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.label" class="field"></ion-input>
-        <ion-input label="Street Address" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.address" class="field"></ion-input>
+        <ion-select
+          label="Label"
+          labelPlacement="stacked"
+          fill="outline"
+          interface="popover"
+          [(ngModel)]="newAddress.label_choice"
+          class="field"
+        >
+          <ion-select-option value="Home">Home</ion-select-option>
+          <ion-select-option value="Office">Office</ion-select-option>
+          <ion-select-option value="Other">Other…</ion-select-option>
+        </ion-select>
+        <ion-input
+          *ngIf="newAddress.label_choice === 'Other'"
+          label="Custom label"
+          labelPlacement="stacked"
+          fill="outline"
+          placeholder="e.g. Mom's House"
+          [(ngModel)]="newAddress.label_other"
+          class="field"
+        ></ion-input>
+
+        <ion-input label="House / Unit / Block / Lot No. (optional)" labelPlacement="stacked" fill="outline" placeholder="e.g. Blk 1 Lot 2 / Unit 4B" [(ngModel)]="newAddress.house_no" class="field"></ion-input>
+        <ion-input label="Street Address" labelPlacement="stacked" fill="outline" placeholder="e.g. F. Samonte Street" [(ngModel)]="newAddress.address" class="field"></ion-input>
+        <ion-input label="Barangay" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.barangay" class="field"></ion-input>
         <div class="field-row">
-          <ion-input label="City" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.city" class="field"></ion-input>
+          <ion-input label="City / Municipality" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.city" class="field"></ion-input>
           <ion-input label="Province" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.province" class="field"></ion-input>
         </div>
-        <ion-input label="ZIP Code" labelPlacement="stacked" fill="outline" [(ngModel)]="newAddress.zip" class="field"></ion-input>
+        <ion-input label="ZIP Code" labelPlacement="stacked" fill="outline" inputmode="numeric" maxlength="4" [(ngModel)]="newAddress.zip" class="field"></ion-input>
+        <ion-checkbox labelPlacement="end" [(ngModel)]="newAddress.make_default" class="default-check">
+          Set as my default address
+        </ion-checkbox>
         <ion-button expand="block" class="giftly-btn-primary" (click)="addAddress()">Save Address</ion-button>
       </div>
 
-      <div class="address-card" *ngFor="let a of addresses()">
+      <div class="address-card" *ngFor="let a of addresses()" [class.is-default]="a.is_default">
         <div class="info">
-          <h4>{{ a.label }}</h4>
+          <h4>
+            {{ a.label || 'Address' }}
+            <span class="default-chip" *ngIf="a.is_default">DEFAULT</span>
+          </h4>
           <p>{{ a.address }}, {{ a.city }}, {{ a.province }} {{ a.zip }}</p>
         </div>
-        <button class="delete-btn" (click)="deleteAddress(a.id)">
-          <ion-icon name="trash-outline"></ion-icon>
-        </button>
+        <div class="addr-actions">
+          <button class="set-default-btn" *ngIf="!a.is_default" (click)="setDefaultAddress(a.id)">
+            <ion-icon name="star-outline"></ion-icon>
+          </button>
+          <button class="delete-btn" (click)="deleteAddress(a.id)">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+        </div>
       </div>
       <p class="empty-msg" *ngIf="!addresses().length">You haven't added any addresses yet.</p>
     </div>
@@ -119,9 +153,10 @@
           <img [src]="p.image | imgUrl" [alt]="p.name" />
           <div class="w-name">{{ p.name }}</div>
           <div class="w-price">₱{{ p.price }}</div>
+          <div class="w-flag" *ngIf="p.unavailable">No longer available</div>
           <div class="w-actions">
             <button (click)="toggleWishlist(p.id)"><ion-icon name="heart"></ion-icon></button>
-            <button [disabled]="p.quantity <= 0" (click)="addWishlistItemToCart(p.id)">Add to Cart</button>
+            <button [disabled]="p.quantity <= 0 || p.unavailable" (click)="addWishlistItemToCart(p.id)">Add to Cart</button>
           </div>
         </div>
       </div>

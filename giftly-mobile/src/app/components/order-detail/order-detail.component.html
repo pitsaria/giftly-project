@@ -50,9 +50,19 @@
       <div class="row" *ngIf="d.recipient_name"><span>Recipient</span><strong>{{ d.recipient_name }}</strong></div>
       <div class="row"><span>Delivery Date</span><strong>{{ d.delivery_date | date: 'mediumDate' }}</strong></div>
       <div class="row"><span>Delivery Time</span><strong>{{ d.delivery_time }}</strong></div>
-      <div class="row"><span>Payment</span><strong>{{ d.payment_method === 'cod' ? 'Cash on Delivery' : 'Card' }}</strong></div>
+      <div class="row"><span>Payment</span><strong>{{ paymentLabel(d) }}</strong></div>
       <div class="row total"><span>Total</span><strong>₱{{ d.total_amount }}</strong></div>
     </div>
+
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      *ngIf="needsPayment(d)"
+      [disabled]="paying()"
+      (click)="payNow()"
+    >
+      {{ paying() ? 'Opening…' : 'Pay now' }}
+    </ion-button>
 
     <div class="gift-message" *ngIf="d.gift_message">
       <div class="label">Gift Message</div>

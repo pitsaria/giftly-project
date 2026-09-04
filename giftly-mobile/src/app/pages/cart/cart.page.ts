@@ -117,7 +117,17 @@ export class CartPage implements OnInit {
     event.target.complete();
   }
 
+  isUnavailable(item: CartItem): boolean {
+    return !!item.unavailable || item.is_active === false || item.stock <= 0;
+  }
+
+  private selectableItems(): CartItem[] {
+    return this.items().filter((i) => !this.isUnavailable(i));
+  }
+
   toggleSelect(cartId: number): void {
+    const item = this.items().find((i) => i.cart_id === cartId);
+    if (item && this.isUnavailable(item)) return;
     this.selected.update((prev) => {
       const next = new Set(prev);
       if (next.has(cartId)) {
@@ -130,22 +140,22 @@ export class CartPage implements OnInit {
   }
 
   allSelected(): boolean {
-    const items = this.items();
-    return items.length > 0 && this.selected().size === items.length;
+    const selectable = this.selectableItems();
+    return selectable.length > 0 && selectable.every((i) => this.selected().has(i.cart_id));
   }
 
   toggleSelectAll(): void {
     if (this.allSelected()) {
       this.selected.set(new Set());
     } else {
-      this.selected.set(new Set(this.items().map((i) => i.cart_id)));
+      this.selected.set(new Set(this.selectableItems().map((i) => i.cart_id)));
     }
   }
 
   selectedTotal(): number {
     const selected = this.selected();
     return this.items()
-      .filter((i) => selected.has(i.cart_id))
+      .filter((i) => selected.has(i.cart_id) && !this.isUnavailable(i))
       .reduce((sum, i) => sum + i.subtotal, 0);
   }
 
@@ -182,7 +192,7 @@ export class CartPage implements OnInit {
     const selectedIds = [...this.selected()];
     if (selectedIds.length === 0) {
       const toast = await this.toastCtrl.create({
-        message: 'Select at least one item to checkout',
+        message: 'Select at least one available item to checkout',
         duration: 1800,
       });
       await toast.present();
@@ -192,9 +202,12 @@ export class CartPage implements OnInit {
     const result = await this.cart.verifyStock(selectedIds);
     if (!result.can_proceed) {
       await this.refresh();
+      const anyUnavailable = (result.issues as { unavailable?: boolean }[]).some((i) => i?.unavailable);
       const toast = await this.toastCtrl.create({
-        message: 'Some items had stock changes — please review your cart.',
-        duration: 2500,
+        message: anyUnavailable
+          ? 'An item is no longer available — remove it from your cart, then check out again.'
+          : 'Some items had stock changes — please review your cart.',
+        duration: 2800,
       });
       await toast.present();
       return;

@@ -57,6 +57,19 @@
   padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
 
+  &.unavailable img,
+  &.unavailable .item-name,
+  &.unavailable .item-price {
+    opacity: 0.5;
+  }
+
+  .unavailable-flag {
+    font-size: 11px;
+    font-weight: 700;
+    color: #d32f2f;
+    margin-top: 3px;
+  }
+
   img {
     width: 60px;
     height: 60px;

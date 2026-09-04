@@ -31,6 +31,16 @@ export class OrderConfirmationPage implements OnInit {
     }
   }
 
+  paymentLabel(): string {
+    const m = (this.order?.paymentMethod ?? 'cod').toLowerCase();
+    if (m === 'cod') return 'Cash on Delivery';
+    if (m === 'card') return 'Card';
+    if (m === 'gcash') return 'GCash';
+    if (m === 'paymaya' || m === 'maya') return 'Maya';
+    if (m === 'online') return 'Paid online';
+    return 'Paid online';
+  }
+
   viewOrders(): void {
     this.router.navigateByUrl('/tabs/orders');
   }

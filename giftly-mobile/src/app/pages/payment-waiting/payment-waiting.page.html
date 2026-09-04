@@ -1,0 +1,48 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Payment</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="pw-card">
+    <!-- waiting -->
+    <ng-container *ngIf="phase() === 'waiting'">
+      <ion-spinner name="crescent"></ion-spinner>
+      <h1>Waiting for payment…</h1>
+      <p>Finish paying on the PayMongo page. This screen updates automatically once your payment clears.</p>
+      <ion-button expand="block" class="giftly-btn-primary" [disabled]="checking()" (click)="check()">
+        <ion-icon slot="start" name="refresh-outline"></ion-icon>
+        {{ checking() ? 'Checking…' : "I've paid — check now" }}
+      </ion-button>
+      <ion-button expand="block" fill="outline" (click)="reopen()">
+        <ion-icon slot="start" name="open-outline"></ion-icon> Open the payment page again
+      </ion-button>
+      <ion-button expand="block" fill="clear" (click)="goToOrders()">Pay later — go to My Orders</ion-button>
+    </ng-container>
+
+    <!-- paid -->
+    <ng-container *ngIf="phase() === 'paid'">
+      <ion-icon class="ok" name="checkmark-circle"></ion-icon>
+      <h1>Payment received 🎉</h1>
+      <p>Taking you to your order…</p>
+    </ng-container>
+
+    <!-- failed / cancelled -->
+    <ng-container *ngIf="phase() === 'failed'">
+      <ion-icon class="bad" name="close-circle"></ion-icon>
+      <h1>Payment didn't go through</h1>
+      <p>Your order was cancelled and any stock put back. You can place it again from the shop.</p>
+      <ion-button expand="block" class="giftly-btn-primary" (click)="goToOrders()">My Orders</ion-button>
+    </ng-container>
+
+    <!-- timed out -->
+    <ng-container *ngIf="phase() === 'timeout'">
+      <ion-icon class="wait" name="time-outline"></ion-icon>
+      <h1>Still waiting on payment</h1>
+      <p>Your order is saved as <strong>Awaiting payment</strong>. If you completed the payment it may take a moment — check your Orders, or pay again from there.</p>
+      <ion-button expand="block" class="giftly-btn-primary" [disabled]="checking()" (click)="check()">Check again</ion-button>
+      <ion-button expand="block" fill="outline" (click)="goToOrders()">Go to My Orders</ion-button>
+    </ng-container>
+  </div>
+</ion-content>

@@ -14,7 +14,7 @@ import {
   IonButton,
   ToastController,
 } from '@ionic/angular';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, isOtpChallenge } from '../../core/auth.service';
 import { GoogleSigninComponent } from '../../shared/google-signin/google-signin.component';
 
 // Mirrors giftly_project/modal_login.php.
@@ -58,7 +58,13 @@ export class LoginPage {
     }
     this.submitting.set(true);
     try {
-      await this.auth.login(this.email, this.password);
+      const result = await this.auth.login(this.email, this.password);
+      if (isOtpChallenge(result)) {
+        this.router.navigate(['/verify-otp'], {
+          queryParams: { ref: result.otpRef, email: result.emailMasked },
+        });
+        return;
+      }
       this.router.navigateByUrl('/tabs/home');
     } catch (err: any) {
       const message = err?.error?.error ?? 'Login failed. Please check your credentials.';

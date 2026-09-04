@@ -16,12 +16,14 @@ export interface OrderConfirmation {
   giftMessage?: string;
 }
 
+export type PaymentMethod = 'cod' | 'card' | 'online';
+
 export interface CreateOrderPayload {
   selected_ids: number[];
   fullname: string;
   address: string;
   city: string;
-  payment_method: string;
+  payment_method: PaymentMethod;
   delivery_date: string;
   delivery_time: string;
   gift_message?: string;
@@ -33,6 +35,20 @@ export interface CreateOrderPayload {
   card_holder?: string;
   card_expiry?: string;
   card_cvc?: string;
+}
+
+export interface OrderPlaced {
+  orderId: number;
+  // Non-empty when payment_method is 'online' and PayMongo started a session.
+  checkoutUrl: string;
+  // Non-empty when 'online' but PayMongo couldn't start (order still saved & payable).
+  payError: string;
+}
+
+export interface PaymentStatus {
+  payment_status: 'unpaid' | 'paid' | 'failed';
+  status: string;
+  checkout_url: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -53,9 +69,27 @@ export class OrderService {
     return res.data;
   }
 
-  async createOrder(payload: CreateOrderPayload): Promise<number> {
-    const res = await firstValueFrom(this.api.post<{ order_id: number }>('orders', payload));
-    return res.data.order_id;
+  async createOrder(payload: CreateOrderPayload): Promise<OrderPlaced> {
+    const res = await firstValueFrom(
+      this.api.post<{ order_id: number; checkout_url?: string; pay_error?: string }>('orders', payload)
+    );
+    return {
+      orderId: res.data.order_id,
+      checkoutUrl: res.data.checkout_url ?? '',
+      payError: res.data.pay_error ?? '',
+    };
+  }
+
+  /**
+   * Poll target after returning from PayMongo. Pass wantUrl for the "Pay now" /
+   * "reopen" buttons — it also mints a fresh PayMongo checkout URL (skipped
+   * during polling so we don't hit PayMongo every few seconds).
+   */
+  async paymentStatus(id: number, wantUrl = false): Promise<PaymentStatus> {
+    const params: Record<string, string | number> = { id };
+    if (wantUrl) params['url'] = 1;
+    const res = await firstValueFrom(this.api.get<PaymentStatus>('orders/payment', params));
+    return res.data;
   }
 
   /** Submit a cancellation request (an admin approves it before the order is cancelled). */

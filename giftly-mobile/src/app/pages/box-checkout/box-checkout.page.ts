@@ -22,7 +22,8 @@ import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline
 import { Address, Box } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { BoxService } from '../../core/box.service';
-import { OrderService } from '../../core/order.service';
+import { OrderService, PaymentMethod } from '../../core/order.service';
+import { PaymentsService } from '../../core/payments.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
@@ -58,6 +59,7 @@ export class BoxCheckoutPage implements OnInit {
   private addressSvc = inject(AddressService);
   private boxSvc = inject(BoxService);
   private orderSvc = inject(OrderService);
+  private payments = inject(PaymentsService);
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -82,7 +84,8 @@ export class BoxCheckoutPage implements OnInit {
   recipientPhoneTouched = false;
   deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().substring(0, 10);
   deliveryTime = '08:00';
-  paymentMethod: 'cod' | 'card' = 'cod';
+  paymentMethod: PaymentMethod = 'cod';
+  readonly onlineEnabled = signal(false);
   cardHolder = '';
   cardNumber = '';
   cardExpiry = '';
@@ -103,6 +106,7 @@ export class BoxCheckoutPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.boxId = Number(this.route.snapshot.queryParamMap.get('box_id')) || 0;
+    this.payments.config().then((c) => this.onlineEnabled.set(c.enabled));
     await this.load();
   }
 
@@ -117,7 +121,10 @@ export class BoxCheckoutPage implements OnInit {
       ]);
       this.box.set(box);
       this.addresses.set(addresses);
-      if (addresses.length) this.selectAddress(addresses[0].id);
+      if (addresses.length) {
+        const def = addresses.find((a) => a.is_default) ?? addresses[0];
+        this.selectAddress(def.id);
+      }
     } catch (err) {
       this.error.set(describeError(err));
     } finally {
@@ -214,6 +221,18 @@ export class BoxCheckoutPage implements OnInit {
             }
           : {}),
       });
+      await this.boxSvc.listBoxes().catch(() => []);
+
+      if (this.paymentMethod === 'online') {
+        if (res.checkout_url) {
+          this.payments.openCheckout(res.checkout_url);
+        } else if (res.pay_error) {
+          await this.toast(res.pay_error);
+        }
+        this.router.navigate(['/payment-waiting'], { queryParams: { order_id: res.order_id } });
+        return;
+      }
+
       this.orderSvc.lastOrder.set({
         orderId: res.order_id,
         total: res.grand_total,
@@ -225,7 +244,6 @@ export class BoxCheckoutPage implements OnInit {
         recipientName: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipientPhone,
       });
-      await this.boxSvc.listBoxes().catch(() => []);
       this.router.navigateByUrl('/order-confirmation');
     } catch (err) {
       await this.toast(describeError(err));

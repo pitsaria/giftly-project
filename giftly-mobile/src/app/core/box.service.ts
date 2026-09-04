@@ -30,7 +30,7 @@ export interface BoxCheckoutPayload {
   sender_phone: string;
   address: string;
   city: string;
-  payment_method: 'cod' | 'card';
+  payment_method: 'cod' | 'card' | 'online';
   delivery_date: string;
   delivery_time: string;
   delivery_type: 'me' | 'recipient';
@@ -46,6 +46,8 @@ export interface BoxOrderResult {
   order_id: number;
   grand_total: number;
   payment: string;
+  checkout_url?: string;
+  pay_error?: string;
   delivery_date: string;
   delivery_time: string;
   address: string;

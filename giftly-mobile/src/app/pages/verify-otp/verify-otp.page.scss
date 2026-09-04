@@ -1,0 +1,38 @@
+.brand {
+  text-align: center;
+  margin: 16px 0 28px;
+
+  img {
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+    padding: 0 8px;
+    line-height: 1.5;
+  }
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.code-field {
+  font-size: 22px;
+  letter-spacing: 6px;
+  text-align: center;
+}
+
+.switch-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #666;
+
+  a {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+  }
+}

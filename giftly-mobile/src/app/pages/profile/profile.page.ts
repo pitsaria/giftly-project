@@ -13,6 +13,9 @@ import {
   IonInput,
   IonButton,
   IonSpinner,
+  IonSelect,
+  IonSelectOption,
+  IonCheckbox,
   AlertController,
   ToastController,
 } from '@ionic/angular';
@@ -31,6 +34,7 @@ import {
   informationCircleOutline,
   mailOutline,
   chevronForwardOutline,
+  starOutline,
 } from 'ionicons/icons';
 import { Address, Box, Profile, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
@@ -68,6 +72,9 @@ type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
     IonInput,
     IonButton,
     IonSpinner,
+    IonSelect,
+    IonSelectOption,
+    IonCheckbox,
     TopBarComponent,
     ImgUrlPipe,
   ],
@@ -98,7 +105,20 @@ export class ProfilePage implements OnInit {
   readonly boxes = signal<Box[]>([]);
 
   showAddAddress = false;
-  newAddress: NewAddress = { label: '', address: '', city: '', province: '', zip: '' };
+  newAddress: NewAddress = this.blankAddress();
+  private blankAddress(): NewAddress {
+    return {
+      label_choice: 'Home',
+      label_other: '',
+      house_no: '',
+      address: '',
+      barangay: '',
+      city: '',
+      province: '',
+      zip: '',
+      make_default: false,
+    };
+  }
 
   currentPassword = '';
   newPassword = '';
@@ -118,6 +138,7 @@ export class ProfilePage implements OnInit {
       informationCircleOutline,
       mailOutline,
       chevronForwardOutline,
+      starOutline,
     });
   }
 
@@ -233,17 +254,27 @@ export class ProfilePage implements OnInit {
   }
 
   async addAddress(): Promise<void> {
-    if (!this.newAddress.address || !this.newAddress.city || !this.newAddress.province || !this.newAddress.zip) {
-      await this.toast('Please fill in all address fields.');
+    const a = this.newAddress;
+    if (!a.address || !a.barangay || !a.city || !a.province || !a.zip) {
+      await this.toast('Please fill in the street, barangay, city, province and ZIP.');
       return;
     }
     try {
-      await this.addressSvc.create(this.newAddress);
-      this.newAddress = { label: '', address: '', city: '', province: '', zip: '' };
+      await this.addressSvc.create(a);
+      this.newAddress = this.blankAddress();
       this.showAddAddress = false;
       this.addresses.set(await this.addressSvc.getAll());
+    } catch (err) {
+      await this.toast(describeError(err));
+    }
+  }
+
+  async setDefaultAddress(id: number): Promise<void> {
+    try {
+      await this.addressSvc.setDefault(id);
+      this.addresses.set(await this.addressSvc.getAll());
     } catch {
-      await this.toast('Could not save this address. Please try again.');
+      await this.toast('Could not set the default address. Please try again.');
     }
   }
 

@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
@@ -17,6 +18,7 @@ import { addIcons } from 'ionicons';
 import { closeOutline, starOutline } from 'ionicons/icons';
 import { Order, OrderItem } from '../../core/models';
 import { OrderService } from '../../core/order.service';
+import { PaymentsService } from '../../core/payments.service';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { ProductReviewsComponent } from '../product-reviews/product-reviews.component';
 
@@ -32,6 +34,8 @@ export class OrderDetailComponent implements OnInit {
   @Input({ required: true }) order!: Order;
 
   private orderSvc = inject(OrderService);
+  private payments = inject(PaymentsService);
+  private router = inject(Router);
   private modalCtrl = inject(ModalController);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
@@ -40,6 +44,45 @@ export class OrderDetailComponent implements OnInit {
   readonly loading = signal(true);
   readonly cancelling = signal(false);
   readonly confirming = signal(false);
+  readonly paying = signal(false);
+
+  paymentLabel(o: Order): string {
+    if ((o.payment_method ?? 'cod') === 'cod') return 'Cash on Delivery';
+    const ps = o.payment_status ?? 'unpaid';
+    if (ps === 'paid') return 'Paid online';
+    if (ps === 'failed') return 'Payment failed';
+    if (o.payment_method === 'card' && o.card_last4) return `Card ····${o.card_last4}`;
+    return 'Awaiting online payment';
+  }
+
+  needsPayment(o: Order): boolean {
+    return (
+      (o.payment_method ?? 'cod') !== 'cod' &&
+      o.status !== 'cancelled' &&
+      (o.payment_status ?? 'unpaid') === 'unpaid'
+    );
+  }
+
+  async payNow(): Promise<void> {
+    const d = this.detail();
+    if (!d) return;
+    this.paying.set(true);
+    try {
+      const res = await this.orderSvc.paymentStatus(d.id, true);
+      if (res.payment_status === 'paid') {
+        this.detail.set(await this.orderSvc.getOrderDetails(d.id));
+        return;
+      }
+      if (res.checkout_url) this.payments.openCheckout(res.checkout_url);
+      this.modalCtrl.dismiss();
+      this.router.navigate(['/payment-waiting'], { queryParams: { order_id: d.id } });
+    } catch {
+      const t = await this.toastCtrl.create({ message: 'Could not start payment.', duration: 2000 });
+      await t.present();
+    } finally {
+      this.paying.set(false);
+    }
+  }
 
   constructor() {
     addIcons({ closeOutline, starOutline });

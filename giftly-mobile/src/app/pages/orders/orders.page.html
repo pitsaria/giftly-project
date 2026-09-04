@@ -60,9 +60,21 @@
           </div>
           <div class="order-meta">{{ o.created_at | date: 'mediumDate' }}</div>
           <div class="order-total">₱{{ o.total_amount }}</div>
+          <div class="pay-flag" [ngClass]="paymentClass(o)">{{ paymentLabel(o) }}</div>
           <div class="cancel-flag" *ngIf="o.cancel_status === 'requested'">Cancellation requested</div>
         </div>
-        <ion-button size="small" fill="outline" class="track-btn" (click)="trackOrder(o)">Track Order</ion-button>
+        <div class="order-actions">
+          <ion-button
+            *ngIf="needsPayment(o)"
+            size="small"
+            class="giftly-btn-primary pay-btn"
+            [disabled]="paying() === o.id"
+            (click)="payNow(o)"
+          >
+            {{ paying() === o.id ? '...' : 'Pay now' }}
+          </ion-button>
+          <ion-button size="small" fill="outline" class="track-btn" (click)="trackOrder(o)">Track Order</ion-button>
+        </div>
       </div>
       <p class="empty-msg" *ngIf="!filtered().length">No orders in this category yet.</p>
     </div>

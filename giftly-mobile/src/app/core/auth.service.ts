@@ -7,6 +7,18 @@ import { User } from './models';
 const TOKEN_KEY = 'giftly_token';
 const USER_KEY = 'giftly_user';
 
+// login() either finishes (session set) or hands back an OTP challenge.
+export interface OtpChallenge {
+  otpRequired: true;
+  otpRef: string;
+  emailMasked: string;
+}
+export type LoginResult = { user: User } | OtpChallenge;
+
+export function isOtpChallenge(r: LoginResult): r is OtpChallenge {
+  return (r as OtpChallenge).otpRequired === true;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private api = inject(ApiService);
@@ -42,12 +54,37 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<{ user: User }> {
+  async login(email: string, password: string): Promise<LoginResult> {
     const res = await firstValueFrom(
-      this.api.post<{ token: string; user: User }>('auth/login', { email, password })
+      this.api.post<{
+        token?: string;
+        user?: User;
+        otp_required?: boolean;
+        otp_ref?: string;
+        email_masked?: string;
+      }>('auth/login', { email, password })
+    );
+    if (res.data.otp_required) {
+      return {
+        otpRequired: true,
+        otpRef: res.data.otp_ref ?? '',
+        emailMasked: res.data.email_masked ?? email,
+      };
+    }
+    await this.setSession(res.data.token!, res.data.user!);
+    return { user: res.data.user! };
+  }
+
+  async verifyOtp(otpRef: string, code: string): Promise<{ user: User }> {
+    const res = await firstValueFrom(
+      this.api.post<{ token: string; user: User }>('auth/verify-otp', { otp_ref: otpRef, code })
     );
     await this.setSession(res.data.token, res.data.user);
     return { user: res.data.user };
+  }
+
+  async resendOtp(otpRef: string): Promise<void> {
+    await firstValueFrom(this.api.post('auth/resend-otp', { otp_ref: otpRef }));
   }
 
   async register(name: string, email: string, phone: string, password: string, confirmPassword: string): Promise<void> {

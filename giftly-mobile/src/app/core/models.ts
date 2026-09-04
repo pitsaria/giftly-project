@@ -23,6 +23,8 @@ export interface Product {
   avg_rating?: string;
   review_count?: number;
   product_type?: 'catalog' | 'occasion_box' | 'basket';
+  is_active?: boolean;
+  unavailable?: boolean;
 }
 
 export type ProductType = 'catalog' | 'occasion_box' | 'basket';
@@ -43,6 +45,9 @@ export interface CartItem {
   category_id: number;
   stock: number;
   subtotal: number;
+  // Product was deactivated by the shop while it sat in the cart.
+  is_active?: boolean;
+  unavailable?: boolean;
 }
 
 export interface Cart {
@@ -60,6 +65,7 @@ export interface Address {
   province: string;
   zip: string;
   created_at: string;
+  is_default?: boolean;
 }
 
 export interface WishlistItem extends Product {
@@ -99,6 +105,9 @@ export interface Order {
   // Card payments keep only the last 4 digits + cardholder name.
   card_last4?: string | null;
   card_holder?: string | null;
+  // Online (PayMongo) payments.
+  payment_status?: 'unpaid' | 'paid' | 'failed';
+  paid_at?: string | null;
 }
 
 export interface OrderItem {
@@ -157,7 +166,7 @@ export interface BoxLineItem {
   image: string;
   quantity: number;
   stock: number;
-  unavailable: 'removed' | 'out_of_stock' | 'low_stock' | null;
+  unavailable: 'removed' | 'out_of_stock' | 'low_stock' | 'discontinued' | null;
 }
 
 export interface Box {

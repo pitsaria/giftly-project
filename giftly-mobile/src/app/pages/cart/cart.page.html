@@ -43,13 +43,20 @@
       <span>Select all</span>
     </div>
 
-    <div class="cart-item" *ngFor="let item of items()">
-      <ion-checkbox [checked]="selected().has(item.cart_id)" (ionChange)="toggleSelect(item.cart_id)"></ion-checkbox>
+    <div class="cart-item" *ngFor="let item of items()" [class.unavailable]="isUnavailable(item)">
+      <ion-checkbox
+        [checked]="selected().has(item.cart_id)"
+        [disabled]="isUnavailable(item)"
+        (ionChange)="toggleSelect(item.cart_id)"
+      ></ion-checkbox>
       <img [src]="item.image | imgUrl" [alt]="item.name" />
       <div class="item-info">
         <div class="item-name">{{ item.name }}</div>
         <div class="item-price">₱{{ item.price }}</div>
-        <div class="stepper">
+        <div class="unavailable-flag" *ngIf="isUnavailable(item)">
+          {{ item.unavailable || item.is_active === false ? 'No longer available' : 'Out of stock' }}
+        </div>
+        <div class="stepper" *ngIf="!isUnavailable(item)">
           <button (click)="decrease(item)"><ion-icon name="remove-outline"></ion-icon></button>
           <span>{{ item.quantity }}</span>
           <button (click)="increase(item)" [disabled]="item.quantity >= item.stock">

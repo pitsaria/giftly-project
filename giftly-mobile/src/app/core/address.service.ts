@@ -4,11 +4,18 @@ import { ApiService } from './api.service';
 import { Address } from './models';
 
 export interface NewAddress {
-  label: string;
+  // Either a preset label or a free-text "Other" label.
+  label_choice?: 'Home' | 'Office' | 'Other';
+  label_other?: string;
+  house_no?: string;
   address: string;
+  barangay?: string;
   city: string;
   province: string;
   zip: string;
+  make_default?: boolean;
+  // Legacy flat form still accepted by the API.
+  label?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +30,10 @@ export class AddressService {
   async create(address: NewAddress): Promise<number> {
     const res = await firstValueFrom(this.api.post<{ id: number }>('addresses', address));
     return res.data.id;
+  }
+
+  async setDefault(id: number): Promise<void> {
+    await firstValueFrom(this.api.put('addresses/default', {}, { id }));
   }
 
   async remove(id: number): Promise<void> {

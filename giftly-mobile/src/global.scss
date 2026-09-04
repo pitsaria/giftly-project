@@ -35,6 +35,15 @@ ion-content {
   --background: var(--ion-background-color);
 }
 
+// Darker placeholder / hint text than Ionic's default so it reads on the
+// off-white ground (mirrors the website's "readable placeholders" pass).
+ion-input,
+ion-textarea,
+ion-searchbar {
+  --placeholder-color: #8a8a8a;
+  --placeholder-opacity: 1;
+}
+
 .giftly-btn-primary {
   --background: var(--giftly-gradient);
   --border-radius: var(--giftly-pill-radius);

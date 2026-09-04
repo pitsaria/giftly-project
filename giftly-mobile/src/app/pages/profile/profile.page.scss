@@ -162,6 +162,11 @@ h3 {
   justify-content: space-between;
   align-items: center;
 
+  &.is-default {
+    border-color: #ffc1cc;
+    background: #fff8fa;
+  }
+
   .info {
     flex: 1;
 
@@ -169,6 +174,9 @@ h3 {
       margin: 0 0 4px;
       font-size: 14px;
       color: #222;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     p {
@@ -176,6 +184,30 @@ h3 {
       font-size: 13px;
       color: #888;
     }
+  }
+
+  .default-chip {
+    background: var(--giftly-gradient);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 50px;
+  }
+
+  .addr-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .set-default-btn {
+    background: #fff0f5;
+    color: var(--ion-color-primary);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
   }
 
   .delete-btn {
@@ -186,6 +218,20 @@ h3 {
     height: 34px;
     border-radius: 50%;
   }
+}
+
+.default-check {
+  display: block;
+  margin: 4px 0 14px;
+  font-size: 13px;
+  --size: 18px;
+}
+
+.w-flag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #d32f2f;
+  margin-bottom: 4px;
 }
 
 .empty-msg {

@@ -1,0 +1,45 @@
+.pw-card {
+  max-width: 420px;
+  margin: 40px auto 0;
+  text-align: center;
+
+  ion-spinner {
+    width: 44px;
+    height: 44px;
+    color: var(--ion-color-primary);
+    margin-bottom: 16px;
+  }
+
+  ion-icon {
+    font-size: 64px;
+    margin-bottom: 14px;
+
+    &.ok {
+      color: #2e7d32;
+    }
+    &.bad {
+      color: var(--ion-color-danger);
+    }
+    &.wait {
+      color: #f9a825;
+    }
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 14px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 22px;
+  }
+
+  ion-button {
+    margin-bottom: 10px;
+  }
+}

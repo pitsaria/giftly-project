@@ -78,10 +78,26 @@
       <button [class.active]="paymentMethod === 'cod'" (click)="paymentMethod = 'cod'">
         <ion-icon name="cash-outline"></ion-icon> Cash on Delivery
       </button>
-      <button [class.active]="paymentMethod === 'card'" (click)="paymentMethod = 'card'">
+      <button
+        *ngIf="onlineEnabled()"
+        [class.active]="paymentMethod === 'online'"
+        (click)="paymentMethod = 'online'"
+      >
+        <ion-icon name="card-outline"></ion-icon> Pay Online
+      </button>
+      <button
+        *ngIf="!onlineEnabled()"
+        [class.active]="paymentMethod === 'card'"
+        (click)="paymentMethod = 'card'"
+      >
         <ion-icon name="card-outline"></ion-icon> Card
       </button>
     </div>
+
+    <p class="online-note" *ngIf="paymentMethod === 'online'">
+      <ion-icon name="lock-closed-outline"></ion-icon>
+      You'll be taken to PayMongo's secure page to pay by card, GCash or Maya.
+    </p>
 
     <div class="card-fields" *ngIf="paymentMethod === 'card'">
       <ion-input label="Name on Card" labelPlacement="stacked" fill="outline" [(ngModel)]="cardHolder" class="field"></ion-input>

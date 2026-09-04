@@ -12,10 +12,13 @@ import {
   IonSkeletonText,
   ModalController,
 } from '@ionic/angular';
+import { Router } from '@angular/router';
+import { ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { giftOutline } from 'ionicons/icons';
 import { Order } from '../../core/models';
 import { OrderService } from '../../core/order.service';
+import { PaymentsService } from '../../core/payments.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
@@ -52,7 +55,10 @@ const STATUS_LABEL: Record<Order['status'], string> = {
 })
 export class OrdersPage implements OnInit {
   private orderSvc = inject(OrderService);
+  private payments = inject(PaymentsService);
   private modalCtrl = inject(ModalController);
+  private router = inject(Router);
+  private toastCtrl = inject(ToastController);
   auth = inject(AuthService);
 
   constructor() {
@@ -60,6 +66,7 @@ export class OrdersPage implements OnInit {
   }
 
   readonly orders = signal<Order[]>([]);
+  readonly paying = signal<number | null>(null);
   readonly filter = signal<StatusFilter>('all');
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -91,6 +98,52 @@ export class OrdersPage implements OnInit {
 
   statusLabel(status: Order['status']): string {
     return STATUS_LABEL[status];
+  }
+
+  private isOnline(o: Order): boolean {
+    return (o.payment_method ?? 'cod') !== 'cod';
+  }
+
+  needsPayment(o: Order): boolean {
+    return (
+      this.isOnline(o) &&
+      o.status !== 'cancelled' &&
+      (o.payment_status ?? 'unpaid') === 'unpaid'
+    );
+  }
+
+  paymentLabel(o: Order): string {
+    if (!this.isOnline(o)) return 'Cash on delivery';
+    const ps = o.payment_status ?? 'unpaid';
+    if (ps === 'paid') return 'Paid online';
+    if (ps === 'failed') return 'Payment failed';
+    return 'Awaiting payment';
+  }
+
+  paymentClass(o: Order): string {
+    if (!this.isOnline(o)) return 'pay-cod';
+    const ps = o.payment_status ?? 'unpaid';
+    return ps === 'paid' ? 'pay-paid' : ps === 'failed' ? 'pay-failed' : 'pay-unpaid';
+  }
+
+  async payNow(o: Order): Promise<void> {
+    this.paying.set(o.id);
+    try {
+      const res = await this.orderSvc.paymentStatus(o.id, true);
+      if (res.payment_status === 'paid') {
+        await this.load();
+        return;
+      }
+      if (res.checkout_url) {
+        this.payments.openCheckout(res.checkout_url);
+      }
+      this.router.navigate(['/payment-waiting'], { queryParams: { order_id: o.id } });
+    } catch (err) {
+      const t = await this.toastCtrl.create({ message: describeError(err), duration: 2500 });
+      await t.present();
+    } finally {
+      this.paying.set(null);
+    }
   }
 
   async load(): Promise<void> {
