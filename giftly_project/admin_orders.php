@@ -31,11 +31,16 @@ if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_
     $allowed_statuses = ['pending', 'shipped', 'delivered'];
 
     // A delivered (or cancelled) order is final — its status can't be changed anymore.
-    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
-    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
+    $cur = $conn->query("SELECT status, payment_method, payment_status FROM orders WHERE id = $order_id");
+    $cur_row = $cur ? $cur->fetch_assoc() : [];
+    $cur_status = $cur_row['status'] ?? '';
+    $cur_pm     = $cur_row['payment_method'] ?? 'cod';
+    $cur_ps     = $cur_row['payment_status'] ?? 'unpaid';
 
     if (in_array($cur_status, ['delivered', 'cancelled'], true)) {
         $flash = ['error', 'This order is marked "' . $cur_status . '" and its status can no longer be changed.'];
+    } elseif ($cur_pm !== 'cod' && $cur_ps !== 'paid') {
+        $flash = ['error', 'This order is still awaiting payment — its status can\'t be changed until it\'s paid.'];
     } elseif (!in_array($new_status, $allowed_statuses, true)) {
         $flash = ['error', 'Invalid status.'];
     } else {
@@ -312,6 +317,10 @@ $showing_to = min($offset + $limit, $total_rows);
                             // Delivered is final — no more status changes allowed.
                             $status_cell = '<span class="status-badge status-delivered">Delivered</span>'
                                 . '<div style="margin-top:4px;font-size:11px;color:#aaa;"><i class="fas fa-lock" style="margin-right:3px;"></i>final</div>';
+                        } elseif ($row['payment_method'] !== 'cod' && ($row['payment_status'] ?? 'unpaid') !== 'paid') {
+                            // Online order that hasn't been paid — can't be progressed yet.
+                            $status_cell = '<span class="status-badge status-pending">Pending</span>'
+                                . '<div style="margin-top:4px;font-size:11px;color:#a5710d;"><i class="fas fa-lock" style="margin-right:3px;"></i>awaiting payment</div>';
                         } else {
                             $status_cell = '<form action="admin_orders.php" method="POST" style="margin:0; display:inline;">'
                                 . '<input type="hidden" name="order_id" value="'.$row['id'].'">'

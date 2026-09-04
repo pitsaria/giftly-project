@@ -20,11 +20,16 @@ if (isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST[
     $order_id = intval($_POST['order_id']); // Force it to be a safe integer
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
 
-    // A delivered / cancelled order is final — reject any further status change.
-    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
-    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
-    if (in_array($cur_status, ['delivered', 'cancelled'], true)) {
-        $_SESSION['order_update_error'] = 'This order is already ' . $cur_status . ' — its status can no longer be changed.';
+    // A delivered / cancelled order is final; an unpaid online order can't be progressed.
+    $cur = $conn->query("SELECT status, payment_method, payment_status FROM orders WHERE id = $order_id");
+    $cur_row = $cur ? $cur->fetch_assoc() : [];
+    if (in_array($cur_row['status'] ?? '', ['delivered', 'cancelled'], true)) {
+        $_SESSION['order_update_error'] = 'This order is already ' . $cur_row['status'] . ' — its status can no longer be changed.';
+        header("Location: admin_orders.php");
+        exit();
+    }
+    if (($cur_row['payment_method'] ?? 'cod') !== 'cod' && ($cur_row['payment_status'] ?? 'unpaid') !== 'paid') {
+        $_SESSION['order_update_error'] = 'This order is still awaiting payment.';
         header("Location: admin_orders.php");
         exit();
     }

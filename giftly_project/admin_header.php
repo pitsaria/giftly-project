@@ -1,3 +1,20 @@
+<?php
+// keep the columns the admin UI reads (visibility, payment, cancellations) present
+if (isset($conn)) {
+    if (file_exists(__DIR__ . '/catalog_lib.php')) {
+        include_once __DIR__ . '/catalog_lib.php';
+        if (function_exists('catalog_ensure_schema')) catalog_ensure_schema($conn);
+    }
+    if (file_exists(__DIR__ . '/orders_lib.php')) {
+        include_once __DIR__ . '/orders_lib.php';
+        if (function_exists('orders_ensure_schema')) orders_ensure_schema($conn);
+    }
+    if (file_exists(__DIR__ . '/paymongo_lib.php')) {
+        include_once __DIR__ . '/paymongo_lib.php';
+        if (function_exists('pay_ensure_schema')) pay_ensure_schema($conn);
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -175,6 +192,7 @@
         <!-- Main Content Area -->
         <div class="admin-main">
 
+                <?php include 'admin_notifications.php'; ?>
 
                 <!-- LOGOUT MODAL -->
         <?php include 'modal_logout.php'; ?>

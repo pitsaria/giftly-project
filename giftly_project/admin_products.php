@@ -750,8 +750,9 @@ case 'category':
                 $type_display = $tkey !== 'catalog'
                     ? '<span class="card-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$tkey]).'</span>'
                     : '';
+                $g_active = catalog_is_active($row['is_active'] ?? true);
                 echo '
-                <div class="admin-card search-item">
+                <div class="admin-card search-item'.($g_active ? '' : ' is-inactive').'">
                     <div class="card-image-wrapper">
                         <img src="'.htmlspecialchars(img_url($row['image'])).'" class="card-image" alt="Product">
                         <span class="card-stock-badge '.$stock_class.'">'.$stock_status.'</span>
@@ -760,6 +761,10 @@ case 'category':
                     '.$cat_display.$type_display.'
                     <div class="card-desc">'.(strlen($row['description']) > 0 ? $row['description'] : '<span style="color:#ddd;">No description</span>').'</div>
                     <div class="card-price">PHP '.number_format($row['price'], 2).'</div>
+                    <div class="at-cell" style="justify-content:center;margin:6px 0 10px;">
+                        <label class="at-switch"><input type="checkbox" '.($g_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label>
+                        <span>'.($g_active ? 'Visible on site' : 'Hidden from site').'</span>
+                    </div>
                     <div class="card-actions">
                         <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
                             <i class="fas fa-pen"></i> Edit
@@ -791,6 +796,7 @@ case 'category':
                     <th>Category</th>
                     <th>Stock</th>
                     <th>Price</th>
+                    <th>Visible</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
@@ -817,8 +823,9 @@ case 'category':
                         $ltype_badge = $ltkey !== 'catalog'
                             ? '<span class="prod-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$ltkey]).'</span>'
                             : '<span class="prod-cat-badge">'.$cat_name.'</span>';
+                        $l_active = catalog_is_active($row['is_active'] ?? true);
                         echo '
-                        <tr class="search-item">
+                        <tr class="search-item'.($l_active ? '' : ' is-inactive').'">
                             <td><img src="'.htmlspecialchars(img_url($row['image'])).'" class="prod-thumb"></td>
                             <td>
                                 <span class="search-name prod-name-cell">'.$row['name'].'</span>
@@ -827,6 +834,7 @@ case 'category':
                             <td>'.$ltype_badge.'</td>
                             <td><span class="'.$stock_class.'">'.$stock_status.'</span></td>
                             <td><span class="prod-price">PHP '.number_format($row['price'], 2).'</span></td>
+                            <td><label class="at-switch"><input type="checkbox" '.($l_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label></td>
                             <td>
                                 <div class="list-actions">
                                     <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
@@ -841,7 +849,7 @@ case 'category':
                         ';
                     }
                 } else {
-                    echo "<tr><td colspan='6' style='padding: 60px; text-align:center; color:#999;'>
+                    echo "<tr><td colspan='7' style='padding: 60px; text-align:center; color:#999;'>
                             <i class='fas fa-box-open' style='font-size: 36px; display: block; margin-bottom: 10px; color: #ddd;'></i>
                             No products found
                           </td></tr>";

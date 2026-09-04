@@ -17,12 +17,21 @@ if ($product_id <= 0) {
 }
 
 // Get product stock
-$product_query = $conn->query("SELECT quantity FROM products WHERE id = $product_id");
-if ($product_query->num_rows == 0) {
+$product_query = @$conn->query("SELECT quantity, is_active FROM products WHERE id = $product_id");
+if (!$product_query) {
+    $product_query = $conn->query("SELECT quantity FROM products WHERE id = $product_id");
+}
+if (!$product_query || $product_query->num_rows == 0) {
     echo "error";
     exit();
 }
 $product = $product_query->fetch_assoc();
+// deactivated product — no longer purchasable
+if (array_key_exists('is_active', $product)
+    && in_array($product['is_active'], [false, 'f', '0', 0], true)) {
+    echo "out_of_stock";
+    exit();
+}
 $available_stock = intval($product['quantity']);
 
 // Check if product is already in cart

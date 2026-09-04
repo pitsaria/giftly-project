@@ -9,13 +9,13 @@
 
 if (!function_exists('catalog_ensure_schema')) {
 
-    /** Add products.product_type if it isn't there yet (idempotent, cheap). */
+    /** Add products.product_type / is_active + categories.is_active (idempotent). */
     function catalog_ensure_schema($conn) {
         static $done = false;
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok_v2'])) {
             return;
         }
 
@@ -26,9 +26,31 @@ if (!function_exists('catalog_ensure_schema')) {
                           ADD COLUMN IF NOT EXISTS product_type VARCHAR(20) NOT NULL DEFAULT 'catalog'");
         }
 
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['catalog_schema_ok'] = true;
+        $c2 = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'products' AND column_name = 'is_active'");
+        if (!($c2 && $c2->num_rows > 0)) {
+            $conn->query("ALTER TABLE products   ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
+            $conn->query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
         }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['catalog_schema_ok_v2'] = true;
+        }
+    }
+
+    /** Boolean-ish helper for pg 't'/'f'/1/0/true values. */
+    function catalog_is_active($v) {
+        return !($v === false || $v === 'f' || $v === '0' || $v === 0 || $v === null);
+    }
+
+    /**
+     * SQL fragment (starts with " AND ") that limits a `products` query to items
+     * customers should see: the product is active AND its category isn't
+     * deactivated. Pass the table alias with a trailing dot, e.g. "p.".
+     */
+    function catalog_visible_filter($alias = '') {
+        return " AND {$alias}is_active = TRUE"
+             . " AND {$alias}category_id NOT IN (SELECT id FROM categories WHERE is_active = FALSE)";
     }
 
     /** type key => admin-facing label */

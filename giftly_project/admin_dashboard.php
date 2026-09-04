@@ -26,6 +26,16 @@ $order_count = $conn->query("SELECT COUNT(*) as total FROM orders")->fetch_assoc
 $product_count = $conn->query("SELECT COUNT(*) as total FROM products")->fetch_assoc()['total'];
 $user_count = $conn->query("SELECT COUNT(*) as total FROM users WHERE role='customer'")->fetch_assoc()['total'];
 
+// Today's sales (non-cancelled orders placed today, Asia/Manila).
+// created_at is stored in UTC on Render, so compare against Manila-midnight-in-UTC.
+$today_start_utc = gmdate('Y-m-d H:i:s', strtotime('today'));
+$today_res = $conn->query("SELECT COALESCE(SUM(total_amount), 0) AS s, COUNT(*) AS c
+                           FROM orders
+                           WHERE status <> 'cancelled' AND created_at >= '$today_start_utc'");
+$today_row = $today_res ? $today_res->fetch_assoc() : ['s' => 0, 'c' => 0];
+$today_sales  = (float) $today_row['s'];
+$today_orders = (int) $today_row['c'];
+
 // Get Last 4 Orders
 $last_orders = $conn->query("SELECT orders.*, users.name as customer_name FROM orders JOIN users ON orders.user_id = users.id ORDER BY created_at DESC LIMIT 4");
 
@@ -90,7 +100,7 @@ include 'admin_header.php';
     }
 
     /* --- STATS CARDS (WITH FLOAT ON HOVER) --- */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
     
     .stat-card { 
         padding: 25px; 
@@ -110,6 +120,8 @@ include 'admin_header.php';
     .stat-label { font-size: 14px; color: #888; }
     .stat-card:nth-child(2) { border-left-color: #ffc107; }
     .stat-card:nth-child(3) { border-left-color: #17a2b8; }
+    .stat-card:nth-child(4) { border-left-color: #66bb6a; }
+    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* --- GRID FOR LAST ORDERS & TOP PRODUCTS (WITH FLOAT ON HOVER) --- */
     .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -195,6 +207,10 @@ include 'admin_header.php';
         <div class="stat-card">
             <div class="stat-number" style="color: #17a2b8;"><?php echo $user_count; ?></div>
             <div class="stat-label">Registered Customers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #2e7d32;">PHP <?php echo number_format($today_sales, 2); ?></div>
+            <div class="stat-label">Today's Sales<?php echo $today_orders > 0 ? ' · ' . $today_orders . ' order' . ($today_orders === 1 ? '' : 's') : ''; ?></div>
         </div>
     </div>
 

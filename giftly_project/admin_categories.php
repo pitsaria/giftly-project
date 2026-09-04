@@ -1,5 +1,6 @@
 <?php
-include 'db_connect.php'; 
+include 'db_connect.php';
+include_once 'catalog_lib.php';
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -108,6 +109,7 @@ include 'admin_header.php';
             <thead>
                 <tr>
                     <th>Category Name</th>
+                    <th>Shown on site</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
@@ -117,9 +119,16 @@ include 'admin_header.php';
                 $result = $conn->query($sql);
                 if ($result->num_rows > 0) {
                     while($row = $result->fetch_assoc()) {
+                        $c_active = function_exists('catalog_is_active') ? catalog_is_active($row['is_active'] ?? true) : true;
                         echo '
-                        <tr>
-                            <td><strong>'.$row['name'].'</strong></td>
+                        <tr'.($c_active ? '' : ' class="is-inactive"').'>
+                            <td><strong>'.htmlspecialchars($row['name']).'</strong></td>
+                            <td>
+                                <div class="at-cell">
+                                    <label class="at-switch"><input type="checkbox" '.($c_active ? 'checked' : '').' onchange="toggleActive(this,\'category\','.$row['id'].')"><span class="at-slider"></span></label>
+                                    <span>'.($c_active ? 'Shown' : 'Hidden').'</span>
+                                </div>
+                            </td>
                             <td style="text-align: right;">
                                 <button class="btn-edit-cat" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\')"><i class="fas fa-pen"></i> Edit</button>
                                 <a href="admin_categories.php?delete='.$row['id'].'" onclick="return confirm(\'Delete this category?\');"><button class="btn-delete-cat"><i class="fas fa-trash"></i> Delete</button></a>
@@ -128,7 +137,7 @@ include 'admin_header.php';
                         ';
                     }
                 } else {
-                    echo "<tr><td colspan='2' style='padding: 30px; text-align:center; color:#888;'>No categories yet. Add one above!</td></tr>";
+                    echo "<tr><td colspan='3' style='padding: 30px; text-align:center; color:#888;'>No categories yet. Add one above!</td></tr>";
                 }
                 ?>
             </tbody>

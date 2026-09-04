@@ -1,7 +1,9 @@
 <?php
 include 'db_connect.php';
 include 'reviews_lib.php';
+include_once 'catalog_lib.php';
 reviews_ensure_schema($conn);
+catalog_ensure_schema($conn);
 include 'header.php';
 
 // recent real customer reviews for the homepage
@@ -390,7 +392,7 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         <div class="product-grid">
             <?php
             // Showing actual products from your database!
-            $sql = "SELECT * FROM products LIMIT 4"; 
+            $sql = "SELECT * FROM products WHERE product_type = 'catalog'" . catalog_visible_filter() . " ORDER BY id DESC LIMIT 4";
             $result = $conn->query($sql);
             
             // Array of colors to cycle through for the bottom of the cards

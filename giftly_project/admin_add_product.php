@@ -82,7 +82,8 @@ if ($quantity > 9999) {
     }
 
     $image_esc = mysqli_real_escape_string($conn, $new_filename);
-    $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$image_esc', '$product_type')";
+    $is_active = isset($_POST['is_active']) ? 'TRUE' : 'FALSE';
+    $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type, is_active) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$image_esc', '$product_type', $is_active)";
     if ($conn->query($sql) === TRUE) {
         // Resolve the new product id and record its allowed box sizes
         $new_pid = intval($conn->insert_id);
@@ -251,6 +252,14 @@ include 'admin_header.php';
                     <div class="file-upload-text" id="fileText">Drag & drop or <span>browse</span> to upload</div>
                     <input type="file" name="image" id="imageInput" required>
                 </div>
+            </div>
+
+            <div class="admin-form-group">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="is_active" value="1" checked style="width:18px; height:18px;">
+                    Show this product on the customer site now
+                </label>
+                <div style="font-size:12px; color:#888; margin-top:4px;">Uncheck to add it hidden — you can flip it on later from the Products page.</div>
             </div>
 
             <button type="submit" name="add_product" class="admin-submit-btn">Add to Inventory</button>

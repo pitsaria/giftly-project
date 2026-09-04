@@ -13,6 +13,8 @@ class ProductService {
     
     // 📦 GET ALL PRODUCTS
 public function getAll($params) {
+    $this->ensureActiveColumn();
+
     $page = isset($params['page']) ? intval($params['page']) : 1;
     $limit = isset($params['limit']) ? intval($params['limit']) : 20;
     $offset = ($page - 1) * $limit;
@@ -26,7 +28,9 @@ public function getAll($params) {
     // Set ORDER BY based on parameter
     $order_by = ($order == 'asc') ? 'ASC' : 'DESC';
 
-    $sql = "SELECT * FROM products WHERE 1=1";
+    // Customers only see active products in active categories.
+    $sql = "SELECT * FROM products WHERE is_active = TRUE"
+         . " AND category_id NOT IN (SELECT id FROM categories WHERE is_active = FALSE)";
     if (!empty($search)) {
         $sql .= " AND name ILIKE '%$search%'";
     }
@@ -154,12 +158,26 @@ public function getAll($params) {
     
     // 📚 GET CATEGORIES
     public function getCategories() {
-        $result = $this->conn->query("SELECT * FROM categories ORDER BY name ASC");
+        $this->ensureActiveColumn();
+        $result = $this->conn->query("SELECT * FROM categories WHERE is_active = TRUE ORDER BY name ASC");
         $categories = [];
         while ($row = $result->fetch_assoc()) {
             $categories[] = $row;
         }
         sendSuccess(['categories' => $categories]);
+    }
+
+    // Make sure the visibility columns exist before we filter on them.
+    private function ensureActiveColumn() {
+        static $ok = false;
+        if ($ok) return;
+        $ok = true;
+        $c = $this->conn->query("SELECT 1 FROM information_schema.columns
+                                 WHERE table_name = 'products' AND column_name = 'is_active'");
+        if (!$c || $c->num_rows === 0) {
+            $this->conn->query("ALTER TABLE products   ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
+            $this->conn->query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
+        }
     }
 
     // Helper: Check if user is admin

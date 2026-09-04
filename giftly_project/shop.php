@@ -23,7 +23,7 @@ $limit = 20;
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-$count_sql = "SELECT COUNT(*) as total FROM products WHERE 1=1";
+$count_sql = "SELECT COUNT(*) as total FROM products WHERE product_type = 'catalog'" . catalog_visible_filter();
 if (!empty($search)) { $count_sql .= " AND name ILIKE '%$search%'"; }
 if (!empty($category_id)) { $count_sql .= " AND category_id = '$category_id'"; }
 $count_res = $conn->query($count_sql);
@@ -662,7 +662,7 @@ function isInWishlist($product_id, $wishlist_ids) {
             <div class="cat-scroll-track" id="catScrollTrack">
                 <a href="shop.php" class="cat-btn <?php echo empty($category_id) ? 'active' : ''; ?>">All Items</a>
                 <?php
-                $cat_sql = "SELECT * FROM categories ORDER BY name ASC";
+                $cat_sql = "SELECT * FROM categories WHERE is_active = TRUE ORDER BY name ASC";
                 $cat_result = $conn->query($cat_sql);
                 if ($cat_result->num_rows > 0) {
                     while($cat_row = $cat_result->fetch_assoc()) {

@@ -15,7 +15,9 @@
  */
 
 include_once 'reviews_lib.php';
+include_once 'catalog_lib.php';
 reviews_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 $cat_type      = isset($cat_type) ? $cat_type : 'catalog';
 $cat_title     = isset($cat_title) ? $cat_title : 'Products';
@@ -28,7 +30,7 @@ $page   = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 $offset = ($page - 1) * $cat_limit;
 
 $type_esc = $conn->real_escape_string($cat_type);
-$where = "product_type = '$type_esc'";
+$where = "product_type = '$type_esc'" . catalog_visible_filter();
 if ($search !== '') {
     $where .= " AND name ILIKE '%" . $conn->real_escape_string($search) . "%'";
 }

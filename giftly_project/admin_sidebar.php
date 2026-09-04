@@ -1,12 +1,20 @@
 <?php
-// Unread contact-message count for the sidebar badge (safe if table is absent)
+// Sidebar badge counts (safe if tables are absent)
 $sidebar_unread_msgs = 0;
+$sidebar_order_alerts = 0;
 if (isset($conn)) {
     if (file_exists(__DIR__ . '/contact_lib.php')) {
         include_once __DIR__ . '/contact_lib.php';
         if (function_exists('contact_ensure_schema')) {
             contact_ensure_schema($conn);
-            $sidebar_unread_msgs = contact_unread_count($conn);
+        }
+    }
+    if (file_exists(__DIR__ . '/admin_notif_lib.php')) {
+        include_once __DIR__ . '/admin_notif_lib.php';
+        if (function_exists('admin_notif_counts')) {
+            $__n = admin_notif_counts($conn);
+            $sidebar_unread_msgs  = $__n['messages'];
+            $sidebar_order_alerts = $__n['orders'];
         }
     }
     if ($sidebar_unread_msgs === 0) {
@@ -14,6 +22,7 @@ if (isset($conn)) {
         if ($__um) $sidebar_unread_msgs = (int) $__um->fetch_assoc()['c'];
     }
 }
+$__sb_badge = 'margin-left:auto; background:#ff8ba7; color:#fff; font-size:11px; font-weight:700; min-width:20px; height:20px; border-radius:50px; display:inline-flex; align-items:center; justify-content:center; padding:0 6px;';
 ?>
 <!-- ADMIN SIDEBAR -->
 <div class="admin-sidebar">
@@ -70,6 +79,9 @@ if (isset($conn)) {
             <a href="admin_orders.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_orders.php') ? 'active' : ''; ?>">
                 <i class="fas fa-shopping-bag"></i>
                 <span>Orders</span>
+                <?php if ($sidebar_order_alerts > 0): ?>
+                    <span style="<?php echo $__sb_badge; ?>"><?php echo $sidebar_order_alerts; ?></span>
+                <?php endif; ?>
             </a>
         </li>
         <li>
