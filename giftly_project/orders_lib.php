@@ -19,7 +19,7 @@ if (!function_exists('orders_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v2'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v3'])) {
             return;
         }
 
@@ -32,6 +32,7 @@ if (!function_exists('orders_ensure_schema')) {
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reviewed_at TIMESTAMP");
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_admin_note TEXT");
         }
+        $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP");
 
         // Card payments: we only ever keep the last 4 digits + cardholder name.
         $cc = $conn->query("SELECT 1 AS c FROM information_schema.columns
@@ -42,7 +43,7 @@ if (!function_exists('orders_ensure_schema')) {
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['orders_schema_ok_v2'] = true;
+            $_SESSION['orders_schema_ok_v3'] = true;
         }
     }
 
@@ -67,7 +68,7 @@ if (!function_exists('orders_ensure_schema')) {
         $order_id = intval($order_id);
         $conn->begin_transaction();
         try {
-            $r = $conn->query("SELECT status, cancel_status FROM orders WHERE id = $order_id FOR UPDATE");
+            $r = $conn->query("SELECT status, cancel_status, payment_method, payment_status FROM orders WHERE id = $order_id FOR UPDATE");
             if (!$r || $r->num_rows === 0) throw new Exception('Order not found.');
             $o = $r->fetch_assoc();
             if ($o['cancel_status'] !== 'requested') throw new Exception('No pending cancellation request.');
@@ -80,9 +81,15 @@ if (!function_exists('orders_ensure_schema')) {
                 $conn->query("UPDATE products SET quantity = quantity + $qty WHERE id = $pid");
             }
 
+            // a completed online payment now needs refunding
+            $refund_sql = '';
+            if (($o['payment_method'] ?? 'cod') !== 'cod' && ($o['payment_status'] ?? '') === 'paid') {
+                $refund_sql = ", payment_status = 'refunded', refunded_at = CURRENT_TIMESTAMP";
+            }
+
             $conn->query("UPDATE orders
                           SET status = 'cancelled', cancel_status = 'approved',
-                              cancel_reviewed_at = CURRENT_TIMESTAMP
+                              cancel_reviewed_at = CURRENT_TIMESTAMP $refund_sql
                           WHERE id = $order_id");
             $conn->commit();
             return true;

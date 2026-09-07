@@ -182,6 +182,50 @@ if (!function_exists('mail_send')) {
         return mail_send($order['to_email'], $heading, mail_wrap($title, $inner));
     }
 
+    /**
+     * Email the customer that their cancellation request was approved.
+     * If the order was paid online (payment_status is now 'refunded'), the
+     * email also says the payment is being refunded.
+     */
+    function send_cancel_approved_email($conn, $order_id) {
+        if (!mail_configured()) return false;
+        $order_id = (int) $order_id;
+
+        $o = $conn->query("SELECT o.*, u.email AS to_email FROM orders o
+                           JOIN users u ON u.id = o.user_id WHERE o.id = $order_id");
+        $order = $o ? $o->fetch_assoc() : null;
+        if (!$order || empty($order['to_email'])) {
+            mail_last_error("order #$order_id: no order / no customer email");
+            return false;
+        }
+
+        $total    = number_format((float) $order['total_amount'], 2);
+        $refunded = ($order['payment_status'] ?? '') === 'refunded';
+        $method   = ucfirst($order['payment_method'] ?? 'cod');
+        if ($order['payment_method'] === 'card' && !empty($order['card_last4'])) {
+            $method = 'card ending ' . $order['card_last4'];
+        }
+
+        $inner = '<p style="color:#555;font-size:14px;line-height:1.6;">Your request to cancel order '
+               . '<strong>#' . $order_id . '</strong> has been approved. The order is now cancelled and any items have been released.</p>';
+
+        if ($refunded) {
+            $inner .= '<div style="background:#e8f5e9;border-radius:12px;padding:14px 16px;margin:14px 0;color:#2e7d32;font-size:13.5px;line-height:1.6;">'
+                    . '<strong>Refund on the way.</strong> PHP ' . $total . ' will be returned to your ' . htmlspecialchars($method)
+                    . '. Online refunds usually take <strong>5–10 business days</strong> to appear, depending on your bank or e-wallet.'
+                    . '</div>';
+        } else {
+            $inner .= '<p style="color:#777;font-size:13px;line-height:1.6;">No payment was collected for this order '
+                    . '(cash on delivery), so there\'s nothing to refund.</p>';
+        }
+
+        $inner .= '<p style="font-size:13px;">Questions? Just reply to this email.</p>';
+
+        return mail_send($order['to_email'],
+            'Cancellation confirmed — order #' . $order_id,
+            mail_wrap($refunded ? 'Cancelled & refunded 💸' : 'Order cancelled', $inner));
+    }
+
     /** Best-effort site URL for links inside emails. */
     function app_base_url_safe() {
         $env = getenv('APP_BASE_URL') ?: getenv('RENDER_EXTERNAL_URL');

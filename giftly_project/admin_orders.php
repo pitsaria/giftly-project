@@ -63,9 +63,18 @@ if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_
 
 // --- HANDLE CANCELLATION REVIEW ---
 if (isset($_POST['approve_cancel'])) {
-    $ok = orders_approve_cancel($conn, intval($_POST['order_id'] ?? 0));
+    $cx_id = intval($_POST['order_id'] ?? 0);
+    $ok = orders_approve_cancel($conn, $cx_id);
+    if ($ok && function_exists('send_cancel_approved_email')) {
+        $sent = send_cancel_approved_email($conn, $cx_id);
+        error_log("cancel-approved email order #$cx_id: " . ($sent ? 'sent' : 'skipped/failed - ' . mail_last_error()));
+    }
+    // was it an online payment that now needs refunding?
+    $rr = $ok ? $conn->query("SELECT payment_status FROM orders WHERE id = $cx_id") : null;
+    $was_refund = $rr && ($rr->fetch_assoc()['payment_status'] ?? '') === 'refunded';
     $flash = $ok
-        ? ['ok', 'Cancellation approved — the order is cancelled and stock has been restored.']
+        ? ['ok', 'Cancellation approved — the order is cancelled and stock restored.'
+            . ($was_refund ? ' The customer was emailed about the refund — process it in the PayMongo dashboard.' : '')]
         : ['error', 'Could not approve this cancellation.'];
 }
 if (isset($_POST['reject_cancel'])) {
@@ -297,6 +306,8 @@ $showing_to = min($offset + $limit, $total_rows);
                             $pay_pill = '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">PAID</span>';
                         } elseif ($ps === 'failed') {
                             $pay_pill = '<span style="background:#fdeded;color:#d32f2f;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">PAYMENT FAILED</span>';
+                        } elseif ($ps === 'refunded') {
+                            $pay_pill = '<span style="background:#ede7f6;color:#5e35b1;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">REFUNDED</span>';
                         } else {
                             $pay_pill = '<span style="background:#fff8e1;color:#a5710d;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;">UNPAID</span>';
                         }

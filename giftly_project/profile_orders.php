@@ -287,6 +287,10 @@ if ($result->num_rows > 0) {
                         echo '<div style="font-size:11px;color:#2e7d32;margin-top:3px;"><i class="fas fa-circle-check"></i> Paid online</div>';
                     } elseif ($ps === 'failed') {
                         echo '<div style="font-size:11px;color:#d32f2f;margin-top:3px;">Payment failed</div>';
+                    } elseif ($ps === 'refunded') {
+                        echo '<div style="font-size:11px;color:#5e35b1;margin-top:3px;"><i class="fas fa-rotate-left"></i> Refunded</div>';
+                    } elseif ($row['status'] === 'cancelled') {
+                        echo '<div style="font-size:11px;color:#999;margin-top:3px;">No payment collected</div>';
                     } else {
                         echo '<div style="font-size:11px;color:#e65100;margin-top:3px;"><a href="pay_order.php?order_id=' . (int) $row['id'] . '" style="color:#e65100;font-weight:600;">Awaiting payment — pay now</a></div>';
                     }
