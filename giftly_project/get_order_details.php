@@ -114,6 +114,9 @@ $items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN pro
 <div style="margin-bottom: 20px;">
     <div class="order-detail-row"><span class="order-detail-label">Order ID</span><span class="order-detail-value">#<?php echo $order['id']; ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Status</span><span class="order-detail-value" style="text-transform:capitalize;"><?php echo $order['status']; ?></span></div>
+    <?php if (!empty($order['discount_amount']) && (float)$order['discount_amount'] > 0): ?>
+    <div class="order-detail-row"><span class="order-detail-label">Discount<?php echo !empty($order['promo_code']) ? ' (' . htmlspecialchars($order['promo_code']) . ')' : ''; ?></span><span class="order-detail-value" style="color:#2e7d32;">− PHP <?php echo number_format($order['discount_amount'], 2); ?></span></div>
+    <?php endif; ?>
     <div class="order-detail-row"><span class="order-detail-label">Total Paid</span><span class="order-detail-value">PHP <?php echo number_format($order['total_amount'], 2); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Payment</span><span class="order-detail-value"><?php echo ucfirst($order['payment_method']); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Delivery Date</span><span class="order-detail-value"><?php echo date('F j, Y', strtotime($order['delivery_date'])); ?></span></div>

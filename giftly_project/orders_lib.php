@@ -19,7 +19,7 @@ if (!function_exists('orders_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v3'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v4'])) {
             return;
         }
 
@@ -42,8 +42,17 @@ if (!function_exists('orders_ensure_schema')) {
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_holder VARCHAR(120)");
         }
 
+        // Promo / discount columns
+        $pc = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'orders' AND column_name = 'discount_amount'");
+        if (!($pc && $pc->num_rows > 0)) {
+            $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code VARCHAR(40)");
+            $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_id INTEGER");
+            $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) NOT NULL DEFAULT 0");
+        }
+
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['orders_schema_ok_v3'] = true;
+            $_SESSION['orders_schema_ok_v4'] = true;
         }
     }
 

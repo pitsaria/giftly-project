@@ -116,6 +116,13 @@ if (!function_exists('mail_send')) {
         }
 
         $total = number_format((float) $order['total_amount'], 2);
+        $discount_row = '';
+        if (!empty($order['discount_amount']) && (float) $order['discount_amount'] > 0) {
+            $dc = number_format((float) $order['discount_amount'], 2);
+            $dlabel = !empty($order['promo_code']) ? 'Discount (' . htmlspecialchars($order['promo_code']) . ')' : 'Discount';
+            $discount_row = '<tr><td style="padding:6px 0;color:#2e7d32;">' . $dlabel . '</td>'
+                          . '<td style="padding:6px 0;text-align:right;color:#2e7d32;">&minus; PHP ' . $dc . '</td></tr>';
+        }
         if ($paid) {
             $heading = 'Payment received — order #' . $order_id;
             $title   = 'Payment received 🎉';
@@ -131,7 +138,7 @@ if (!function_exists('mail_send')) {
             : 'to be scheduled';
 
         $inner = '<p style="color:#555;font-size:14px;line-height:1.6;">' . $lead . '</p>'
-               . '<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;">' . $rows
+               . '<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;">' . $rows . $discount_row
                . '<tr><td style="padding:10px 0 0;border-top:1px solid #eee;font-weight:700;">Total</td>'
                . '<td style="padding:10px 0 0;border-top:1px solid #eee;text-align:right;font-weight:700;">PHP ' . $total . '</td></tr></table>'
                . '<p style="color:#777;font-size:13px;line-height:1.6;">Deliver to: ' . htmlspecialchars($order['address'] . ', ' . $order['city']) . '<br>'

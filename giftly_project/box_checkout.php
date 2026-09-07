@@ -6,11 +6,13 @@ include_once 'paymongo_lib.php';
 include_once 'address_lib.php';
 include_once 'mail_lib.php';
 include_once 'catalog_lib.php';
+include_once 'promo_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
 catalog_ensure_schema($conn);
+promo_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -122,16 +124,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         }
 
         $total_amount = 0;
-        foreach ($items as $it) $total_amount += $it['price'] * $it['quantity'];
-        $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
-        $grand_total  = $total_amount + $shipping_fee + floatval($box['box_price']);
+        $box_item_qty = 0;
+        foreach ($items as $it) { $total_amount += $it['price'] * $it['quantity']; $box_item_qty += (int) $it['quantity']; }
+
+        // --- promos / discounts (re-evaluated server-side) ---
+        $promo_eval = promo_evaluate($conn, $user_id, [
+            'scope'        => 'box',
+            'subtotal'     => $total_amount,
+            'shipping_fee' => ($total_amount > 0 && $total_amount < 300) ? 50 : 0,
+            'item_count'   => $box_item_qty,
+            'code'         => $_SESSION['promo_code_box'] ?? null,
+        ]);
+        $discount_amount = $promo_eval['discount'];
+        $shipping_fee    = $promo_eval['shipping_fee'];
+        $grand_total     = $promo_eval['final_total'] + floatval($box['box_price']);
+        $promo_code_sql  = $promo_eval['code'] !== '' ? "'" . $conn->real_escape_string($promo_eval['code']) . "'" : 'NULL';
+        $promo_id_sql    = $promo_eval['code_id'] !== null ? (int) $promo_eval['code_id'] : 'NULL';
 
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, sender_phone, address, city,
                     recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time,
-                    card_last4, card_holder)
+                    card_last4, card_holder, promo_code, promo_id, discount_amount)
                 VALUES ($user_id, $grand_total, 'pending', '$fullname', '$sender_phone', '$address', '$city',
                     '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time',
-                    " . ($card_last4 !== '' ? "'$card_last4'" : "NULL") . ", " . ($card_holder !== '' ? "'$card_holder'" : "NULL") . ")";
+                    " . ($card_last4 !== '' ? "'$card_last4'" : "NULL") . ", " . ($card_holder !== '' ? "'$card_holder'" : "NULL") . ",
+                    $promo_code_sql, $promo_id_sql, $discount_amount)";
         if (!$conn->query($sql)) throw new Exception('Failed to create order: ' . $conn->error);
         $order_id = intval($conn->insert_id);
         if ($order_id <= 0) {
@@ -143,6 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $pid, $q, $pr)");
             $conn->query("UPDATE products SET quantity = quantity - $q WHERE id = $pid");
         }
+
+        promo_record($conn, $promo_eval, $user_id, $order_id);
+        unset($_SESSION['promo_code_box']);
 
         $conn->query("UPDATE boxes SET status = 'ordered', updated_at = CURRENT_TIMESTAMP WHERE id = $box_id AND user_id = $user_id");
 
@@ -173,6 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $_SESSION['box_order_ok'] = [
             'order_id' => $order_id,
             'grand_total' => $grand_total,
+            'discount' => $discount_amount,
+            'promo_code' => $promo_eval['code'],
             'payment' => $_POST['payment_method'],
             'delivery_date' => $_POST['delivery_date'],
             'delivery_time' => $_POST['delivery_time'],
@@ -231,6 +252,9 @@ if (isset($_GET['success']) && isset($_SESSION['box_order_ok'])) {
             <div class="success-sub">Your custom <?php echo htmlspecialchars($o['size_name']); ?> has been ordered.</div>
             <div class="success-details-box">
                 <div class="success-detail"><span>Order ID</span><span>#<?php echo $o['order_id']; ?></span></div>
+                <?php if (!empty($o['discount']) && $o['discount'] > 0): ?>
+                <div class="success-detail"><span>Discount<?php echo !empty($o['promo_code']) ? ' (' . htmlspecialchars($o['promo_code']) . ')' : ''; ?></span><span style="color:#2e7d32;">− PHP <?php echo number_format($o['discount'], 2); ?></span></div>
+                <?php endif; ?>
                 <div class="success-detail"><span>Total Paid</span><span>PHP <?php echo number_format($o['grand_total'], 2); ?></span></div>
                 <div class="success-detail"><span>Payment</span><span><?php echo htmlspecialchars(ucfirst($o['payment'])); ?></span></div>
                 <div class="success-detail"><span>Delivery Date</span><span><?php echo date('F j, Y', strtotime($o['delivery_date'])); ?></span></div>
@@ -279,8 +303,21 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
 
 $subtotal = $data['subtotal'];
 $box_price = floatval($data['box']['box_price']);
-$shipping_fee = ($subtotal > 0 && $subtotal < 300) ? 50 : 0;
-$grand = $subtotal + $shipping_fee + $box_price;
+$base_shipping_fee = ($subtotal > 0 && $subtotal < 300) ? 50 : 0;
+
+$promo_eval = promo_evaluate($conn, $user_id, [
+    'scope'        => 'box',
+    'subtotal'     => $subtotal,
+    'shipping_fee' => $base_shipping_fee,
+    'item_count'   => (int) $data['item_count'],
+    'code'         => $_SESSION['promo_code_box'] ?? null,
+]);
+if (($_SESSION['promo_code_box'] ?? '') !== '' && $promo_eval['code'] === '' && $promo_eval['code_error'] !== '') {
+    unset($_SESSION['promo_code_box']);
+}
+$discount_amount = $promo_eval['discount'];
+$shipping_fee    = $promo_eval['shipping_fee'];
+$grand           = $promo_eval['final_total'] + $box_price;
 
 $stock_errors = $_SESSION['box_stock_errors'] ?? [];
 unset($_SESSION['box_stock_errors']);
@@ -312,8 +349,17 @@ unset($_SESSION['box_checkout_error']);
     .co-item img { width: 46px; height: 46px; object-fit: contain; background: #fafafa; border-radius: 10px; padding: 4px; }
     .co-item .nm { flex: 1; font-size: 13px; font-weight: 600; color: #333; }
     .co-item .nm small { display: block; font-weight: 400; color: #999; }
-    .co-tot { margin-top: 16px; }
+    .co-tot { margin-top: 8px; }
     .co-tot .r { display: flex; justify-content: space-between; font-size: 14px; color: #555; margin-bottom: 7px; }
+    .promo-box { margin-top: 16px; }
+    .promo-input-row { display: flex; gap: 8px; }
+    .promo-input-row input { flex: 1; padding: 11px 14px; border: 1.5px solid #eee; border-radius: 12px; font-family: 'Poppins'; font-size: 13px; outline: none; text-transform: uppercase; }
+    .promo-input-row input:focus { border-color: #ffc1cc; box-shadow: 0 0 0 4px rgba(255,193,204,.12); }
+    .promo-input-row button { flex: 0 0 auto; padding: 0 18px; border: none; border-radius: 12px; background: #222; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .promo-input-row button:disabled { opacity: .5; cursor: default; }
+    .promo-applied { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f0faf0; border: 1px solid #cfe9cf; color: #2e7d32; padding: 10px 14px; border-radius: 12px; font-size: 13px; }
+    .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
     .co-tot .r.g { border-top: 1px solid #f0f0f0; padding-top: 12px; font-size: 19px; font-weight: 700; color: #222; }
     .co-btn { width: 100%; padding: 15px; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: 0.2s; }
     .co-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
@@ -535,13 +581,32 @@ unset($_SESSION['box_checkout_error']);
                 <?php endif; ?>
             <?php endif; ?>
 
+            <!-- PROMO CODE -->
+            <div class="promo-box" id="promoBox">
+                <div class="promo-input-row" id="promoInputRow" <?php echo $promo_eval['code'] !== '' ? 'style="display:none;"' : ''; ?>>
+                    <input type="text" id="promoCodeInput" placeholder="Promo code" autocomplete="off" maxlength="40"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();applyPromo();}">
+                    <button type="button" id="promoApplyBtn" onclick="applyPromo()">Apply</button>
+                </div>
+                <div class="promo-applied" id="promoApplied" <?php echo $promo_eval['code'] !== '' ? '' : 'style="display:none;"'; ?>>
+                    <span><i class="fas fa-tag"></i> Code <strong id="promoAppliedCode"><?php echo htmlspecialchars($promo_eval['code']); ?></strong> applied</span>
+                    <button type="button" onclick="removePromo()">Remove</button>
+                </div>
+                <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
+            </div>
+
             <div class="co-tot">
-                <div class="r"><span>Subtotal (<?php echo $data['item_count']; ?> items)</span><span>PHP <?php echo number_format($subtotal, 2); ?></span></div>
+                <div class="r"><span>Subtotal (<?php echo $data['item_count']; ?> items)</span><span id="poSubtotal">PHP <?php echo number_format($subtotal, 2); ?></span></div>
+                <div id="poLines">
+                    <?php foreach ($promo_eval['lines'] as $ln): ?>
+                        <div class="r" style="color:#2e7d32;"><span><?php echo htmlspecialchars($ln['label']); ?></span><span>− PHP <?php echo number_format(abs($ln['amount']), 2); ?></span></div>
+                    <?php endforeach; ?>
+                </div>
                 <?php if ($box_price > 0): ?>
                 <div class="r"><span>Box</span><span>PHP <?php echo number_format($box_price, 2); ?></span></div>
                 <?php endif; ?>
-                <div class="r"><span>Shipping</span><span><?php echo $shipping_fee == 0 ? 'FREE' : 'PHP ' . number_format($shipping_fee, 2); ?></span></div>
-                <div class="r g"><span>Total</span><span>PHP <?php echo number_format($grand, 2); ?></span></div>
+                <div class="r"><span>Shipping</span><span id="poShipping"><?php echo $shipping_fee == 0 ? 'FREE' : 'PHP ' . number_format($shipping_fee, 2); ?></span></div>
+                <div class="r g"><span>Total</span><span id="poTotal">PHP <?php echo number_format($grand, 2); ?></span></div>
             </div>
 
             <button type="submit" form="boxOrderForm" class="co-btn" <?php echo $blocked ? 'disabled' : ''; ?>>
@@ -707,6 +772,62 @@ unset($_SESSION['box_checkout_error']);
         form.addEventListener('input', save);
         form.addEventListener('change', save);
         window.__clearBoxCheckout = function () { try { sessionStorage.removeItem(KEY); } catch (e) {} };
+    })();
+
+    /* --- PROMO CODE --- */
+    (function () {
+        var BOX_ID = <?php echo (int) $box_id; ?>;
+        var busy = false;
+        function peso(n) { return 'PHP ' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+        function render(d) {
+            if (!d || !d.ok) return;
+            document.getElementById('poSubtotal').innerText = peso(d.subtotal);
+            document.getElementById('poShipping').innerText = (d.shipping_fee === 0) ? 'FREE' : peso(d.shipping_fee);
+            document.getElementById('poTotal').innerText = peso(d.total);
+
+            var lines = document.getElementById('poLines');
+            lines.innerHTML = '';
+            (d.lines || []).forEach(function (ln) {
+                var r = document.createElement('div');
+                r.className = 'r';
+                r.style.color = '#2e7d32';
+                r.innerHTML = '<span>' + ln.label.replace(/</g, '&lt;') + '</span><span>− ' + peso(Math.abs(ln.amount)) + '</span>';
+                lines.appendChild(r);
+            });
+
+            var applied = document.getElementById('promoApplied');
+            var inputRow = document.getElementById('promoInputRow');
+            var err = document.getElementById('promoError');
+            if (d.code) {
+                document.getElementById('promoAppliedCode').textContent = d.code;
+                applied.style.display = 'flex'; inputRow.style.display = 'none';
+            } else {
+                applied.style.display = 'none'; inputRow.style.display = 'flex';
+            }
+            if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
+            else { err.style.display = 'none'; }
+        }
+        function req(action, code) {
+            if (busy) return;
+            busy = true;
+            var btn = document.getElementById('promoApplyBtn');
+            if (btn) btn.disabled = true;
+            var body = 'scope=box&action=' + action + '&box_id=' + BOX_ID + (code ? '&code=' + encodeURIComponent(code) : '');
+            fetch('promo_apply.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body, credentials: 'same-origin'
+            })
+                .then(function (r) { return r.json(); })
+                .then(render).catch(function () {})
+                .finally(function () { busy = false; if (btn) btn.disabled = false; });
+        }
+        window.applyPromo = function () {
+            var c = (document.getElementById('promoCodeInput').value || '').trim();
+            if (c) req('apply', c);
+        };
+        window.removePromo = function () { req('remove'); };
     })();
 </script>
 

@@ -83,9 +83,21 @@ if (isset($_GET['order_id'])) {
         }
         ?>
 
-        <!-- Grand Total -->
-        <div style="text-align: right; font-size: 20px; font-weight: 700; color: #222; margin-top: 20px; padding-top: 15px; border-top: 2px solid #ffc1cc;">
-            Total: PHP <?php echo number_format($total, 2); ?>
+        <!-- Totals -->
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #ffc1cc; font-size: 14px; color: #555;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span>Items subtotal</span><span>PHP <?php echo number_format($total, 2); ?></span>
+            </div>
+            <?php if (!empty($info['discount_amount']) && (float)$info['discount_amount'] > 0): ?>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#2e7d32;">
+                <span>Discount<?php echo !empty($info['promo_code']) ? ' (' . htmlspecialchars($info['promo_code']) . ')' : ''; ?></span>
+                <span>− PHP <?php echo number_format($info['discount_amount'], 2); ?></span>
+            </div>
+            <?php endif; ?>
+            <div style="display:flex; justify-content:space-between; font-size: 19px; font-weight: 700; color: #222; margin-top:8px;">
+                <span>Total<?php echo (($info['payment_method'] ?? 'cod') === 'cod') ? '' : ' paid'; ?></span>
+                <span>PHP <?php echo number_format((float)$info['total_amount'], 2); ?></span>
+            </div>
         </div>
     </div>
 
