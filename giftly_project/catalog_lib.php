@@ -15,7 +15,7 @@ if (!function_exists('catalog_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok_v2'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok_v3'])) {
             return;
         }
 
@@ -33,9 +33,46 @@ if (!function_exists('catalog_ensure_schema')) {
             $conn->query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
         }
 
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['catalog_schema_ok_v2'] = true;
+        $c3 = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'products' AND column_name = 'sale_price'");
+        if (!($c3 && $c3->num_rows > 0)) {
+            $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10,2)");
+            $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_ends  TIMESTAMP");
         }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['catalog_schema_ok_v3'] = true;
+        }
+    }
+
+    /**
+     * SQL CASE expression for the price a customer actually pays right now:
+     * the sale price when one is set, positive, below list price and not past
+     * its end date — otherwise the list price. Pass the alias WITH a trailing
+     * dot, e.g. catalog_price_sql('p.').
+     */
+    function catalog_price_sql($alias = '') {
+        $a = $alias;
+        return "(CASE WHEN {$a}sale_price IS NOT NULL AND {$a}sale_price > 0"
+             . " AND {$a}sale_price < {$a}price"
+             . " AND ({$a}sale_ends IS NULL OR {$a}sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))"
+             . " THEN {$a}sale_price ELSE {$a}price END)";
+    }
+
+    /** The price a customer pays right now for a product row fetched from the DB. */
+    function catalog_effective_price($row) {
+        $price = (float) ($row['price'] ?? 0);
+        $sale  = (isset($row['sale_price']) && $row['sale_price'] !== null && $row['sale_price'] !== '')
+               ? (float) $row['sale_price'] : null;
+        if ($sale === null || $sale <= 0 || $sale >= $price) return $price;
+        $ends = $row['sale_ends'] ?? null;
+        if ($ends !== null && $ends !== '' && strtotime($ends . ' UTC') < time()) return $price;
+        return $sale;
+    }
+
+    /** True when the row is being sold below its list price right now. */
+    function catalog_on_sale($row) {
+        return catalog_effective_price($row) < (float) ($row['price'] ?? 0);
     }
 
     /** Boolean-ish helper for pg 't'/'f'/1/0/true values. */

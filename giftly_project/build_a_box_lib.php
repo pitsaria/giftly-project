@@ -10,6 +10,8 @@
  * Requires an active $conn (PgCompatMysqli) from db_connect.php.
  */
 
+require_once __DIR__ . '/catalog_lib.php'; // sale-price helpers (catalog_price_sql etc.)
+
 if (!function_exists('bab_ensure_schema')) {
 
     /**
@@ -161,6 +163,7 @@ if (!function_exists('bab_ensure_schema')) {
     function bab_load_box($conn, $box_id, $user_id) {
         $box_id  = intval($box_id);
         $user_id = intval($user_id);
+        catalog_ensure_schema($conn); // ensure sale_price / sale_ends exist
 
         $res = $conn->query("
             SELECT b.*, s.code AS size_code, s.name AS size_name,
@@ -184,7 +187,8 @@ if (!function_exists('bab_ensure_schema')) {
         $active_col = ($has_active && $has_active->num_rows > 0) ? ", p.is_active" : "";
         $ir = $conn->query("
             SELECT bi.id AS box_item_id, bi.quantity, bi.product_id,
-                   p.name, p.price, p.image, p.quantity AS stock$active_col
+                   p.name, p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
+                   p.image, p.quantity AS stock$active_col
             FROM box_items bi
             LEFT JOIN products p ON p.id = bi.product_id
             WHERE bi.box_id = $box_id
@@ -210,7 +214,9 @@ if (!function_exists('bab_ensure_schema')) {
             } else {
                 $r['unavailable'] = null;
             }
-            $r['price'] = $r['price'] !== null ? floatval($r['price']) : 0.0;
+            $r['price']      = $r['price'] !== null ? floatval($r['price']) : 0.0;
+            $r['list_price'] = isset($r['list_price']) && $r['list_price'] !== null ? floatval($r['list_price']) : $r['price'];
+            $r['on_sale']    = $r['price'] < $r['list_price'];
             $count += $qty;
             $subtotal += $r['price'] * $qty;
             $items[] = $r;

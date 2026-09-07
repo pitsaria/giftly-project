@@ -62,7 +62,8 @@ $count_res = $conn->query("
 $total = $count_res ? intval($count_res->fetch_assoc()['total']) : 0;
 
 $res = $conn->query("
-    SELECT p.id, p.name, p.description, p.price, p.image, p.quantity, p.category_id
+    SELECT p.id, p.name, p.description, p.price AS list_price,
+           " . catalog_price_sql('p.') . " AS price, p.image, p.quantity, p.category_id
     FROM products p
     JOIN product_box_sizes pbs ON pbs.product_id = p.id
     WHERE $where
@@ -73,11 +74,15 @@ $res = $conn->query("
 $products = [];
 while ($res && $row = $res->fetch_assoc()) {
     $rv = function_exists('reviews_summary') ? reviews_summary($conn, intval($row['id'])) : ['avg' => 0, 'count' => 0];
+    $eff = floatval($row['price']);
+    $lst = floatval($row['list_price']);
     $products[] = [
         'id'           => intval($row['id']),
         'name'         => $row['name'],
         'description'  => $row['description'],
-        'price'        => floatval($row['price']),
+        'price'        => $eff,
+        'list_price'   => $lst,
+        'on_sale'      => $eff < $lst,
         'image'        => img_url($row['image']),
         'quantity'     => intval($row['quantity']),
         'rating'       => round((float) $rv['avg'], 1),

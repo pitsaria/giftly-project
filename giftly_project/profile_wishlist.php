@@ -412,8 +412,8 @@ $total_items = count($in_stock_items) + count($out_of_stock_items);
             
             <span class="stock-badge in-stock">In Stock: <?php echo $item['quantity']; ?></span>
             
-            <div class="wishlist-item-price">PHP <?php echo number_format($item['price'], 2); ?></div>
-            
+            <div class="wishlist-item-price">PHP <?php echo number_format(catalog_effective_price($item), 2); ?><?php if (catalog_on_sale($item)): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($item['price'], 2); ?></span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span><?php endif; ?></div>
+
             <div class="wishlist-item-actions">
                 <button class="btn-add-cart" onclick="addToCartFromWishlist(<?php echo $item['id']; ?>, <?php echo $item['wishlist_id']; ?>)">
                     <i class="fas fa-shopping-cart"></i> Add to Cart
@@ -447,7 +447,7 @@ $total_items = count($in_stock_items) + count($out_of_stock_items);
 
             <span class="stock-badge out-of-stock"><?php echo $w_unavail ? 'No longer available' : 'Out of Stock'; ?></span>
 
-            <div class="wishlist-item-price" style="color: #999;">PHP <?php echo number_format($item['price'], 2); ?></div>
+            <div class="wishlist-item-price" style="color: #999;">PHP <?php echo number_format(catalog_effective_price($item), 2); ?></div>
 
             <div class="wishlist-item-actions">
                 <button class="btn-add-cart" disabled>

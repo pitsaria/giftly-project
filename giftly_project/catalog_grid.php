@@ -196,9 +196,11 @@ if (isset($_SESSION['user_id'])) {
                 $sres = $conn->query("SELECT SUM(quantity) AS t FROM order_items WHERE product_id = $id");
                 if ($sres && $sres->num_rows) $sold = (int) $sres->fetch_assoc()['t'];
                 $rvs = reviews_summary($conn, $id);
+                $eff_price  = catalog_effective_price($row);
+                $is_on_sale = catalog_on_sale($row);
                 $onClick = $inStock
                     ? htmlspecialchars(
-                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $row['price'] . ", " . (int) $row['quantity'] . ")",
+                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $eff_price . ", " . (int) $row['quantity'] . ")",
                         ENT_QUOTES)
                     : "";
             ?>
@@ -211,6 +213,7 @@ if (isset($_SESSION['user_id'])) {
                     </button>
                     <?php if (!$inStock): ?><div class="ci-ribbon">Sold Out</div><?php endif; ?>
                     <?php if ($sold > 10): ?><div class="ci-badge">Popular</div><?php endif; ?>
+                    <?php if ($is_on_sale): ?><div class="ci-badge" style="top:<?php echo $sold > 10 ? '46px' : '12px'; ?>;background:linear-gradient(135deg,#ff8ba7,#e6738f);color:#fff;">SALE</div><?php endif; ?>
                 </div>
                 <div class="ci-name" onclick="<?php echo $onClick; ?>"><?php echo htmlspecialchars($row['name']); ?></div>
                 <?php if ($rvs['count'] > 0): ?>
@@ -220,7 +223,7 @@ if (isset($_SESSION['user_id'])) {
                     <div class="ci-desc"><?php echo htmlspecialchars($row['description']); ?></div>
                 <?php endif; ?>
                 <div class="ci-bottom">
-                    <div class="ci-price" onclick="<?php echo $onClick; ?>">PHP <span><?php echo number_format($row['price'], 2); ?></span></div>
+                    <div class="ci-price" onclick="<?php echo $onClick; ?>">PHP <span><?php echo number_format($eff_price, 2); ?></span><?php if ($is_on_sale): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:13px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                     <?php if ($inStock): ?>
                         <button class="ci-add" onclick="event.stopPropagation(); catQuickAdd(<?php echo $id; ?>)">
                             <i class="fas fa-shopping-cart"></i> Add

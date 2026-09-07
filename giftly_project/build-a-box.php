@@ -800,7 +800,9 @@ function babProdCard(p) {
            '<div class="bab-prod-img" onclick="babQuickView(' + p.id + ')"><img src="' + p.image + '" alt=""></div>' +
            '<div class="bab-prod-name" onclick="babQuickView(' + p.id + ')">' + babEsc(p.name) + '</div>' +
            rating +
-           '<div class="bab-prod-price">PHP <span>' + Number(p.price).toFixed(2) + '</span></div>' +
+           '<div class="bab-prod-price">PHP <span>' + Number(p.price).toFixed(2) + '</span>' +
+             (p.on_sale ? ' <span style="text-decoration:line-through;color:#bbb;font-weight:400;">PHP ' + Number(p.list_price).toFixed(2) + '</span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span>' : '') +
+           '</div>' +
            '<div class="foot" id="foot_' + p.id + '"></div></div>';
 }
 
@@ -813,7 +815,8 @@ function babQuickView(pid) {
     document.getElementById('babQvImg').src = p.image; // already resolved by img_url() in PHP
     document.getElementById('babQvImg').alt = p.name;
     document.getElementById('babQvName').textContent = p.name;
-    document.getElementById('babQvPrice').innerHTML = 'PHP ' + Number(p.price).toFixed(2);
+    document.getElementById('babQvPrice').innerHTML = 'PHP ' + Number(p.price).toFixed(2)
+        + (p.on_sale ? ' <span style="text-decoration:line-through;color:#bbb;font-size:14px;font-weight:400;">PHP ' + Number(p.list_price).toFixed(2) + '</span>' : '');
     document.getElementById('babQvDesc').textContent = p.description || 'No description available.';
     const stockEl = document.getElementById('babQvStock');
     const addBtn = document.getElementById('babQvAddBtn');

@@ -178,9 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     }
 
     $ids_string = implode(',', array_map('intval', $selected_ids));
-    $cart_result = $conn->query("SELECT c.product_id, c.quantity, p.price 
-                                 FROM carts c 
-                                 JOIN products p ON c.product_id = p.id 
+    $cart_result = $conn->query("SELECT c.product_id, c.quantity, " . catalog_price_sql('p.') . " AS price
+                                 FROM carts c
+                                 JOIN products p ON c.product_id = p.id
                                  WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
     
     $total_amount = 0;
@@ -403,7 +403,9 @@ if(empty($selected_ids)) {
     exit();
 }
 $ids_string = implode(',', array_map('intval', $selected_ids));
-$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity, p.is_active
+$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, p.name,
+                                    p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
+                                    p.image, p.quantity as stock_quantity, p.is_active
                              FROM carts c
                              JOIN products p ON c.product_id = p.id
                              WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
@@ -1200,7 +1202,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="os-img">
         <div class="os-details">
             <div class="os-name"><?php echo $item['name']; ?></div>
-            <div class="os-price">PHP <?php echo number_format($item['price'], 2); ?> each</div>
+            <div class="os-price">PHP <?php echo number_format($item['price'], 2); ?> each<?php if ((float)$item['price'] < (float)$item['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($item['list_price'], 2); ?></span><?php endif; ?></div>
             <div style="font-size: 11px; color: #888; margin-top: 2px;">
                 Stock: <?php echo $item['stock_quantity']; ?> available
             </div>

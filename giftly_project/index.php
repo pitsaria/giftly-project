@@ -417,7 +417,8 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                             <!-- NEW DESCRIPTION PREVIEW -->
                             <div class="p-desc"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>                        
                             <div class="p-bottom-row">
-                                <div class="p-price">PHP <?php echo number_format($row['price'], 2); ?></div>
+                                <?php $eff = catalog_effective_price($row); ?>
+                                <div class="p-price">PHP <?php echo number_format($eff, 2); ?><?php if (catalog_on_sale($row)): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                                 
                                 <!-- 🚨 UPDATED: Check if user is logged in -->
                                 <?php if (isset($_SESSION['user_id'])): ?>

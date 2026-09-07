@@ -470,7 +470,9 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
         <div id="cartItemsList">
         <?php
     // ✅ DIRECT DATABASE QUERY - NO API CALL
-    $sql = "SELECT c.id as cart_id, c.quantity, p.name, p.price, p.image, p.quantity as stock_quantity, p.is_active
+    $sql = "SELECT c.id as cart_id, c.quantity, p.name,
+                   p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
+                   p.image, p.quantity as stock_quantity, p.is_active
             FROM carts c
             JOIN products p ON c.product_id = p.id
             WHERE c.user_id = $user_id";
@@ -523,7 +525,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 <!-- Name & Price -->
                 <div class="ci-details">
                     <div class="ci-name"><?php echo $row['name']; ?></div>
-                    <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each</div>
+                    <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each<?php if ((float)$row['price'] < (float)$row['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($row['list_price'], 2); ?></span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span><?php endif; ?></div>
                     <div style="font-size: 11px; color: #888; margin-top: 2px;">
                         Stock: <?php echo $row['stock_quantity']; ?> available
                     </div>

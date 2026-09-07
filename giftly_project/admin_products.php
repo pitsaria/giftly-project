@@ -719,6 +719,9 @@ case 'box_sizes':
 case 'category':
     $error_msg = 'Please select a category.';
     break;
+case 'sale_price':
+    $error_msg = 'Sale price must be a valid amount lower than the regular price.';
+    break;
                 default: $error_msg = 'An error occurred. Please try again.';
             }
             echo $error_msg;
@@ -753,6 +756,13 @@ case 'category':
                     ? '<span class="card-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$tkey]).'</span>'
                     : '';
                 $g_active = catalog_is_active($row['is_active'] ?? true);
+                $g_on_sale = catalog_on_sale($row);
+                $g_eff = catalog_effective_price($row);
+                $g_sale_p = ($row['sale_price'] !== null && $row['sale_price'] !== '') ? floatval($row['sale_price']) : 'null';
+                $g_sale_e = !empty($row['sale_ends']) ? date('Y-m-d', strtotime($row['sale_ends'])) : '';
+                $g_price_html = $g_on_sale
+                    ? '<div class="card-price">PHP '.number_format($g_eff, 2).' <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:13px;">PHP '.number_format($row['price'], 2).'</span> <span style="background:#ffe3ea;color:#d81b60;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;">SALE</span></div>'
+                    : '<div class="card-price">PHP '.number_format($row['price'], 2).'</div>';
                 echo '
                 <div class="admin-card search-item'.($g_active ? '' : ' is-inactive').'">
                     <div class="card-image-wrapper">
@@ -762,13 +772,13 @@ case 'category':
                     <div class="card-name search-name">'.$row['name'].'</div>
                     '.$cat_display.$type_display.'
                     <div class="card-desc">'.(strlen($row['description']) > 0 ? $row['description'] : '<span style="color:#ddd;">No description</span>').'</div>
-                    <div class="card-price">PHP '.number_format($row['price'], 2).'</div>
+                    '.$g_price_html.'
                     <div class="at-cell" style="justify-content:center;margin:6px 0 10px;">
                         <label class="at-switch"><input type="checkbox" '.($g_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label>
                         <span>'.($g_active ? 'Visible on site' : 'Hidden from site').'</span>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
+                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$g_sale_p.', \''.$g_sale_e.'\')">
                             <i class="fas fa-pen"></i> Edit
                         </button>
                         <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -826,6 +836,13 @@ case 'category':
                             ? '<span class="prod-cat-badge" style="background:#fff0f5;color:#d81b60;">'.htmlspecialchars(catalog_types()[$ltkey]).'</span>'
                             : '<span class="prod-cat-badge">'.$cat_name.'</span>';
                         $l_active = catalog_is_active($row['is_active'] ?? true);
+                        $l_on_sale = catalog_on_sale($row);
+                        $l_eff = catalog_effective_price($row);
+                        $l_sale_p = ($row['sale_price'] !== null && $row['sale_price'] !== '') ? floatval($row['sale_price']) : 'null';
+                        $l_sale_e = !empty($row['sale_ends']) ? date('Y-m-d', strtotime($row['sale_ends'])) : '';
+                        $l_price_html = $l_on_sale
+                            ? '<span class="prod-price">PHP '.number_format($l_eff, 2).'</span> <span style="text-decoration:line-through;color:#bbb;font-size:12px;">PHP '.number_format($row['price'], 2).'</span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span>'
+                            : '<span class="prod-price">PHP '.number_format($row['price'], 2).'</span>';
                         echo '
                         <tr class="search-item'.($l_active ? '' : ' is-inactive').'">
                             <td><img src="'.htmlspecialchars(img_url($row['image'])).'" class="prod-thumb"></td>
@@ -835,11 +852,11 @@ case 'category':
                             </td>
                             <td>'.$ltype_badge.'</td>
                             <td><span class="'.$stock_class.'">'.$stock_status.'</span></td>
-                            <td><span class="prod-price">PHP '.number_format($row['price'], 2).'</span></td>
+                            <td>'.$l_price_html.'</td>
                             <td><label class="at-switch"><input type="checkbox" '.($l_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label></td>
                             <td>
                                 <div class="list-actions">
-                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\')">
+                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$l_sale_p.', \''.$l_sale_e.'\')">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -916,7 +933,13 @@ case 'category':
             
             <label class="modal-label">Price (PHP)</label>
             <input type="number" step="0.01" name="price" id="edit_price" class="modal-input" min="0" required>
-            
+
+            <label class="modal-label">Sale Price (PHP) <span style="font-weight:400;color:#999;">(optional)</span></label>
+            <input type="number" step="0.01" name="sale_price" id="edit_sale_price" class="modal-input" min="0" placeholder="Leave blank for no sale">
+            <label class="modal-label" style="margin-top:8px;">Sale ends <span style="font-weight:400;color:#999;">(optional)</span></label>
+            <input type="date" name="sale_ends" id="edit_sale_ends" class="modal-input">
+            <div style="font-size:12px;color:#888;margin:4px 0 4px;"><i class="fas fa-tag"></i> Must be lower than the price. Clear it to end the sale.</div>
+
             <label class="modal-label">Stock Quantity</label>
             <input type="number" name="quantity" id="edit_quantity" class="modal-input" min="0" required>
             
@@ -971,11 +994,13 @@ case 'category':
         catSel.disabled = !isShop;
     }
 
-    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType) {
+    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType, salePrice, saleEnds) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_desc').value = desc;
         document.getElementById('edit_price').value = price;
+        document.getElementById('edit_sale_price').value = (salePrice === null || salePrice === undefined) ? '' : salePrice;
+        document.getElementById('edit_sale_ends').value = saleEnds || '';
         document.getElementById('edit_quantity').value = quantity;
         document.getElementById('edit_category_id').value = category_id;
         document.getElementById('edit_product_type').value = productType || 'catalog';
@@ -1028,6 +1053,12 @@ case 'category':
     if (price > 9999.99) {
         alert('Maximum price allowed is 9,999.99.');
         return false;
+    }
+    var saleRaw = document.getElementById('edit_sale_price').value.trim();
+    if (saleRaw !== '') {
+        var sale = parseFloat(saleRaw);
+        if (isNaN(sale) || sale < 0) { alert('Sale price must be a valid amount.'); return false; }
+        if (sale >= price) { alert('Sale price must be lower than the regular price.'); return false; }
     }
     if (document.getElementById('edit_product_type').value === 'catalog'
         && document.querySelectorAll('.edit-box-size:checked').length === 0) {

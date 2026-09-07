@@ -1,5 +1,7 @@
 <?php
 include 'db_connect.php';
+include_once 'catalog_lib.php';
+catalog_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false]);
@@ -61,7 +63,7 @@ if ($action == 'increase') {
 }
 
 // Get new quantity and subtotal
-$row = $conn->query("SELECT c.quantity, p.price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
+$row = $conn->query("SELECT c.quantity, " . catalog_price_sql('p.') . " AS price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
 
 if ($row) {
     $new_qty = intval($row['quantity']);

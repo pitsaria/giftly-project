@@ -178,6 +178,12 @@ public function getAll($params) {
             $this->conn->query("ALTER TABLE products   ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
             $this->conn->query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE");
         }
+        $s = $this->conn->query("SELECT 1 FROM information_schema.columns
+                                 WHERE table_name = 'products' AND column_name = 'sale_price'");
+        if (!$s || $s->num_rows === 0) {
+            $this->conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10,2)");
+            $this->conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_ends  TIMESTAMP");
+        }
     }
 
     // Helper: Check if user is admin

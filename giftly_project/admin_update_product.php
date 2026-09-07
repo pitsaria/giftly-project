@@ -84,6 +84,29 @@ if (isset($_POST['update_product'])) {
         exit();
     }
 
+    // Optional sale price + end date
+    $sale_raw = trim($_POST['sale_price'] ?? '');
+    $sale_sql = 'NULL';
+    $sale_ends_sql = 'NULL';
+    if ($sale_raw !== '') {
+        if (!is_numeric($sale_raw) || floatval($sale_raw) < 0) {
+            $_SESSION['product_error'] = "Sale price must be a valid amount.";
+            header("Location: admin_products.php?error=sale_price");
+            exit();
+        }
+        if (floatval($sale_raw) >= $price) {
+            $_SESSION['product_error'] = "Sale price must be lower than the regular price.";
+            header("Location: admin_products.php?error=sale_price");
+            exit();
+        }
+        $sale_sql = "'" . floatval($sale_raw) . "'";
+        $sale_ends_raw = trim($_POST['sale_ends'] ?? '');
+        if ($sale_ends_raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $sale_ends_raw)) {
+            $sale_ends_sql = "'" . $conn->real_escape_string($sale_ends_raw) . " 23:59:59'";
+        }
+    }
+    $sale_frag = "sale_price=$sale_sql, sale_ends=$sale_ends_sql";
+
     $name = mysqli_real_escape_string($conn, $name);
     $desc = mysqli_real_escape_string($conn, $desc);
     $category_id = mysqli_real_escape_string($conn, $category_id);
@@ -94,14 +117,14 @@ if (isset($_POST['update_product'])) {
 
         if ($new_url !== null) {
             $image_esc = mysqli_real_escape_string($conn, $new_url);
-            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type', image='$image_esc' WHERE id=$id";
+            $sql = "UPDATE products SET name='$name', description='$desc', price='$price', $sale_frag, quantity='$quantity', category_id='$category_id', product_type='$product_type', image='$image_esc' WHERE id=$id";
         } else {
             $_SESSION['product_updated'] = false;
             header("Location: admin_products.php?error=upload");
             exit();
         }
     } else {
-        $sql = "UPDATE products SET name='$name', description='$desc', price='$price', quantity='$quantity', category_id='$category_id', product_type='$product_type' WHERE id=$id";
+        $sql = "UPDATE products SET name='$name', description='$desc', price='$price', $sale_frag, quantity='$quantity', category_id='$category_id', product_type='$product_type' WHERE id=$id";
     }
 
     if ($conn->query($sql) === TRUE) {

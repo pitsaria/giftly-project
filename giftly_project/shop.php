@@ -323,10 +323,13 @@ function isInWishlist($product_id, $wishlist_ids) {
         font-weight: 500; 
         color: #888;
     }
-    .p-price span { 
-        font-weight: 700; 
-        color: #222; 
+    .p-price span {
+        font-weight: 700;
+        color: #222;
     }
+    .p-price .p-was { font-weight: 400; color: #bbb; text-decoration: line-through; font-size: 13px; margin-left: 4px; }
+    .p-sale-tag { background: #ffe3ea; color: #d81b60; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; letter-spacing: .3px; }
+    .p-image-sale { position: absolute; top: 12px; left: 12px; background: linear-gradient(135deg,#ff8ba7,#e6738f); color:#fff; font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; z-index:2; box-shadow:0 2px 8px rgba(230,115,143,.3); }
 
     .btn-action {
         background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%);
@@ -712,7 +715,9 @@ $api_url .= '&page=' . $page . '&limit=' . $limit;
     if (!empty($products)) {
     foreach($products as $row) {
         $isInStock = $row['quantity'] > 0;
-        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$row['price'].", ".$row['quantity'].")" : "";
+        $eff_price = catalog_effective_price($row);
+        $is_on_sale = catalog_on_sale($row);
+        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$eff_price.", ".$row['quantity'].")" : "";
         $cardClass = $isInStock ? 'product-card' : 'product-card out-of-stock-product';
 
         // Check if product is in wishlist
@@ -749,13 +754,14 @@ $heartClass = $isInWishlist ? 'active' : '';
                 </div>' : '') . '
                 
                 ' . ($totalSold > 10 ? '<div class="p-image-badge">Best Seller</div>' : '') . '
+                ' . ($is_on_sale ? '<div class="p-image-sale">SALE</div>' : '') . '
             </div>
-            
+
             <div class="p-name" onclick="'.$onClick.'">'.$row['name'].'</div>
             ' . (((int)($row['review_count'] ?? 0)) > 0 ? '
             <div class="p-rating" onclick="'.$onClick.'">' . shop_stars((float)$row['avg_rating']) . ' <span>('.(int)$row['review_count'].')</span></div>' : '') . '
             <div class="p-bottom-row">
-                <div class="p-price" onclick="'.$onClick.'">PHP <span>'.number_format($row['price'], 2).'</span></div>
+                <div class="p-price" onclick="'.$onClick.'">PHP <span>'.number_format($eff_price, 2).'</span>'.($is_on_sale ? '<span class="p-was">PHP '.number_format($row['price'], 2).'</span>' : '').'</div>
                 
                 ' . ($isInStock ? '
                 <button class="btn-action" onclick="event.stopPropagation(); quickAdd('.$row['id'].')">

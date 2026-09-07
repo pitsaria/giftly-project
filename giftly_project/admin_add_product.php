@@ -81,9 +81,33 @@ if ($quantity > 9999) {
         exit();
     }
 
+    // Optional sale price + end date
+    $sale_raw = trim($_POST['sale_price'] ?? '');
+    $sale_sql = 'NULL';
+    $sale_ends_sql = 'NULL';
+    if ($sale_raw !== '') {
+        if (!is_numeric($sale_raw) || floatval($sale_raw) < 0) {
+            $_SESSION['product_error'] = "Sale price must be a valid amount.";
+            header("Location: admin_add_product.php");
+            exit();
+        }
+        $sale_val = floatval($sale_raw);
+        if ($sale_val >= $price) {
+            $_SESSION['product_error'] = "Sale price must be lower than the regular price.";
+            header("Location: admin_add_product.php");
+            exit();
+        }
+        $sale_sql = "'" . $sale_val . "'";
+        $sale_ends_raw = trim($_POST['sale_ends'] ?? '');
+        if ($sale_ends_raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $sale_ends_raw)) {
+            // treat the picked day as inclusive — sale runs to end of that day
+            $sale_ends_sql = "'" . $conn->real_escape_string($sale_ends_raw) . " 23:59:59'";
+        }
+    }
+
     $image_esc = mysqli_real_escape_string($conn, $new_filename);
     $is_active = isset($_POST['is_active']) ? 'TRUE' : 'FALSE';
-    $sql = "INSERT INTO products (name, description, price, quantity, category_id, image, product_type, is_active) VALUES ('$name', '$desc', '$price', '$quantity', '$category_id', '$image_esc', '$product_type', $is_active)";
+    $sql = "INSERT INTO products (name, description, price, sale_price, sale_ends, quantity, category_id, image, product_type, is_active) VALUES ('$name', '$desc', '$price', $sale_sql, $sale_ends_sql, '$quantity', '$category_id', '$image_esc', '$product_type', $is_active)";
     if ($conn->query($sql) === TRUE) {
         // Resolve the new product id and record its allowed box sizes
         $new_pid = intval($conn->insert_id);
@@ -200,6 +224,17 @@ include 'admin_header.php';
     <input type="number" step="0.01" id="price" name="price" class="admin-input" placeholder="e.g. 500.00" min="0" max="9999.99" oninput="validatePrice(this)" required>
     <div style="font-size: 12px; color: #888; margin-top: 4px;">
         <i class="fas fa-info-circle"></i> Price must be between 0 and greater
+    </div>
+</div>
+<div class="admin-form-group">
+    <label for="sale_price">Sale Price (PHP) <span style="color:#bbb; font-weight:400;">(optional)</span></label>
+    <input type="number" step="0.01" id="sale_price" name="sale_price" class="admin-input" placeholder="Leave blank for no sale" min="0" max="9999.99">
+    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-weight:400; font-size:13px; color:#555;">
+        Sale ends <input type="date" id="sale_ends" name="sale_ends" class="admin-input" style="width:auto; padding:8px 12px;">
+        <span style="color:#999;">(optional — leave blank to run until you remove the sale price)</span>
+    </label>
+    <div style="font-size: 12px; color: #888; margin-top: 4px;">
+        <i class="fas fa-tag"></i> Must be lower than the regular price. Shoppers see the old price struck through.
     </div>
 </div>
 <div class="admin-form-group">

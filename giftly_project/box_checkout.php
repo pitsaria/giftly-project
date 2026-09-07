@@ -5,10 +5,12 @@ include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
 include_once 'address_lib.php';
 include_once 'mail_lib.php';
+include_once 'catalog_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
+catalog_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -39,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $bc_has_active = $conn->query("SELECT 1 FROM information_schema.columns
                                        WHERE table_name = 'products' AND column_name = 'is_active'");
         $bc_active_col = ($bc_has_active && $bc_has_active->num_rows > 0) ? ", p.is_active" : "";
-        $ires = $conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock$bc_active_col
+        $ires = $conn->query("SELECT bi.product_id, bi.quantity, p.name,
+                                     " . catalog_price_sql('p.') . " AS price, p.quantity AS stock$bc_active_col
                               FROM box_items bi JOIN products p ON p.id = bi.product_id
                               WHERE bi.box_id = $box_id FOR UPDATE");
         $items = [];
@@ -512,7 +515,7 @@ unset($_SESSION['box_checkout_error']);
                 <div class="co-item">
                     <img src="<?php echo htmlspecialchars(img_url($it['image'])); ?>" alt="">
                     <div class="nm"><?php echo htmlspecialchars($it['name']); ?>
-                        <small>x<?php echo $it['quantity']; ?> · PHP <?php echo number_format($it['price'], 2); ?></small>
+                        <small>x<?php echo $it['quantity']; ?> · PHP <?php echo number_format($it['price'], 2); ?><?php if (!empty($it['on_sale'])): ?> <span style="text-decoration:line-through;">PHP <?php echo number_format($it['list_price'], 2); ?></span> <span style="color:#d81b60;font-weight:700;">SALE</span><?php endif; ?></small>
                     </div>
                     <div style="font-weight:700;font-size:13px;">PHP <?php echo number_format($it['price'] * $it['quantity'], 2); ?></div>
                 </div>
