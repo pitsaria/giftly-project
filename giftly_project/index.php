@@ -316,13 +316,15 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
     /* --- promo code chip --- */
     .promo-code-chip {
         display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
-        background: #222; color: #fff; border: none; border-radius: 12px;
-        padding: 9px 14px; font-family: 'Poppins', sans-serif; font-size: 13px;
-        font-weight: 700; letter-spacing: .5px; cursor: pointer; transition: 0.2s;
+        background: rgba(255,255,255,.7); color: #222; border: 1px dashed rgba(0,0,0,.18);
+        border-radius: 12px; padding: 8px 14px; font-family: 'Poppins', sans-serif;
+        font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer; transition: 0.2s;
     }
-    .promo-code-chip:hover { background: #000; transform: translateY(-1px); }
-    .promo-code-chip .pcc-hint { font-weight: 500; font-size: 11px; opacity: .7; letter-spacing: 0; }
-    .promo-code-chip.copied { background: #2e7d32; }
+    .promo-code-chip:hover { background: #fff; transform: translateY(-1px); }
+    .promo-code-chip .pcc-code { color: #d81b60; }
+    .promo-code-chip .pcc-hint { font-weight: 500; font-size: 11px; color: #888; letter-spacing: 0; }
+    .promo-code-chip.copied { background: #e8f5e9; border-color: #a5d6a7; }
+    .promo-code-chip.copied .pcc-code, .promo-code-chip.copied .pcc-hint { color: #2e7d32; }
     .promo-auto-chip {
         display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
         background: rgba(255,255,255,.6); color: #555; border-radius: 12px;
