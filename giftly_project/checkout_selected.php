@@ -213,7 +213,8 @@ $grand_total_with_shipping = $total_amount + $shipping_fee;
 
         // COD order confirmation email (no-op if email isn't configured)
         if ($payment === 'cod' && function_exists('send_order_email')) {
-            @send_order_email($conn, (int) $order_id, false);
+            $__mailok = send_order_email($conn, (int) $order_id, false);
+            error_log('COD email order #' . $order_id . ': ' . ($__mailok ? 'sent' : ('FAILED - ' . mail_last_error())));
         }
 
         // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---

@@ -158,7 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 
         // COD confirmation email (no-op if email isn't configured)
         if ($payment === 'cod' && function_exists('send_order_email')) {
-            @send_order_email($conn, (int) $order_id, false);
+            $__mailok = send_order_email($conn, (int) $order_id, false);
+            error_log('COD box email order #' . $order_id . ': ' . ($__mailok ? 'sent' : ('FAILED - ' . mail_last_error())));
         }
 
         $_SESSION['box_order_ok'] = [
