@@ -122,8 +122,17 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
     }
     .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
     
-    .p-image-container { background: #fff; border-radius: 20px; padding: 10px; margin-bottom: 10px; text-align: center; }
+    .p-image-container { background: #fff; border-radius: 20px; padding: 10px; margin-bottom: 10px; text-align: center; position: relative; }
     .p-image { max-width: 100%; height: 160px; object-fit: contain; }
+    .p-sale-badge {
+        position: absolute; top: 12px; left: 12px;
+        background: linear-gradient(135deg, #ff5c8a, #e6398f);
+        color: #fff; font-size: 12px; font-weight: 800;
+        padding: 5px 12px; border-radius: 20px;
+        letter-spacing: .4px; text-transform: uppercase;
+        box-shadow: 0 4px 12px rgba(230, 57, 143, .35);
+    }
+    .p-sale-badge small { font-size: 10px; font-weight: 700; opacity: .95; }
     
        .p-name { font-size: 15px; font-weight: 500; color: #222; margin-bottom: 3px; line-height: 1.3; }
        .p-desc { 
@@ -407,18 +416,24 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                     $color_index++;
                     ?>
                     
+                    <?php
+                    $eff = catalog_effective_price($row);
+                    $os  = catalog_on_sale($row);
+                    $disc_pct = ($os && (float)$row['price'] > 0)
+                        ? (int) round(((float)$row['price'] - $eff) / (float)$row['price'] * 100) : 0;
+                    ?>
                     <div class="product-card">
                         <div class="p-image-container">
+                            <?php if ($os): ?><div class="p-sale-badge">Sale<?php if ($disc_pct > 0): ?> <small>-<?php echo $disc_pct; ?>%</small><?php endif; ?></div><?php endif; ?>
                             <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" alt="Product" class="p-image">
                         </div>
-                        
+
                         <div class="<?php echo $current_color; ?>">
                             <div class="p-name"><?php echo $row['name']; ?></div>
-                            
+
                             <!-- NEW DESCRIPTION PREVIEW -->
-                            <div class="p-desc"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>                        
+                            <div class="p-desc"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>
                             <div class="p-bottom-row">
-                                <?php $eff = catalog_effective_price($row); $os = catalog_on_sale($row); ?>
                                 <div class="p-price" style="<?php echo $os ? 'color:#e6398f;' : ''; ?>white-space:nowrap;">PHP <?php echo number_format($eff, 2); ?><?php if ($os): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                                 
                                 <!-- 🚨 UPDATED: Check if user is logged in -->
