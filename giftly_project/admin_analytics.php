@@ -100,6 +100,38 @@ $low_stock = $conn->query("
     LIMIT 20
 ");
 $oos_count = (int) ($conn->query("SELECT COUNT(*) AS c FROM products WHERE quantity = 0")->fetch_assoc()['c'] ?? 0);
+
+// --- Promo / discount performance ---
+$promo_rows = [];
+$promo_total_disc = 0.0;
+$promo_orders = 0;
+$has_promos = $conn->query("SELECT to_regclass('public.promo_redemptions') AS t");
+if ($has_promos && !empty(($has_promos->fetch_assoc()['t'] ?? null))) {
+    $pd = $conn->query("
+        SELECT COALESCE(pr.code, pm.name)      AS label,
+               pm.code                         AS code,
+               COUNT(DISTINCT pr.order_id)     AS orders,
+               COALESCE(SUM(pr.discount_amount), 0) AS discount
+        FROM promo_redemptions pr
+        JOIN orders o  ON o.id = pr.order_id AND o.status <> 'cancelled'
+        LEFT JOIN promos pm ON pm.id = pr.promo_id
+        GROUP BY COALESCE(pr.code, pm.name), pm.code
+        ORDER BY discount DESC
+        LIMIT 20
+    ");
+    while ($pd && $r = $pd->fetch_assoc()) $promo_rows[] = $r;
+
+    $agg = $conn->query("
+        SELECT COALESCE(SUM(o.discount_amount), 0) AS d,
+               COUNT(*) FILTER (WHERE o.discount_amount > 0) AS n
+        FROM orders o WHERE o.status <> 'cancelled'
+    ");
+    if ($agg && $agg->num_rows) {
+        $a = $agg->fetch_assoc();
+        $promo_total_disc = (float) $a['d'];
+        $promo_orders = (int) $a['n'];
+    }
+}
 ?>
 <style>
     .main-wrapper { max-width: 1200px; margin: 0 auto; padding: 40px 20px; width: 100%; flex: 1; }
@@ -281,6 +313,28 @@ $oos_count = (int) ($conn->query("SELECT COUNT(*) AS c FROM products WHERE quant
                 <div class="an-empty">No customers with orders yet.</div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <div class="an-card">
+        <h3>Promo performance</h3>
+        <div class="sub"><?php echo $money($promo_total_disc); ?> in discounts across <?php echo $promo_orders; ?> order<?php echo $promo_orders === 1 ? '' : 's'; ?> (non-cancelled)</div>
+        <?php if (!empty($promo_rows)): ?>
+            <?php foreach ($promo_rows as $pr): ?>
+            <div class="an-list-item">
+                <div class="an-avatar" style="background:#fff0f5;color:#d81b60;"><i class="fas fa-tag" style="font-size:13px;"></i></div>
+                <div class="info">
+                    <h4><?php echo htmlspecialchars($pr['label'] ?: 'Promo'); ?><?php echo $pr['code'] ? '' : ' <span style="font-weight:400;color:#999;font-size:12px;">(automatic)</span>'; ?></h4>
+                    <p><?php echo (int) $pr['orders']; ?> order<?php echo (int) $pr['orders'] === 1 ? '' : 's'; ?></p>
+                </div>
+                <div class="val" style="color:#2e7d32;">− <?php echo $money($pr['discount']); ?></div>
+            </div>
+            <?php endforeach; ?>
+            <div style="margin-top:16px;text-align:right;">
+                <a href="admin_promos.php" style="color:#ff8ba7;font-weight:600;font-size:13px;text-decoration:none;">Manage promos &rarr;</a>
+            </div>
+        <?php else: ?>
+            <div class="an-empty">No promo codes have been used yet.</div>
+        <?php endif; ?>
     </div>
 
     <div class="an-card">

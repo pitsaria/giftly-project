@@ -261,7 +261,14 @@ if ($result->num_rows > 0) {
             ?>
             <tr>
                 <td><strong>#<?php echo $row['id']; ?></strong></td>
-                <td><strong>PHP <?php echo number_format($row['total_amount'], 2); ?></strong></td>
+                <td>
+                    <strong>PHP <?php echo number_format($row['total_amount'], 2); ?></strong>
+                    <?php if (!empty($row['discount_amount']) && (float) $row['discount_amount'] > 0): ?>
+                        <span style="display:block; font-size:11px; font-weight:600; color:#2e7d32; margin-top:2px;">
+                            <i class="fas fa-tag"></i> Saved PHP <?php echo number_format($row['discount_amount'], 2); ?><?php echo !empty($row['promo_code']) ? ' (' . htmlspecialchars($row['promo_code']) . ')' : ''; ?>
+                        </span>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php if ($row['status'] === 'cancelled'): ?>
                         <span class="status-badge cancelled">Cancelled</span>

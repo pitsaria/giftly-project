@@ -2,6 +2,37 @@
 // Buffer output so pages that call header()/redirects after including this
 // file (e.g. an auth check placed below the include) still work.
 if (ob_get_level() === 0) { ob_start(); }
+
+// --- site-wide promo banner: newest active promo that has a code ---
+$__promo_banner = null;
+if (isset($conn)) {
+    if (file_exists(__DIR__ . '/promo_lib.php')) {
+        include_once __DIR__ . '/promo_lib.php';
+        if (function_exists('promo_ensure_schema')) {
+            promo_ensure_schema($conn);
+            $__pbq = $conn->query("SELECT code, type, value, min_spend FROM promos
+                                   WHERE code IS NOT NULL AND active = TRUE
+                                     AND (starts_at IS NULL OR starts_at <= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
+                                     AND (ends_at   IS NULL OR ends_at   >  (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
+                                   ORDER BY id DESC LIMIT 1");
+            if ($__pbq && $__pbq->num_rows) {
+                $__pb = $__pbq->fetch_assoc();
+                switch ($__pb['type']) {
+                    case 'percent':       $__eff = rtrim(rtrim(number_format((float) $__pb['value'], 2), '0'), '.') . '% off'; break;
+                    case 'fixed':         $__eff = 'PHP ' . number_format((float) $__pb['value'], 2) . ' off'; break;
+                    case 'free_shipping': $__eff = 'free shipping'; break;
+                    case 'free_item':     $__eff = 'a free gift'; break;
+                    default:              $__eff = 'a discount';
+                }
+                $__min = ((float) $__pb['min_spend'] > 0) ? ' on orders over PHP ' . number_format((float) $__pb['min_spend'], 0) : '';
+                $__promo_banner = [
+                    'code' => strtoupper($__pb['code']),
+                    'msg'  => 'Use code <b>' . htmlspecialchars(strtoupper($__pb['code'])) . '</b> at checkout for ' . $__eff . $__min,
+                ];
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,6 +61,29 @@ if (ob_get_level() === 0) { ob_start(); }
         body { background: #fcfcfc; color: #333; padding-top: 10px; } 
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
+
+        /* --- site-wide promo banner --- */
+        .promo-banner {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1100;
+            background: linear-gradient(135deg, #ff8ba7 0%, #e6398f 100%);
+            color: #fff; font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 9px 46px 9px 18px; text-align: center;
+            box-shadow: 0 2px 10px rgba(230, 57, 143, .25);
+        }
+        .promo-banner b { font-weight: 800; letter-spacing: .5px; }
+        .promo-banner .pb-close {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: rgba(255,255,255,.22); border: none; color: #fff;
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+            font-size: 15px; line-height: 20px; padding: 0;
+        }
+        .promo-banner .pb-close:hover { background: rgba(255,255,255,.4); }
+        body.has-promo-banner nav { top: 50px; }
+        @media (max-width: 600px) {
+            .promo-banner { font-size: 11.5px; padding: 8px 40px 8px 12px; }
+            body.has-promo-banner nav { top: 64px; }
+        }
 
         /* --- light-gray placeholder / sample text so it's clearly not filled in yet --- */
         ::placeholder { color: #b3b3b3 !important; opacity: 1; }
@@ -181,7 +235,30 @@ if (ob_get_level() === 0) { ob_start(); }
         .checkout-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(255,139,167,0.3); }
     </style>
 </head>
-<body>
+<body class="<?php echo $__promo_banner ? 'has-promo-banner' : ''; ?>">
+    <?php if ($__promo_banner): ?>
+    <div id="promoBanner" class="promo-banner" data-code="<?php echo htmlspecialchars($__promo_banner['code']); ?>">
+        <span><i class="fas fa-tags"></i> <?php echo $__promo_banner['msg']; ?></span>
+        <button type="button" class="pb-close" aria-label="Dismiss" onclick="dismissPromoBanner()">&times;</button>
+    </div>
+    <script>
+        (function () {
+            try {
+                var b = document.getElementById('promoBanner');
+                if (b && localStorage.getItem('promoBannerDismissed') === b.dataset.code) {
+                    b.remove();
+                    document.body.classList.remove('has-promo-banner');
+                }
+            } catch (e) {}
+        })();
+        function dismissPromoBanner() {
+            var b = document.getElementById('promoBanner');
+            try { if (b) localStorage.setItem('promoBannerDismissed', b.dataset.code); } catch (e) {}
+            if (b) b.remove();
+            document.body.classList.remove('has-promo-banner');
+        }
+    </script>
+    <?php endif; ?>
     <!-- Navigation Bar -->
     <nav>
         <div class="nav-logo">
