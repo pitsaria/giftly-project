@@ -650,6 +650,8 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 <span id="summaryGrandTotal">PHP 0.00</span>
             </div>
 
+            <div id="cartFreeGift" style="display:none; margin-top:12px; font-size:12.5px; font-weight:600; border-radius:12px; padding:10px 12px;"></div>
+
             <button class="btn-checkout" id="btnProceed" onclick="proceedToCheckout()">
                 <i class="fas fa-lock" style="margin-right: 8px;"></i> Proceed to Checkout
             </button>
@@ -1082,6 +1084,57 @@ function updateTotal() {
 
     // Toggle Checkout Button
     document.getElementById('btnProceed').disabled = (total === 0);
+
+    refreshCartFreeGift();
+}
+
+/* --- "Add N more for a free gift" / "You've unlocked a free gift" notice --- */
+var __cartGiftTimer = null;
+function refreshCartFreeGift() {
+    clearTimeout(__cartGiftTimer);
+    __cartGiftTimer = setTimeout(function () {
+        var ids = [];
+        document.querySelectorAll('.item-checkbox:checked:not([disabled])').forEach(function (cb) {
+            var row = cb.closest('.cart-item-card');
+            if (!row || row.style.display === 'none') return;
+            ids.push(cb.value);
+        });
+        var box = document.getElementById('cartFreeGift');
+        if (!box) return;
+        if (ids.length === 0) { box.style.display = 'none'; return; }
+
+        fetch('promo_apply.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'scope=products&action=refresh&ids=' + encodeURIComponent(ids.join(',')),
+            credentials: 'same-origin'
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (!d || !d.ok) { box.style.display = 'none'; return; }
+            if (d.free_item && d.free_item.name) {
+                box.innerHTML = '🎁 You\'ve got a <strong>free ' + escapeHtmlSmall(d.free_item.name) + '</strong> in this order!';
+                box.style.background = '#e8f5e9';
+                box.style.color = '#2e7d32';
+                box.style.display = 'block';
+            } else if (d.free_item_nudge && d.free_item_nudge.more > 0) {
+                var n = d.free_item_nudge;
+                box.innerHTML = '🎁 Add <strong>' + n.more + ' more item' + (n.more == 1 ? '' : 's') +
+                                '</strong> to get a free ' + escapeHtmlSmall(n.name) + '!';
+                box.style.background = '#fff0f5';
+                box.style.color = '#d81b60';
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        })
+        .catch(function () { box.style.display = 'none'; });
+    }, 250);
+}
+function escapeHtmlSmall(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
 }
 
 /* --- PROCEED TO CHECKOUT - WITH API STOCK VERIFICATION --- */
