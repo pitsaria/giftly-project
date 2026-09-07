@@ -567,6 +567,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         padding: 10px 14px; border-radius: 12px; font-size: 13px;
     }
     .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .promo-terms { font-size: 11.5px; color: #888; margin-top: 5px; }
     .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
     .promo-nudge { color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
     .os-grand-total { font-size: 22px; font-weight: 700; color: #222; }
@@ -1290,6 +1291,8 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                     <span><i class="fas fa-tag"></i> Code <strong id="promoAppliedCode"><?php echo htmlspecialchars($promo_eval['code']); ?></strong> applied</span>
                     <button type="button" onclick="removePromo()">Remove</button>
                 </div>
+                <?php $__pterms = promo_terms_text($promo_eval['code_min_spend'], $promo_eval['code_max_discount']); ?>
+                <div class="promo-terms" id="promoTerms" <?php echo $__pterms !== '' ? '' : 'style="display:none;"'; ?>><i class="fas fa-circle-info"></i> <span id="promoTermsText"><?php echo htmlspecialchars($__pterms); ?></span></div>
                 <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
                 <div class="promo-nudge" id="promoNudge" <?php echo $promo_eval['free_item_nudge'] ? '' : 'style="display:none;"'; ?>>
                     <?php if ($promo_eval['free_item_nudge']): $n = $promo_eval['free_item_nudge']; ?>
@@ -1842,6 +1845,12 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
 
     /* --- UPDATE CHECKOUT GRAND TOTAL --- */
     function pesoFmt(n) { return 'PHP ' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+    function promoTermsText(minSpend, maxDisc) {
+        var b = [];
+        if (Number(minSpend) > 0) b.push('Min spend PHP ' + Math.round(Number(minSpend)).toLocaleString());
+        if (Number(maxDisc) > 0) b.push('Max discount PHP ' + Math.round(Number(maxDisc)).toLocaleString());
+        return b.join(' · ');
+    }
 
     function currentCartIds() {
         var f = document.getElementById('selectedIdsHidden');
@@ -1888,6 +1897,7 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         var applied = document.getElementById('promoApplied');
         var inputRow = document.getElementById('promoInputRow');
         var err = document.getElementById('promoError');
+        var terms = document.getElementById('promoTerms');
         if (d.code) {
             document.getElementById('promoAppliedCode').textContent = d.code;
             applied.style.display = 'flex';
@@ -1895,6 +1905,11 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         } else {
             applied.style.display = 'none';
             inputRow.style.display = 'flex';
+        }
+        if (terms) {
+            var t = promoTermsText(d.code ? d.code_min_spend : 0, d.code ? d.code_max_discount : 0);
+            document.getElementById('promoTermsText').textContent = t;
+            terms.style.display = t ? 'block' : 'none';
         }
         if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
         else { err.style.display = 'none'; }

@@ -117,6 +117,8 @@ function promo_summary_json($eval, $scope, $box_price, $item_count, $error_overr
         'lines'           => $eval['lines'],
         'code'            => $eval['code'],
         'code_error'      => $error_override !== '' ? $error_override : $eval['code_error'],
+        'code_min_spend'    => round((float) $eval['code_min_spend'], 2),
+        'code_max_discount' => round((float) $eval['code_max_discount'], 2),
         'free_item'       => $eval['free_item'],
         'free_item_nudge' => $eval['free_item_nudge'],
     ];

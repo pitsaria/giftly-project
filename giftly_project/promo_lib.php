@@ -213,6 +213,8 @@ if (!function_exists('promo_ensure_schema')) {
             'code'           => '',
             'code_id'        => null,
             'code_error'     => '',
+            'code_min_spend' => 0.0,
+            'code_max_discount' => 0.0,
             'applied'        => [],
             'free_item'      => null,
             'free_item_nudge'=> null,
@@ -254,14 +256,14 @@ if (!function_exists('promo_ensure_schema')) {
             $reason = promo_reason($conn, $crow, $user_id, $scope, $subtotal, $item_count);
             if ($reason !== '') {
                 $out['code_error'] = $reason;
-            } elseif (empty($seen[(int) $crow['id']])) {
-                $out['code']    = strtoupper($crow['code']);
-                $out['code_id'] = (int) $crow['id'];
-                $promos[]       = $crow;
             } else {
-                // already applied automatically — treat as accepted, no double-dip
                 $out['code']    = strtoupper($crow['code']);
                 $out['code_id'] = (int) $crow['id'];
+                $out['code_min_spend']    = (float) $crow['min_spend'];
+                $out['code_max_discount'] = ($crow['max_discount'] !== null && $crow['max_discount'] !== '') ? (float) $crow['max_discount'] : 0.0;
+                if (empty($seen[(int) $crow['id']])) {
+                    $promos[] = $crow; // not already applied automatically
+                }
             }
         }
 
@@ -336,6 +338,14 @@ if (!function_exists('promo_ensure_schema')) {
             $conn->query("INSERT INTO promo_redemptions (promo_id, user_id, order_id, code, discount_amount)
                           VALUES ($pid, $uid, $oid, $code, $amt)");
         }
+    }
+
+    /** "Min spend PHP 500 · Max discount PHP 200" for an applied code (empty when neither applies). */
+    function promo_terms_text($min_spend, $max_discount) {
+        $b = [];
+        if ((float) $min_spend > 0)    $b[] = 'Min spend PHP ' . number_format((float) $min_spend, 0);
+        if ((float) $max_discount > 0) $b[] = 'Max discount PHP ' . number_format((float) $max_discount, 0);
+        return implode(' · ', $b);
     }
 
     /** The session key that holds the applied code for a given checkout scope. */
