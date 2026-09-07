@@ -54,6 +54,13 @@ if (isset($conn)) {
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
+        /* --- light-gray placeholder / sample text so it's clearly not filled in yet --- */
+        ::placeholder { color: #b3b3b3 !important; opacity: 1; }
+        ::-webkit-input-placeholder { color: #b3b3b3 !important; }
+        :-ms-input-placeholder { color: #b3b3b3 !important; }
+        ::-ms-input-placeholder { color: #b3b3b3 !important; }
+        input::placeholder, textarea::placeholder { color: #b3b3b3 !important; opacity: 1; }
+
         /* --- ADMIN LAYOUT --- */
         .admin-container {
             display: flex;

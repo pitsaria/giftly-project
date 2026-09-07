@@ -139,6 +139,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $delivery_date = mysqli_real_escape_string($conn, $_POST['delivery_date']);
     $delivery_time = mysqli_real_escape_string($conn, $_POST['delivery_time']);
 
+    // Gifts sent straight to a recipient must be paid online — no cash on delivery.
+    if ($delivery_type === 'recipient' && $payment === 'cod') {
+        echo '<div style="max-width:520px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
+           . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-triangle-exclamation"></i></div>'
+           . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Choose an online payment</h2>'
+           . '<p style="color:#888;line-height:1.6;margin-bottom:22px;">Cash on Delivery isn\'t available for gifts sent straight to a recipient. Please go back and pick online payment.</p>'
+           . '<a href="javascript:history.back()" style="padding:13px 34px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">&larr; Go back</a>'
+           . '</div>';
+        include 'footer.php';
+        exit();
+    }
+
     // --- Card payment: validate, but only ever keep the last 4 digits + name ---
     $card_last4 = null;
     $card_holder = null;
@@ -1887,12 +1899,13 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         }
     }
 
-    /* --- preselect the customer's default saved address --- */
+    /* --- preselect the default saved address, or the most recent one if none is flagged default --- */
     (function () {
         var select = document.getElementById('addressSelect');
         if (!select) return;
-        var def = select.querySelector('option[data-default="1"]');
-        if (def && !document.getElementById('checkoutAddress').value) {
+        var def = select.querySelector('option[data-default="1"]')
+            || select.querySelector('option[value]:not([value=""])');
+        if (def && def.value && !document.getElementById('checkoutAddress').value) {
             select.value = def.value;
             fillAddressFields();
         }

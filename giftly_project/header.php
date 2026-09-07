@@ -31,12 +31,13 @@ if (ob_get_level() === 0) { ob_start(); }
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
-        /* --- more readable placeholder / hint text --- */
-        ::placeholder { color: #6f6f6f !important; opacity: 1; }
-        :-ms-input-placeholder { color: #6f6f6f !important; }
-        ::-ms-input-placeholder { color: #6f6f6f !important; }
-        input::placeholder, textarea::placeholder { color: #6f6f6f; opacity: 1; }
-        .field-hint, .form-hint { color: #6f6f6f !important; }
+        /* --- light-gray placeholder / sample text so it's clearly not filled in yet --- */
+        ::placeholder { color: #b3b3b3 !important; opacity: 1; }
+        ::-webkit-input-placeholder { color: #b3b3b3 !important; }
+        :-ms-input-placeholder { color: #b3b3b3 !important; }
+        ::-ms-input-placeholder { color: #b3b3b3 !important; }
+        input::placeholder, textarea::placeholder { color: #b3b3b3 !important; opacity: 1; }
+        .field-hint, .form-hint { color: #9a9a9a !important; }
 
         /* --- cart icon count badge --- */
         .cart-icon-link { position: relative; display: inline-flex; }

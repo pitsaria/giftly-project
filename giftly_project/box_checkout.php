@@ -74,6 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $delivery_time  = mysqli_real_escape_string($conn, $_POST['delivery_time']);
         $delivery_type  = isset($_POST['delivery_type']) ? $_POST['delivery_type'] : 'me';
 
+        // Gifts sent straight to a recipient must be paid online — no cash on delivery.
+        if ($delivery_type === 'recipient' && $payment === 'cod') {
+            throw new Exception("Cash on Delivery isn't available for gifts sent to a recipient. Please choose online payment.");
+        }
+
         // Card payment: validate here, but only ever keep the last 4 digits + name.
         $card_last4 = '';
         $card_holder = '';
@@ -294,6 +299,7 @@ unset($_SESSION['box_checkout_error']);
     .co-delivery { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
     .co-opt { flex: 1; min-width: 130px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 14px; color: #555; transition: 0.2s; }
     .co-opt.sel { border-color: #ff8ba7; background: #fff0f5; color: #d32f2f; }
+    .co-opt.disabled { opacity: 0.4; background: #eee; border-color: #ddd; color: #999; cursor: not-allowed; pointer-events: none; }
     .co-opt input { display: none; }
     #recipientBox { display: none; }
     #recipientBox.show { display: block; }
@@ -385,12 +391,11 @@ unset($_SESSION['box_checkout_error']);
                     </div>
                 </div>
 
-                <?php if ($addresses_query && $addresses_query->num_rows > 0): ?>
                 <div class="co-row">
                     <div class="co-grp">
                         <label>Saved Address</label>
                         <select id="savedAddr" class="co-input" onchange="coFillAddr()">
-                            <option value="">Choose a saved address</option>
+                            <option value="">🏠 Choose a saved address</option>
                             <?php while ($a = $addresses_query->fetch_assoc()):
                                 $a_def = addr_is_default($a['is_default']);
                             ?>
@@ -402,9 +407,11 @@ unset($_SESSION['box_checkout_error']);
                                 </option>
                             <?php endwhile; ?>
                         </select>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">
+                            <i class="fas fa-map-pin" style="margin-right: 4px;"></i> Select a saved address or enter a new one below
+                        </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <?php $maps_id = 'bx'; include 'maps_address.php'; ?>
 
@@ -453,6 +460,9 @@ unset($_SESSION['box_checkout_error']);
             <div class="co-sec">
                 <h3>3. Payment</h3>
                 <input type="hidden" name="payment_method" id="payInput" value="cod">
+                <div id="codLockNote" style="display:none; margin-bottom:12px; font-size:12px; color:#d81b60; background:#fff0f5; border:1px dashed #ffc1cc; border-radius:12px; padding:10px 12px;">
+                    <i class="fas fa-info-circle"></i> Gifts delivered straight to a recipient must be paid online.
+                </div>
                 <div class="co-delivery">
                     <label class="co-opt sel" id="payCod" onclick="coPay('cod')"><i class="fas fa-money-bill-wave" style="display:block;margin-bottom:4px;"></i> Cash on Delivery</label>
 <?php if ($paymongo_on): ?>
@@ -542,6 +552,8 @@ unset($_SESSION['box_checkout_error']);
 </div>
 
 <script>
+    window.__onlinePayValue = <?php echo $paymongo_on ? "'online'" : "'card'"; ?>;
+
     function coDelivery(t) {
         document.getElementById('optMe').classList.toggle('sel', t === 'me');
         document.getElementById('optRec').classList.toggle('sel', t === 'recipient');
@@ -551,6 +563,22 @@ unset($_SESSION['box_checkout_error']);
         const rp = document.querySelector('input[name="recipient_phone"]');
         if (rn) rn.required = (t === 'recipient');
         if (rp) rp.required = (t === 'recipient');
+
+        /* Gifts sent straight to a recipient must be paid online — no cash on delivery. */
+        const cod = document.getElementById('payCod');
+        const codNote = document.getElementById('codLockNote');
+        if (t === 'recipient') {
+            cod.classList.add('disabled');
+            cod.style.pointerEvents = 'none';
+            cod.style.opacity = '0.4';
+            if (codNote) codNote.style.display = 'block';
+            coPay(window.__onlinePayValue);
+        } else {
+            cod.classList.remove('disabled');
+            cod.style.pointerEvents = 'auto';
+            cod.style.opacity = '1';
+            if (codNote) codNote.style.display = 'none';
+        }
     }
     function coPay(p) {
         document.getElementById('payCod').classList.toggle('sel', p === 'cod');
@@ -573,12 +601,13 @@ unset($_SESSION['box_checkout_error']);
         document.getElementById('coAddr').value = o.dataset.address || '';
         document.getElementById('coCity').value = o.dataset.city || '';
     }
-    /* preselect the default saved address */
+    /* preselect the default saved address, or the most recent one if none is flagged default */
     (function () {
         const sel = document.getElementById('savedAddr');
         if (!sel) return;
-        const def = sel.querySelector('option[data-default="1"]');
-        if (def && !document.getElementById('coAddr').value) {
+        const def = sel.querySelector('option[data-default="1"]')
+            || sel.querySelector('option[value]:not([value=""])');
+        if (def && def.value && !document.getElementById('coAddr').value) {
             sel.value = def.value;
             coFillAddr();
         }
@@ -666,7 +695,9 @@ unset($_SESSION['box_checkout_error']);
                     }
                 });
                 if (saved.delivery_type) coDelivery(saved.delivery_type);
-                if (saved.payment_method) coPay(saved.payment_method);
+                if (saved.payment_method && !(saved.delivery_type === 'recipient' && saved.payment_method === 'cod')) {
+                    coPay(saved.payment_method);
+                }
             }
         } catch (e) {}
 
