@@ -70,14 +70,15 @@ if (isset($_GET['order_id'])) {
         while($row = $result->fetch_assoc()) {
             $sub = $row['price'] * $row['quantity'];
             $total += $sub;
+            $is_free = ((float) $row['price']) <= 0;
             echo '
             <div style="display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid #f5f5f5;">
                 <img src="'.htmlspecialchars(img_url($row['image'])).'" style="width: 50px; height: 50px; object-fit: contain; background: #fafafa; border-radius: 12px; padding: 5px;">
                 <div style="flex: 1;">
-                    <div style="font-weight: 600; font-size: 15px; color: #222;">'.$row['name'].'</div>
+                    <div style="font-weight: 600; font-size: 15px; color: #222;">'.htmlspecialchars($row['name']).($is_free ? ' <span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:1px 7px;border-radius:20px;">FREE GIFT</span>' : '').'</div>
                     <div style="font-size: 13px; color: #888;">Qty: '.$row['quantity'].'</div>
                 </div>
-                <div style="font-weight: 600; font-size: 15px; color: #222;">PHP '.number_format($sub, 2).'</div>
+                <div style="font-weight: 600; font-size: 15px; color: '.($is_free ? '#2e7d32' : '#222').';">'.($is_free ? 'FREE' : 'PHP '.number_format($sub, 2)).'</div>
             </div>
             ';
         }

@@ -160,6 +160,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             $conn->query("UPDATE products SET quantity = quantity - $q WHERE id = $pid");
         }
 
+        // free gift (buy N + 1 free) — only if the freebie is still in stock
+        $free_item_note = null;
+        if (!empty($promo_eval['free_item'])) {
+            $fip = (int) $promo_eval['free_item']['product_id'];
+            $conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = $fip AND quantity > 0");
+            if ($conn->affected_rows > 0) {
+                $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $fip, 1, 0)");
+                $conn->query("UPDATE orders SET free_item_product_id = $fip WHERE id = $order_id");
+                $free_item_note = $promo_eval['free_item']['name'];
+            }
+        }
+
         promo_record($conn, $promo_eval, $user_id, $order_id);
         unset($_SESSION['promo_code_box']);
 
@@ -194,6 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             'grand_total' => $grand_total,
             'discount' => $discount_amount,
             'promo_code' => $promo_eval['code'],
+            'free_item' => $free_item_note,
             'payment' => $_POST['payment_method'],
             'delivery_date' => $_POST['delivery_date'],
             'delivery_time' => $_POST['delivery_time'],
@@ -254,6 +267,9 @@ if (isset($_GET['success']) && isset($_SESSION['box_order_ok'])) {
                 <div class="success-detail"><span>Order ID</span><span>#<?php echo $o['order_id']; ?></span></div>
                 <?php if (!empty($o['discount']) && $o['discount'] > 0): ?>
                 <div class="success-detail"><span>Discount<?php echo !empty($o['promo_code']) ? ' (' . htmlspecialchars($o['promo_code']) . ')' : ''; ?></span><span style="color:#2e7d32;">− PHP <?php echo number_format($o['discount'], 2); ?></span></div>
+                <?php endif; ?>
+                <?php if (!empty($o['free_item'])): ?>
+                <div class="success-detail"><span>Free gift 🎁</span><span style="color:#2e7d32;"><?php echo htmlspecialchars($o['free_item']); ?></span></div>
                 <?php endif; ?>
                 <div class="success-detail"><span>Total Paid</span><span>PHP <?php echo number_format($o['grand_total'], 2); ?></span></div>
                 <div class="success-detail"><span>Payment</span><span><?php echo htmlspecialchars(ucfirst($o['payment'])); ?></span></div>
@@ -360,6 +376,7 @@ unset($_SESSION['box_checkout_error']);
     .promo-applied { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f0faf0; border: 1px solid #cfe9cf; color: #2e7d32; padding: 10px 14px; border-radius: 12px; font-size: 13px; }
     .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
     .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
+    .promo-nudge { color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
     .co-tot .r.g { border-top: 1px solid #f0f0f0; padding-top: 12px; font-size: 19px; font-weight: 700; color: #222; }
     .co-btn { width: 100%; padding: 15px; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: 0.2s; }
     .co-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
@@ -593,13 +610,18 @@ unset($_SESSION['box_checkout_error']);
                     <button type="button" onclick="removePromo()">Remove</button>
                 </div>
                 <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
+                <div class="promo-nudge" id="promoNudge" <?php echo $promo_eval['free_item_nudge'] ? '' : 'style="display:none;"'; ?>>
+                    <?php if ($promo_eval['free_item_nudge']): $n = $promo_eval['free_item_nudge']; ?>
+                        🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="co-tot">
                 <div class="r"><span>Subtotal (<?php echo $data['item_count']; ?> items)</span><span id="poSubtotal">PHP <?php echo number_format($subtotal, 2); ?></span></div>
                 <div id="poLines">
                     <?php foreach ($promo_eval['lines'] as $ln): ?>
-                        <div class="r" style="color:#2e7d32;"><span><?php echo htmlspecialchars($ln['label']); ?></span><span>− PHP <?php echo number_format(abs($ln['amount']), 2); ?></span></div>
+                        <div class="r" style="color:#2e7d32;"><span><?php echo htmlspecialchars($ln['label']); ?></span><span><?php echo abs($ln['amount']) < 0.005 ? 'FREE' : '− PHP ' . number_format(abs($ln['amount']), 2); ?></span></div>
                     <?php endforeach; ?>
                 </div>
                 <?php if ($box_price > 0): ?>
@@ -792,7 +814,8 @@ unset($_SESSION['box_checkout_error']);
                 var r = document.createElement('div');
                 r.className = 'r';
                 r.style.color = '#2e7d32';
-                r.innerHTML = '<span>' + ln.label.replace(/</g, '&lt;') + '</span><span>− ' + peso(Math.abs(ln.amount)) + '</span>';
+                var right = (Math.abs(ln.amount) < 0.005) ? 'FREE' : '− ' + peso(Math.abs(ln.amount));
+                r.innerHTML = '<span>' + ln.label.replace(/</g, '&lt;') + '</span><span>' + right + '</span>';
                 lines.appendChild(r);
             });
 
@@ -807,6 +830,14 @@ unset($_SESSION['box_checkout_error']);
             }
             if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
             else { err.style.display = 'none'; }
+
+            var nudge = document.getElementById('promoNudge');
+            if (nudge) {
+                if (d.free_item_nudge) {
+                    nudge.textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
+                    nudge.style.display = 'block';
+                } else { nudge.style.display = 'none'; }
+            }
         }
         function req(action, code) {
             if (busy) return;

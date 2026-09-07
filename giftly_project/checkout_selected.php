@@ -232,6 +232,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
             $conn->query("UPDATE products SET quantity = quantity - {$item['quantity']} WHERE id = {$item['product_id']}");
         }
 
+        // free gift (buy N + 1 free) — only if the freebie is still in stock
+        $free_item_note = null;
+        if (!empty($promo_eval['free_item'])) {
+            $fip = (int) $promo_eval['free_item']['product_id'];
+            $conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = $fip AND quantity > 0");
+            if ($conn->affected_rows > 0) {
+                $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $fip, 1, 0)");
+                $conn->query("UPDATE orders SET free_item_product_id = $fip WHERE id = $order_id");
+                $free_item_note = $promo_eval['free_item']['name'];
+            }
+        }
+
         promo_record($conn, $promo_eval, $user_id, (int) $order_id);
         unset($_SESSION['promo_code_products']);
 
@@ -372,6 +384,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
 
             <?php if (!empty($discount_amount) && $discount_amount > 0): ?>
                 <div class="success-detail"><span>Discount<?php echo $promo_eval['code'] !== '' ? ' (' . htmlspecialchars($promo_eval['code']) . ')' : ''; ?></span><span style="color:#2e7d32;">− PHP <?php echo number_format($discount_amount, 2); ?></span></div>
+            <?php endif; ?>
+            <?php if (!empty($free_item_note)): ?>
+                <div class="success-detail"><span>Free gift 🎁</span><span style="color:#2e7d32;"><?php echo htmlspecialchars($free_item_note); ?></span></div>
             <?php endif; ?>
 
             <div class="success-detail"><span>Total Paid</span><span>PHP <?php echo number_format($grand_total_with_shipping, 2); ?></span></div>
@@ -553,6 +568,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
     }
     .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
     .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
+    .promo-nudge { color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
     .os-grand-total { font-size: 22px; font-weight: 700; color: #222; }
     
     .btn-checkout-submit {
@@ -1275,6 +1291,11 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                     <button type="button" onclick="removePromo()">Remove</button>
                 </div>
                 <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
+                <div class="promo-nudge" id="promoNudge" <?php echo $promo_eval['free_item_nudge'] ? '' : 'style="display:none;"'; ?>>
+                    <?php if ($promo_eval['free_item_nudge']): $n = $promo_eval['free_item_nudge']; ?>
+                        🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="os-totals">
@@ -1288,7 +1309,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         <?php foreach ($promo_eval['lines'] as $ln): ?>
             <div class="os-total-row" style="color:#2e7d32;">
                 <span><?php echo htmlspecialchars($ln['label']); ?></span>
-                <span>− PHP <?php echo number_format(abs($ln['amount']), 2); ?></span>
+                <span><?php echo abs($ln['amount']) < 0.005 ? 'FREE' : '− PHP ' . number_format(abs($ln['amount']), 2); ?></span>
             </div>
         <?php endforeach; ?>
     </div>
@@ -1859,7 +1880,8 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
             var row = document.createElement('div');
             row.className = 'os-total-row';
             row.style.color = '#2e7d32';
-            row.innerHTML = '<span>' + ln.label.replace(/</g, '&lt;') + '</span><span>− ' + pesoFmt(Math.abs(ln.amount)) + '</span>';
+            var right = (Math.abs(ln.amount) < 0.005) ? 'FREE' : '− ' + pesoFmt(Math.abs(ln.amount));
+            row.innerHTML = '<span>' + ln.label.replace(/</g, '&lt;') + '</span><span>' + right + '</span>';
             lines.appendChild(row);
         });
 
@@ -1876,6 +1898,16 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         }
         if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
         else { err.style.display = 'none'; }
+
+        var nudge = document.getElementById('promoNudge');
+        if (nudge) {
+            if (d.free_item_nudge) {
+                nudge.textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
+                nudge.style.display = 'block';
+            } else {
+                nudge.style.display = 'none';
+            }
+        }
     }
 
     function promoRequest(action, code) {

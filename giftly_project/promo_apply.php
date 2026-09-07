@@ -117,5 +117,7 @@ function promo_summary_json($eval, $scope, $box_price, $item_count, $error_overr
         'lines'           => $eval['lines'],
         'code'            => $eval['code'],
         'code_error'      => $error_override !== '' ? $error_override : $eval['code_error'],
+        'free_item'       => $eval['free_item'],
+        'free_item_nudge' => $eval['free_item_nudge'],
     ];
 }

@@ -19,7 +19,7 @@ if (!function_exists('orders_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v4'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v5'])) {
             return;
         }
 
@@ -50,9 +50,10 @@ if (!function_exists('orders_ensure_schema')) {
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_id INTEGER");
             $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) NOT NULL DEFAULT 0");
         }
+        $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_item_product_id INTEGER");
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['orders_schema_ok_v4'] = true;
+            $_SESSION['orders_schema_ok_v5'] = true;
         }
     }
 

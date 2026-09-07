@@ -110,9 +110,11 @@ if (!function_exists('mail_send')) {
                              FROM order_items oi JOIN products p ON p.id = oi.product_id
                              WHERE oi.order_id = $order_id");
         while ($its && $it = $its->fetch_assoc()) {
-            $line = number_format($it['price'] * $it['quantity'], 2);
-            $rows .= '<tr><td style="padding:6px 0;color:#555;">' . htmlspecialchars($it['name']) . ' &times; ' . (int) $it['quantity'] . '</td>'
-                   . '<td style="padding:6px 0;text-align:right;color:#222;">PHP ' . $line . '</td></tr>';
+            $is_free = ((float) $it['price']) <= 0;
+            $name_html = htmlspecialchars($it['name']) . ' &times; ' . (int) $it['quantity'] . ($is_free ? ' <span style="color:#2e7d32;font-weight:600;">(free gift 🎁)</span>' : '');
+            $amt_html = $is_free ? '<span style="color:#2e7d32;">FREE</span>' : 'PHP ' . number_format($it['price'] * $it['quantity'], 2);
+            $rows .= '<tr><td style="padding:6px 0;color:#555;">' . $name_html . '</td>'
+                   . '<td style="padding:6px 0;text-align:right;color:#222;">' . $amt_html . '</td></tr>';
         }
 
         $total = number_format((float) $order['total_amount'], 2);

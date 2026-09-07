@@ -10,8 +10,13 @@ if (!$me || $me['role'] !== 'admin') { header("Location: shop.php"); exit(); }
 
 promo_ensure_schema($conn);
 
-$TYPES = ['percent' => 'Percent off', 'fixed' => 'Fixed amount off', 'free_shipping' => 'Free shipping'];
+$TYPES = ['percent' => 'Percent off', 'fixed' => 'Fixed amount off', 'free_shipping' => 'Free shipping', 'free_item' => 'Free item (buy N, get 1 free)'];
 $SCOPES = ['all' => 'Products & boxes', 'products' => 'Products only', 'box' => 'Gift boxes only'];
+
+// products offered as a "free gift" (materialised — the form renders twice)
+$FREE_ITEM_PRODUCTS = [];
+$fip_res = $conn->query("SELECT id, name FROM products ORDER BY name ASC");
+while ($fip_res && $fr = $fip_res->fetch_assoc()) $FREE_ITEM_PRODUCTS[] = $fr;
 
 /** Read + sanitise the promo form fields. Returns [data|null, errorString]. */
 function promo_form_read($conn, $edit_id = 0) {
@@ -25,15 +30,24 @@ function promo_form_read($conn, $edit_id = 0) {
     $name = $conn->real_escape_string(mb_substr($name, 0, 120));
 
     $type = $_POST['type'] ?? 'percent';
-    if (!in_array($type, ['percent', 'fixed', 'free_shipping'], true)) return [null, 'Pick a valid discount type.'];
+    if (!in_array($type, ['percent', 'fixed', 'free_shipping', 'free_item'], true)) return [null, 'Pick a valid discount type.'];
 
     $value = 0.0;
+    $free_item_product_sql = 'NULL';
+    $free_item_min_qty = 3;
     if ($type === 'percent') {
         $value = (float) ($_POST['value'] ?? 0);
         if ($value <= 0 || $value > 100) return [null, 'Percent must be between 1 and 100.'];
     } elseif ($type === 'fixed') {
         $value = (float) ($_POST['value'] ?? 0);
         if ($value <= 0) return [null, 'Enter the peso amount to take off.'];
+    } elseif ($type === 'free_item') {
+        $fip = (int) ($_POST['free_item_product_id'] ?? 0);
+        if ($fip <= 0) return [null, 'Choose which product is given as the free gift.'];
+        $chk = $conn->query("SELECT id FROM products WHERE id = $fip");
+        if (!$chk || $chk->num_rows === 0) return [null, 'That free-gift product no longer exists.'];
+        $free_item_product_sql = $fip;
+        $free_item_min_qty = max(1, (int) ($_POST['free_item_min_qty'] ?? 3));
     }
 
     $applies_to = $_POST['applies_to'] ?? 'all';
@@ -79,6 +93,8 @@ function promo_form_read($conn, $edit_id = 0) {
         'starts_sql'       => $starts_sql,
         'ends_sql'         => $ends_sql,
         'active'           => $active,
+        'free_item_product_sql' => $free_item_product_sql,
+        'free_item_min_qty'     => $free_item_min_qty,
     ], ''];
 }
 
@@ -87,10 +103,10 @@ if (isset($_POST['add_promo'])) {
     [$d, $err] = promo_form_read($conn);
     if ($err) { $_SESSION['promo_admin_err'] = $err; header("Location: admin_promos.php"); exit(); }
     $conn->query("INSERT INTO promos
-        (code, name, type, value, auto, min_spend, first_order_only, applies_to, max_discount, usage_limit, per_user_limit, starts_at, ends_at, active)
+        (code, name, type, value, auto, min_spend, first_order_only, applies_to, max_discount, usage_limit, per_user_limit, starts_at, ends_at, active, free_item_product_id, free_item_min_qty)
         VALUES ({$d['code_sql']}, '{$d['name']}', '{$d['type']}', {$d['value']}, {$d['auto']}, {$d['min_spend']},
                 {$d['first_order_only']}, '{$d['applies_to']}', {$d['max_discount_sql']}, {$d['usage_limit_sql']},
-                {$d['per_user_limit']}, {$d['starts_sql']}, {$d['ends_sql']}, {$d['active']})");
+                {$d['per_user_limit']}, {$d['starts_sql']}, {$d['ends_sql']}, {$d['active']}, {$d['free_item_product_sql']}, {$d['free_item_min_qty']})");
     header("Location: admin_promos.php?msg=added");
     exit();
 }
@@ -104,7 +120,8 @@ if (isset($_POST['edit_promo'])) {
         code = {$d['code_sql']}, name = '{$d['name']}', type = '{$d['type']}', value = {$d['value']},
         auto = {$d['auto']}, min_spend = {$d['min_spend']}, first_order_only = {$d['first_order_only']},
         applies_to = '{$d['applies_to']}', max_discount = {$d['max_discount_sql']}, usage_limit = {$d['usage_limit_sql']},
-        per_user_limit = {$d['per_user_limit']}, starts_at = {$d['starts_sql']}, ends_at = {$d['ends_sql']}, active = {$d['active']}
+        per_user_limit = {$d['per_user_limit']}, starts_at = {$d['starts_sql']}, ends_at = {$d['ends_sql']}, active = {$d['active']},
+        free_item_product_id = {$d['free_item_product_sql']}, free_item_min_qty = {$d['free_item_min_qty']}
         WHERE id = $id");
     header("Location: admin_promos.php?msg=updated");
     exit();
@@ -150,6 +167,15 @@ function promo_effect_text($p) {
     }
     if ($p['type'] === 'fixed') return 'PHP ' . number_format((float) $p['value'], 2) . ' off';
     if ($p['type'] === 'free_shipping') return 'Free shipping';
+    if ($p['type'] === 'free_item') {
+        global $conn;
+        $nm = '';
+        if (!empty($p['free_item_product_id'])) {
+            $fr = $conn->query("SELECT name FROM products WHERE id = " . (int) $p['free_item_product_id']);
+            if ($fr && $fr->num_rows) $nm = $fr->fetch_assoc()['name'];
+        }
+        return 'Free ' . ($nm !== '' ? $nm : 'gift') . ' (buy ' . max(1, (int) ($p['free_item_min_qty'] ?? 3)) . '+)';
+    }
     return $p['type'];
 }
 function promo_conditions_text($p) {
@@ -232,7 +258,7 @@ function promo_conditions_text($p) {
     <div class="promo-card">
         <h3><i class="fas fa-plus-circle" style="color:#ff8ba7;"></i> New promo</h3>
         <form method="POST" action="admin_promos.php">
-            <?php echo promo_form_fields($TYPES, $SCOPES, null); ?>
+            <?php echo promo_form_fields($TYPES, $SCOPES, $FREE_ITEM_PRODUCTS, null); ?>
             <div style="margin-top:18px;"><button type="submit" name="add_promo" class="btn-pink">Create promo</button></div>
         </form>
     </div>
@@ -286,7 +312,7 @@ function promo_conditions_text($p) {
         <h3 style="font-size:18px; font-weight:700; color:#222; margin-bottom:18px;">Edit promo</h3>
         <form method="POST" action="admin_promos.php" id="promoEditForm">
             <input type="hidden" name="promo_id" id="e_promo_id">
-            <?php echo promo_form_fields($TYPES, $SCOPES, 'e_'); ?>
+            <?php echo promo_form_fields($TYPES, $SCOPES, $FREE_ITEM_PRODUCTS, 'e_'); ?>
             <div style="margin-top:18px;"><button type="submit" name="edit_promo" class="btn-pink">Save changes</button></div>
         </form>
     </div>
@@ -295,10 +321,11 @@ function promo_conditions_text($p) {
 <script>
     function syncPromoValueField(prefix) {
         var type = document.getElementById(prefix + 'type').value;
-        var wrap = document.getElementById(prefix + 'value_wrap');
-        var maxWrap = document.getElementById(prefix + 'maxdisc_wrap');
-        wrap.style.display = (type === 'free_shipping') ? 'none' : 'flex';
-        maxWrap.style.display = (type === 'percent') ? 'flex' : 'none';
+        var isFree = (type === 'free_shipping' || type === 'free_item');
+        document.getElementById(prefix + 'value_wrap').style.display = isFree ? 'none' : 'flex';
+        document.getElementById(prefix + 'maxdisc_wrap').style.display = (type === 'percent') ? 'flex' : 'none';
+        document.getElementById(prefix + 'freeitem_wrap').style.display = (type === 'free_item') ? 'flex' : 'none';
+        document.getElementById(prefix + 'freeqty_wrap').style.display = (type === 'free_item') ? 'flex' : 'none';
         document.getElementById(prefix + 'value_label').textContent = (type === 'percent') ? 'Percent (1–100)' : 'Amount off (PHP)';
     }
     document.getElementById('type') && (document.getElementById('type').onchange = function () { syncPromoValueField(''); });
@@ -318,6 +345,8 @@ function promo_conditions_text($p) {
         document.getElementById('e_per_user_limit').value = (p.per_user_limit === null || p.per_user_limit === undefined) ? 1 : p.per_user_limit;
         document.getElementById('e_starts_at').value = p.starts_at ? String(p.starts_at).slice(0, 10) : '';
         document.getElementById('e_ends_at').value = p.ends_at ? String(p.ends_at).slice(0, 10) : '';
+        document.getElementById('e_free_item_product_id').value = p.free_item_product_id || '';
+        document.getElementById('e_free_item_min_qty').value = p.free_item_min_qty || 3;
         document.getElementById('e_first_order_only').checked = (p.first_order_only === true || p.first_order_only === 't' || p.first_order_only === '1' || p.first_order_only === 1);
         document.getElementById('e_active').checked = (p.active === true || p.active === 't' || p.active === '1' || p.active === 1);
         syncPromoValueField('e_');
@@ -332,7 +361,7 @@ function promo_conditions_text($p) {
 include 'admin_footer.php';
 
 /** The shared set of form fields, prefixed for the create ('') or edit ('e_') form. */
-function promo_form_fields($TYPES, $SCOPES, $prefix) {
+function promo_form_fields($TYPES, $SCOPES, $FREE_ITEM_PRODUCTS, $prefix) {
     $p = $prefix ?: '';
     ob_start();
     ?>
@@ -358,6 +387,21 @@ function promo_form_fields($TYPES, $SCOPES, $prefix) {
         <div class="p-field" id="<?php echo $p; ?>maxdisc_wrap">
             <label>Max discount <span style="color:#bbb;font-weight:400;">(optional, PHP)</span></label>
             <input class="p-input" type="number" step="0.01" min="0" name="max_discount" id="<?php echo $p; ?>max_discount" placeholder="cap the % discount">
+        </div>
+        <div class="p-field" id="<?php echo $p; ?>freeitem_wrap" style="display:none;">
+            <label>Free gift product</label>
+            <select class="p-select" name="free_item_product_id" id="<?php echo $p; ?>free_item_product_id">
+                <option value="">Choose a product…</option>
+                <?php foreach ($FREE_ITEM_PRODUCTS as $fp): ?>
+                    <option value="<?php echo (int) $fp['id']; ?>"><?php echo htmlspecialchars($fp['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="hint">Added to the order at PHP 0 when it qualifies. Skipped if out of stock.</span>
+        </div>
+        <div class="p-field" id="<?php echo $p; ?>freeqty_wrap" style="display:none;">
+            <label>Buy how many items first?</label>
+            <input class="p-input" type="number" min="1" name="free_item_min_qty" id="<?php echo $p; ?>free_item_min_qty" value="3">
+            <span class="hint">Total item quantity in the order (any mix).</span>
         </div>
         <div class="p-field">
             <label>Applies to</label>

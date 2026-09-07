@@ -150,11 +150,12 @@ $items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN pro
                         <?php if($item['image']): ?>
                             <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:8px;">
                         <?php endif; ?>
-                        <?php echo $item['name']; ?>
+                        <?php echo htmlspecialchars($item['name']); ?>
+                        <?php if ((float)$item['price'] <= 0): ?><span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:1px 7px;border-radius:20px;">FREE GIFT</span><?php endif; ?>
                     </div>
                 </td>
                 <td><?php echo $item['quantity']; ?></td>
-                <td>PHP <?php echo number_format($item['price'], 2); ?></td>
+                <td><?php echo (float)$item['price'] <= 0 ? '<span style="color:#2e7d32;">FREE</span>' : 'PHP ' . number_format($item['price'], 2); ?></td>
             </tr>
         <?php endwhile; ?>
     </tbody>

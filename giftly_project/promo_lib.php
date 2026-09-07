@@ -121,7 +121,28 @@ if (!function_exists('promo_ensure_schema')) {
      * Reason a promo can't be applied for this cart, or '' when it's good.
      * Works for both typed codes and automatic promos.
      */
-    function promo_reason($conn, $p, $user_id, $scope, $subtotal) {
+    /**
+     * The product a "free item" promo gives away, or null when it can't be
+     * fulfilled right now (missing / hidden / out of stock).
+     */
+    function promo_free_item_product($conn, $product_id) {
+        static $cache = [];
+        $pid = (int) $product_id;
+        if ($pid <= 0) return null;
+        if (array_key_exists($pid, $cache)) return $cache[$pid];
+        // products.is_active is guaranteed to exist (catalog_lib schema)
+        $r = $conn->query("SELECT id, name, image, price, quantity FROM products WHERE id = $pid AND is_active = TRUE");
+        $row = ($r && $r->num_rows) ? $r->fetch_assoc() : null;
+        $cache[$pid] = (!$row || (int) $row['quantity'] <= 0) ? null : [
+            'id'    => (int) $row['id'],
+            'name'  => $row['name'],
+            'image' => $row['image'],
+            'price' => (float) $row['price'],
+        ];
+        return $cache[$pid];
+    }
+
+    function promo_reason($conn, $p, $user_id, $scope, $subtotal, $item_count = null) {
         if (!$p)                          return "That code isn't valid.";
         if (!promo_bool($p['active']))    return "That code is no longer active.";
         if (!empty($p['starts_at']) && strtotime($p['starts_at'] . ' UTC') > time()) return "That code isn't active yet.";
@@ -135,6 +156,15 @@ if (!function_exists('promo_ensure_schema')) {
         }
         if ((float) $p['min_spend'] > 0 && $subtotal < (float) $p['min_spend']) {
             return 'Spend at least PHP ' . number_format((float) $p['min_spend'], 2) . ' to use this.';
+        }
+        if ($p['type'] === 'free_item') {
+            $need = max(1, (int) ($p['free_item_min_qty'] ?? 3));
+            if ($item_count !== null && (int) $item_count < $need) {
+                return 'Add ' . ($need - (int) $item_count) . ' more item' . (($need - (int) $item_count) === 1 ? '' : 's') . ' for the free gift.';
+            }
+            if (!promo_free_item_product($conn, $p['free_item_product_id'] ?? 0)) {
+                return 'The free gift is out of stock.';
+            }
         }
         if (promo_bool($p['first_order_only']) && promo_user_order_count($conn, $user_id) > 0) {
             return 'This is for your first order only.';
@@ -170,6 +200,7 @@ if (!function_exists('promo_ensure_schema')) {
         $scope    = (($ctx['scope'] ?? 'products') === 'box') ? 'box' : 'products';
         $subtotal = round(max(0.0, (float) ($ctx['subtotal'] ?? 0)), 2);
         $base_ship = round(max(0.0, (float) ($ctx['shipping_fee'] ?? 0)), 2);
+        $item_count = (int) ($ctx['item_count'] ?? 0);
         $code     = strtoupper(trim((string) ($ctx['code'] ?? '')));
 
         $out = [
@@ -183,6 +214,8 @@ if (!function_exists('promo_ensure_schema')) {
             'code_id'        => null,
             'code_error'     => '',
             'applied'        => [],
+            'free_item'      => null,
+            'free_item_nudge'=> null,
         ];
         if ($subtotal <= 0) return $out;
 
@@ -196,7 +229,19 @@ if (!function_exists('promo_ensure_schema')) {
                                 AND applies_to IN ('all', '$sesc')
                               ORDER BY id ASC");
         while ($auto && $r = $auto->fetch_assoc()) {
-            if (promo_reason($conn, $r, $user_id, $scope, $subtotal) !== '') continue;
+            $why = promo_reason($conn, $r, $user_id, $scope, $subtotal, $item_count);
+            if ($why !== '') {
+                // "so close" nudge for an auto free-item promo
+                if ($r['type'] === 'free_item' && $out['free_item_nudge'] === null) {
+                    $need = max(1, (int) ($r['free_item_min_qty'] ?? 3));
+                    $more = $need - $item_count;
+                    if ($more > 0 && $more <= 2 && promo_free_item_product($conn, $r['free_item_product_id'] ?? 0)) {
+                        $fi = promo_free_item_product($conn, $r['free_item_product_id'] ?? 0);
+                        $out['free_item_nudge'] = ['name' => $fi['name'], 'more' => $more];
+                    }
+                }
+                continue;
+            }
             $promos[] = $r;
             $seen[(int) $r['id']] = true;
         }
@@ -206,7 +251,7 @@ if (!function_exists('promo_ensure_schema')) {
             $cesc = $conn->real_escape_string($code);
             $cr = $conn->query("SELECT * FROM promos WHERE UPPER(code) = '$cesc' LIMIT 1");
             $crow = ($cr && $cr->num_rows) ? $cr->fetch_assoc() : null;
-            $reason = promo_reason($conn, $crow, $user_id, $scope, $subtotal);
+            $reason = promo_reason($conn, $crow, $user_id, $scope, $subtotal, $item_count);
             if ($reason !== '') {
                 $out['code_error'] = $reason;
             } elseif (empty($seen[(int) $crow['id']])) {
@@ -254,6 +299,20 @@ if (!function_exists('promo_ensure_schema')) {
                 $ship_waived = true;
                 $out['lines'][]   = ['label' => promo_label($p), 'amount' => -$base_ship];
                 $out['applied'][] = ['id' => (int) $p['id'], 'code' => $p['code'], 'amount' => $base_ship];
+            } elseif ($type === 'free_item' && $out['free_item'] === null) {
+                $fi = promo_free_item_product($conn, $p['free_item_product_id'] ?? 0);
+                if ($fi) {
+                    $out['free_item'] = [
+                        'promo_id'   => (int) $p['id'],
+                        'code'       => $p['code'],
+                        'product_id' => $fi['id'],
+                        'name'       => $fi['name'],
+                        'image'      => $fi['image'],
+                        'value'      => $fi['price'],
+                    ];
+                    $out['lines'][]   = ['label' => 'Free: ' . $fi['name'], 'amount' => 0];
+                    $out['applied'][] = ['id' => (int) $p['id'], 'code' => $p['code'], 'amount' => $fi['price']];
+                }
             }
         }
 
