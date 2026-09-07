@@ -497,12 +497,14 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
     }
     .modal-box { 
         background: #fff; 
-        border-radius: 30px; 
-        padding: 40px; 
-        max-width: 480px; 
-        width: 100%; 
-        box-shadow: 0 25px 60px rgba(0,0,0,0.2); 
-        position: relative; 
+        border-radius: 30px;
+        padding: 40px;
+        max-width: 680px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+        position: relative;
         animation: modalSlideIn 0.3s ease-out;
     }
     @keyframes modalSlideIn {
