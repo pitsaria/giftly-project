@@ -57,6 +57,19 @@ if (!function_exists('auth_ensure_schema')) {
         return function_exists('mail_configured') && mail_configured();
     }
 
+    /**
+     * Accounts that skip the email code (their inbox can't receive it, or we
+     * just trust them). Always includes admin@giftly.com; extend with a
+     * comma-separated env var OTP_BYPASS_EMAILS.
+     */
+    function otp_bypassed($email) {
+        $email = strtolower(trim((string) $email));
+        if ($email === '') return false;
+        $list = array_map('trim', explode(',', strtolower((string) getenv('OTP_BYPASS_EMAILS'))));
+        $list[] = 'admin@giftly.com';
+        return in_array($email, array_filter($list), true);
+    }
+
     function otp_pending() {
         return !empty($_SESSION['pending_otp_user']);
     }

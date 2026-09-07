@@ -32,7 +32,7 @@ if (isset($_POST['login'])) {
 
     // --- password OK ---
     // If we can send email, require a one-time code before completing sign-in.
-    if (otp_enabled()) {
+    if (otp_enabled() && !otp_bypassed($user['email'])) {
         auth_ensure_schema($conn);
         if (otp_start($conn, $user, $redirect_to)) {
             header("Location: " . $redirect_to . "?otp=1");
