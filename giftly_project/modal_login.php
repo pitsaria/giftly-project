@@ -4,6 +4,7 @@ if (isset($_SESSION['just_logged_in'])) {
     unset($_SESSION['just_logged_in']);
 }
 require_once __DIR__ . '/auth_lib.php';
+require_once __DIR__ . '/pwd_otp_lib.php';
 $__otp_pending = function_exists('otp_pending') && otp_pending();
 $__otp_email   = $__otp_pending ? otp_mask_email($_SESSION['pending_otp_email'] ?? '') : '';
 $__otp_cooldown = function_exists('otp_resend_cooldown') ? (int) otp_resend_cooldown() : 60;
@@ -432,6 +433,9 @@ document.addEventListener('DOMContentLoaded', function () {
         openLoginModal();
         showOtpStep();
     }
+    if (params.get('forgot') === '1') {
+        openForgotModal();
+    }
 });
 
 document.getElementById('loginModal').addEventListener('click', function(e) {
@@ -555,6 +559,10 @@ function clearLoginError() {
         setTimeout(() => {
             document.getElementById('forgotPasswordModal').style.display = 'flex';
             document.getElementById('forgotAlertBox').innerHTML = ''; // Clear old alerts
+            if (typeof forgotShowStep === 'function') forgotShowStep(1);
+            ['forgotPasswordForm', 'forgotVerifyForm', 'forgotResetForm'].forEach(function (id) {
+                var f = document.getElementById(id); if (f) f.reset();
+            });
         }, 300);
     }
 
@@ -566,61 +574,135 @@ function clearLoginError() {
         if (e.target === this) closeForgotModal();
     });
 
-            /* --- AJAX FORGOT PASSWORD SUBMISSION --- */
-    function submitForgotPassword(e) {
-        e.preventDefault(); // Stop page reload
-        
-        let form = document.getElementById('forgotPasswordForm');
-        let formData = new FormData(form);
-        let alertBox = document.getElementById('forgotAlertBox');
-        let submitBtn = document.getElementById('forgotSubmitBtn');
-        
-        // 🚨 CHANGE BUTTON STATE
-        let originalText = submitBtn.innerText;
-        submitBtn.innerText = "Sending...";
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.8";
+    /* --- AJAX FORGOT PASSWORD: email -> code -> new password --- */
+    var FP_RESEND_COOLDOWN = <?php echo function_exists('pwd_otp_cooldown') ? (int) pwd_otp_cooldown() : 60; ?>;
+    var fpResendTimerId = null;
 
-        fetch('forgot_password_ajax.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            // 🚨 RESTORE BUTTON STATE
-            submitBtn.innerText = originalText;
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            
-            if(data.success) {
-                // 🚨 SHOW THE GREEN BOX HERE
-                                                               alertBox.innerHTML = `
-                    <div style="background: #e8f5e9; color: #2e7d32; padding: 15px 15px; border-radius: 16px; margin-bottom: 18px; border: 1px solid #a5d6a7; text-align: center; font-weight: 500; font-size: 14px;">
-                        <i class="fas fa-check-circle" style="margin-right: 8px;"></i> ${data.message}
-                        <br><br>
-                        <button onclick="swapToResetModal('${data.link}')" style="display: inline-block; background: #d1d1d1; color: #333; padding: 12px 30px; border: none; border-radius: 50px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" 
-                        onmouseover="this.style.background='#b8b8b8'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)';" 
-                        onmouseout="this.style.background='#d1d1d1'; this.style.transform='translateY(0px)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)';">
-                            <i class="fas fa-arrow-right" style="margin-right: 6px;"></i> Reset Password
-                        </button>
-                    </div>
-                `;
-                form.reset(); 
-                   } else {
-            // 🚨 THIS SHOWS THE RED ERROR BOX
-            alertBox.innerHTML = `
-                <div style="background: #fdeded; color: #d32f2f; padding: 12px; border-radius: 16px; margin-bottom: 18px; border: 1px solid #ffc1cc; text-align: center; font-weight: 500; font-size: 14px;">
-                    <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i> ${data.message}
-                </div>
-            `;
-        }
-        })
-        .catch(error => {
-            submitBtn.innerText = originalText;
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            alertBox.innerHTML = `<div style="color: #d32f2f; margin-bottom: 10px;">Something went wrong. Please try again.</div>`;
+    function fpAlert(type, msg) {
+        var box = document.getElementById('forgotAlertBox');
+        if (!box) return;
+        if (!msg) { box.innerHTML = ''; return; }
+        var ok = type === 'success';
+        box.innerHTML = '<div style="background:' + (ok ? '#e8f5e9' : '#fdeded') + '; color:' + (ok ? '#2e7d32' : '#d32f2f')
+            + '; padding:12px 15px; border-radius:16px; margin-bottom:15px; border:1px solid ' + (ok ? '#a5d6a7' : '#ffc1cc')
+            + '; text-align:center; font-weight:500; font-size:14px;"><i class="fas fa-'
+            + (ok ? 'check-circle' : 'exclamation-circle') + '" style="margin-right:8px;"></i>' + msg + '</div>';
+    }
+    function forgotShowStep(n) {
+        ['forgotPasswordForm', 'forgotVerifyForm', 'forgotResetForm'].forEach(function (id, i) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = (i === n - 1) ? 'block' : 'none';
         });
+        var sub = document.getElementById('forgotStepSub');
+        if (sub) sub.textContent = n === 1 ? "Enter your email and we'll send a 6-digit code."
+            : n === 2 ? 'Enter the 6-digit code we just emailed you.'
+            : 'Choose a new password for your account.';
+        if (n !== 2 && fpResendTimerId) { clearInterval(fpResendTimerId); fpResendTimerId = null; }
+    }
+    function fpStartResendCooldown(secs) {
+        var link = document.getElementById('fpResendLink');
+        var timer = document.getElementById('fpResendTimer');
+        if (!link || !timer) return;
+        if (fpResendTimerId) { clearInterval(fpResendTimerId); fpResendTimerId = null; }
+        var remaining = parseInt(secs, 10) || 0;
+        function tick() {
+            if (remaining <= 0) {
+                clearInterval(fpResendTimerId); fpResendTimerId = null;
+                link.style.pointerEvents = 'auto'; link.style.opacity = '1';
+                timer.textContent = '';
+                return;
+            }
+            link.style.pointerEvents = 'none'; link.style.opacity = '0.5';
+            timer.textContent = ' — resend in ' + remaining + 's';
+            remaining--;
+        }
+        if (remaining > 0) { tick(); fpResendTimerId = setInterval(tick, 1000); }
+        else { link.style.pointerEvents = 'auto'; link.style.opacity = '1'; timer.textContent = ''; }
+    }
+
+    function submitForgotPassword(e) {
+        e.preventDefault();
+        var form = document.getElementById('forgotPasswordForm');
+        var btn = document.getElementById('forgotSubmitBtn');
+        var orig = btn.innerText;
+        btn.innerText = 'Sending...'; btn.disabled = true;
+        fetch('forgot_password_ajax.php', { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                btn.innerText = orig; btn.disabled = false;
+                if (d.success) {
+                    fpAlert('success', d.message);
+                    forgotShowStep(2);
+                    document.getElementById('fpCode').focus();
+                    fpStartResendCooldown(d.cooldown || FP_RESEND_COOLDOWN);
+                } else { fpAlert('error', d.message); }
+            })
+            .catch(function () { btn.innerText = orig; btn.disabled = false; fpAlert('error', 'Something went wrong. Please try again.'); });
+    }
+
+    function submitForgotVerify(e) {
+        e.preventDefault();
+        var code = (document.getElementById('fpCode').value || '').replace(/\D/g, '');
+        if (code.length !== 6) { fpAlert('error', 'Enter the 6-digit code.'); return; }
+        var btn = document.getElementById('forgotVerifyBtn');
+        var orig = btn.innerText;
+        btn.innerText = 'Verifying...'; btn.disabled = true;
+        fetch('forgot_password_verify_ajax.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'code=' + encodeURIComponent(code),
+            credentials: 'same-origin'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                btn.innerText = orig; btn.disabled = false;
+                if (d.success) { fpAlert('', ''); forgotShowStep(3); document.getElementById('fpNewPass').focus(); }
+                else { fpAlert('error', d.message); }
+            })
+            .catch(function () { btn.innerText = orig; btn.disabled = false; fpAlert('error', 'Something went wrong. Please try again.'); });
+    }
+
+    function resendForgotCode() {
+        var link = document.getElementById('fpResendLink');
+        if (link && link.style.pointerEvents === 'none') return;
+        fpAlert('success', 'Sending a new code…');
+        fetch('forgot_password_verify_ajax.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'resend=1',
+            credentials: 'same-origin'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) { fpAlert('success', d.message); fpStartResendCooldown(d.retry_after || FP_RESEND_COOLDOWN); }
+                else { fpAlert('error', d.message); if (d.retry_after) fpStartResendCooldown(d.retry_after); }
+            })
+            .catch(function () { fpAlert('error', 'Something went wrong. Please try again.'); });
+    }
+
+    function submitForgotReset(e) {
+        e.preventDefault();
+        var p1 = document.getElementById('fpNewPass').value;
+        var p2 = document.getElementById('fpNewPass2').value;
+        if (p1 !== p2) { fpAlert('error', 'The two passwords do not match.'); return; }
+        var btn = document.getElementById('forgotResetBtn');
+        var orig = btn.innerText;
+        btn.innerText = 'Updating...'; btn.disabled = true;
+        fetch('reset_password_ajax.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'password=' + encodeURIComponent(p1) + '&confirm_password=' + encodeURIComponent(p2),
+            credentials: 'same-origin'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    fpAlert('success', d.message);
+                    document.getElementById('forgotResetForm').style.display = 'none';
+                    setTimeout(function () { closeForgotModal(); setTimeout(openLoginModal, 300); }, 1600);
+                } else { btn.innerText = orig; btn.disabled = false; fpAlert('error', d.message); }
+            })
+            .catch(function () { btn.innerText = orig; btn.disabled = false; fpAlert('error', 'Something went wrong. Please try again.'); });
     }
 
     /* ========================================================== */

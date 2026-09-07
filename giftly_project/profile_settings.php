@@ -2,6 +2,12 @@
 // profile_settings.php
 if (!isset($user_id)) { exit('Direct access not allowed.'); }
 
+include_once 'auth_lib.php';
+include_once 'pwd_otp_lib.php';
+auth_ensure_schema($conn);
+pwd_otp_ensure_schema($conn);
+$__is_google = (bool) ($conn->query("SELECT google_id FROM users WHERE id = $user_id")->fetch_assoc()['google_id'] ?? '');
+
 // --- FETCH USER DATA ---
 $user = $conn->query("SELECT name, email, phone, profile_pic FROM users WHERE id = $user_id")->fetch_assoc();
 $nameParts = explode(' ', $user['name']);
@@ -64,23 +70,37 @@ $user['profile_pic'] = $profile_pic;
     
     $current_pass = isset($_POST['current_password']) ? $_POST['current_password'] : '';
     $new_pass = isset($_POST['new_password']) ? $_POST['new_password'] : '';
-    
+    $pwd_code = isset($_POST['pwd_code']) ? $_POST['pwd_code'] : '';
+
     $is_changing_password = !empty($new_pass);
     $fullname = $firstname . ' ' . $lastname;
-    
+
     if ($is_changing_password) {
         $check = $conn->query("SELECT password FROM users WHERE id = $user_id");
         $row = $check->fetch_assoc();
-        if (password_verify($current_pass, $row['password'])) {
+        [$strong, $strong_err] = pwd_strength_check($new_pass);
+        $code_ok = false; $code_err = '';
+        if (password_verify($current_pass, $row['password']) && $strong) {
+            [$code_ok, $code_err] = pwd_otp_verify($conn, $user_id, $pwd_code, 'change');
+        }
+
+        if (!password_verify($current_pass, $row['password'])) {
+            $message = "Current password is incorrect.";
+            $msg_type = "error";
+        } elseif (!$strong) {
+            $message = $strong_err;
+            $msg_type = "error";
+        } elseif (!$code_ok) {
+            $message = $code_err ?: "Enter the code we emailed you.";
+            $msg_type = "error";
+        } else {
             $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
             $conn->query("UPDATE users SET name = '$fullname', email = '$email', phone = '$phone', profile_pic = '$profile_pic', password = '$hashed' WHERE id = $user_id");
+            pwd_otp_clear($conn, $user_id, 'change');
             $_SESSION['user_name'] = $fullname;
             $_SESSION['user_profile_pic'] = $profile_pic;
             $message = "Profile updated successfully!";
             $msg_type = "success";
-        } else {
-            $message = "Current password is incorrect.";
-            $msg_type = "error";
         }
     } else {
                 $conn->query("UPDATE users SET name = '$fullname', email = '$email', phone = '$phone', profile_pic = '$profile_pic' WHERE id = $user_id");
@@ -262,6 +282,12 @@ $user['profile_pic'] = $profile_pic;
 
         <div class="settings-box">
             <h4><i class="fas fa-shield-alt" style="color: #ff8ba7; margin-right: 8px;"></i> Security & Password</h4>
+            <?php if ($__is_google): ?>
+                <p style="color:#888; font-size:14px; line-height:1.6;">
+                    <i class="fab fa-google" style="color:#ff8ba7; margin-right:6px;"></i>
+                    This account signs in with Google, so there's no password to manage here.
+                </p>
+            <?php else: ?>
             <div class="form-group">
                 <label>Current Password <span style="color: #d32f2f;">*</span></label>
                 <div class="password-wrapper">
@@ -281,6 +307,21 @@ $user['profile_pic'] = $profile_pic;
                 <div class="strength-text" id="profileStrengthText">Use 8 or more letters, numbers and symbols</div>
                 <div class="input-hint">Leave blank if you don't want to change it.</div>
             </div>
+
+            <div class="form-group" id="profilePwdCodeGroup" style="display:none;">
+                <label>Email Verification Code <span style="color: #d32f2f;">*</span></label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" name="pwd_code" id="profilePwdCode" class="form-input" inputmode="numeric"
+                           maxlength="6" placeholder="6-digit code" autocomplete="one-time-code"
+                           style="letter-spacing:4px; font-weight:600;">
+                    <button type="button" id="profileSendCodeBtn" onclick="sendProfilePwdCode()"
+                            style="flex:0 0 auto; padding:0 16px; border:none; border-radius:12px; background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%); color:#fff; font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap;">
+                        Send code
+                    </button>
+                </div>
+                <div class="input-hint" id="profilePwdCodeHint">For security, changing your password needs a code sent to your email.</div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -331,13 +372,25 @@ $user['profile_pic'] = $profile_pic;
             }
         });
 
-        if (newPass.value.trim() !== "" && currentPass.value.trim() === "") {
+        var changingPw = newPass && newPass.value.trim() !== "";
+
+        if (changingPw && currentPass.value.trim() === "") {
             isValid = false;
-            currentPass.style.borderColor = "#d32f2f"; 
+            currentPass.style.borderColor = "#d32f2f";
             currentPass.style.background = "#fff5f5";
-        } else {
+        } else if (currentPass) {
             currentPass.style.borderColor = "";
             currentPass.style.background = "";
+        }
+
+        var codeInput = document.getElementById('profilePwdCode');
+        if (changingPw && codeInput && codeInput.value.replace(/\D/g, '').length !== 6) {
+            isValid = false;
+            codeInput.style.borderColor = "#d32f2f";
+            codeInput.style.background = "#fff5f5";
+        } else if (codeInput) {
+            codeInput.style.borderColor = "";
+            codeInput.style.background = "";
         }
 
         if (isValid) {
@@ -418,6 +471,9 @@ $user['profile_pic'] = $profile_pic;
         let pass = document.getElementById('profileNewPass').value;
         let strengthBar = document.getElementById('profileStrengthBar');
         let strengthText = document.getElementById('profileStrengthText');
+
+        let codeGroup = document.getElementById('profilePwdCodeGroup');
+        if (codeGroup) codeGroup.style.display = pass.length > 0 ? 'block' : 'none';
 
         const hasLength = pass.length >= 8;
         const hasLetter = /[a-zA-Z]/.test(pass);
@@ -507,5 +563,46 @@ $user['profile_pic'] = $profile_pic;
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    /* --- email a code to confirm a password change --- */
+    var profilePwdCooldownId = null;
+    function profilePwdStartCooldown(secs) {
+        var btn = document.getElementById('profileSendCodeBtn');
+        if (!btn) return;
+        if (profilePwdCooldownId) { clearInterval(profilePwdCooldownId); profilePwdCooldownId = null; }
+        var remaining = parseInt(secs, 10) || 0;
+        if (remaining <= 0) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Send code'; return; }
+        btn.disabled = true; btn.style.opacity = '0.55';
+        function tick() {
+            if (remaining <= 0) {
+                clearInterval(profilePwdCooldownId); profilePwdCooldownId = null;
+                btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Resend code';
+                return;
+            }
+            btn.textContent = remaining + 's';
+            remaining--;
+        }
+        tick();
+        profilePwdCooldownId = setInterval(tick, 1000);
+    }
+    function sendProfilePwdCode() {
+        var btn = document.getElementById('profileSendCodeBtn');
+        var hint = document.getElementById('profilePwdCodeHint');
+        if (btn && btn.disabled) return;
+        if (btn) { btn.disabled = true; btn.textContent = '...'; }
+        fetch('profile_send_pwd_code.php', { method: 'POST', credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (hint) {
+                    hint.textContent = d.message || (d.success ? 'Code sent.' : "Couldn't send the code.");
+                    hint.style.color = d.success ? '#2e7d32' : '#d32f2f';
+                }
+                profilePwdStartCooldown(d.retry_after || (d.success ? 60 : 0));
+            })
+            .catch(function () {
+                if (hint) { hint.textContent = 'Something went wrong. Try again.'; hint.style.color = '#d32f2f'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Send code'; }
+            });
     }
 </script>

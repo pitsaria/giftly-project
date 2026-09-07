@@ -11,26 +11,55 @@
                         <i class="fas fa-lock" style="background: #fff0f5; padding: 12px; border-radius: 50%;"></i>
                     </div>
                     <h2 class="forgot-modal-title" style="font-size: 24px;">Forgot Password</h2>
-                    <p class="forgot-modal-sub" style="margin-bottom: 15px;">Enter your email and we'll send a reset link.</p>
+                    <p class="forgot-modal-sub" id="forgotStepSub" style="margin-bottom: 15px;">Enter your email and we'll send a 6-digit code.</p>
                 </div>
 
-                                <!-- AJAX FORM (NO PAGE RELOAD) -->
-                
-                <!-- 🚨 ADD THIS EMPTY DIV RIGHT HERE -->
                 <div id="forgotAlertBox"></div>
 
+                <!-- STEP 1: email -->
                 <form id="forgotPasswordForm" onsubmit="submitForgotPassword(event)">
                     <div class="forgot-input-group">
                         <label>Email Address</label>
-                        <input type="email" name="email" class="forgot-input" placeholder="Enter your email" required>
+                        <input type="email" name="email" id="fpEmail" class="forgot-input" placeholder="Enter your email" required>
                     </div>
-                    <button type="submit" class="forgot-submit-btn" id="forgotSubmitBtn">Send Reset Link</button>
-                    <div class="forgot-divider">or</div>
-                    
-                    <div class="forgot-register-link" style="text-align: center; font-size: 14px; color: #666; cursor: pointer;">
-                        Remember your password? <a href="javascript:void(0)" onclick="closeForgotModal(); setTimeout(openLoginModal, 300);">Back to Login</a>
+                    <button type="submit" class="forgot-submit-btn" id="forgotSubmitBtn">Send Code</button>
+                </form>
+
+                <!-- STEP 2: verify code -->
+                <form id="forgotVerifyForm" onsubmit="submitForgotVerify(event)" style="display:none;">
+                    <div class="forgot-input-group">
+                        <label>6-digit code</label>
+                        <input type="text" id="fpCode" class="forgot-input" inputmode="numeric" autocomplete="one-time-code"
+                               maxlength="6" placeholder="123456"
+                               style="letter-spacing:6px; text-align:center; font-size:20px; font-weight:600;" required>
+                    </div>
+                    <button type="submit" class="forgot-submit-btn" id="forgotVerifyBtn">Verify Code</button>
+                    <div style="text-align:center; margin-top:12px; font-size:13px; color:#666;">
+                        Didn't get it? <a href="javascript:void(0)" id="fpResendLink" onclick="resendForgotCode()" style="color:#ff8ba7; font-weight:600;">Resend code</a><span id="fpResendTimer" style="color:#999;"></span>
+                    </div>
+                    <div style="text-align:center; margin-top:6px;">
+                        <a href="javascript:void(0)" onclick="forgotShowStep(1)" style="font-size:12.5px; color:#999;">&larr; Use a different email</a>
                     </div>
                 </form>
+
+                <!-- STEP 3: new password -->
+                <form id="forgotResetForm" onsubmit="submitForgotReset(event)" style="display:none;">
+                    <div class="forgot-input-group">
+                        <label>New Password</label>
+                        <input type="password" id="fpNewPass" class="forgot-input" placeholder="Enter new password" required minlength="8">
+                    </div>
+                    <div class="forgot-input-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="fpNewPass2" class="forgot-input" placeholder="Confirm new password" required minlength="8">
+                    </div>
+                    <div style="font-size:12px; color:#999; margin:-8px 0 14px;">At least 8 characters, with a letter, a number and a special character.</div>
+                    <button type="submit" class="forgot-submit-btn" id="forgotResetBtn">Update Password</button>
+                </form>
+
+                <div class="forgot-divider">or</div>
+                <div class="forgot-register-link" style="text-align: center; font-size: 14px; color: #666; cursor: pointer;">
+                    Remember your password? <a href="javascript:void(0)" onclick="closeForgotModal(); setTimeout(openLoginModal, 300);">Back to Login</a>
+                </div>
             </div>
 
             <!-- RIGHT: Promotional Art -->
@@ -40,7 +69,7 @@
                 </div>
                 <h3 style="font-size: 20px; font-weight: 700; color: #222;">No worries!</h3>
                 <p style="font-size: 14px; color: #666; line-height: 1.5; max-width: 200px; margin: 0 auto;">
-                    We'll send you a secure link to reset your password.
+                    We'll email you a 6-digit code to verify it's really you.
                 </p>
             </div>
         </div>
