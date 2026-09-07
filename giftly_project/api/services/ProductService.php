@@ -55,8 +55,11 @@ public function getAll($params) {
         $sql
     );
 
-    // 🚀 ORDER BY: In stock first, then by ID (oldest or newest)
-    $sql .= " ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, id $order_by";
+    // 🚀 ORDER BY: in stock first, then items on sale, then by ID
+    $sale_live = "(sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price"
+               . " AND (sale_ends IS NULL OR sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')))";
+    $sql .= " ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END,"
+          . " CASE WHEN $sale_live THEN 0 ELSE 1 END, id $order_by";
     $sql .= " LIMIT $limit OFFSET $offset";
     $result = $this->conn->query($sql);
     

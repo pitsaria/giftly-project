@@ -318,18 +318,34 @@ function isInWishlist($product_id, $wishlist_ids) {
         padding-top: 10px;
         border-top: 1px solid #f5f5f5;
     }
-    .p-price { 
-        font-size: 16px; 
-        font-weight: 500; 
+    .p-price {
+        font-size: 16px;
+        font-weight: 500;
         color: #888;
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+        gap: 2px;
     }
-    .p-price span {
-        font-weight: 700;
-        color: #222;
+    .p-price .p-now { font-weight: 700; color: #222; white-space: nowrap; }
+    .p-price.on-sale .p-now { color: #e6398f; }
+    .p-price .p-was {
+        font-weight: 500;
+        color: #adadad;
+        text-decoration: line-through;
+        font-size: 12px;
+        white-space: nowrap;
     }
-    .p-price .p-was { font-weight: 400; color: #bbb; text-decoration: line-through; font-size: 13px; margin-left: 4px; }
-    .p-sale-tag { background: #ffe3ea; color: #d81b60; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; letter-spacing: .3px; }
-    .p-image-sale { position: absolute; top: 12px; left: 12px; background: linear-gradient(135deg,#ff8ba7,#e6738f); color:#fff; font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; z-index:2; box-shadow:0 2px 8px rgba(230,115,143,.3); }
+    .p-image-sale {
+        position: absolute; top: 12px; left: 12px;
+        display: inline-flex; align-items: baseline; gap: 4px;
+        background: linear-gradient(135deg, #ff5c8a, #e6398f);
+        color: #fff; font-size: 12px; font-weight: 800;
+        padding: 5px 12px; border-radius: 20px; z-index: 2;
+        letter-spacing: .4px; text-transform: uppercase;
+        box-shadow: 0 4px 12px rgba(230, 57, 143, .35);
+    }
+    .p-image-sale small { font-size: 10px; font-weight: 700; opacity: .95; }
 
     .btn-action {
         background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%);
@@ -717,7 +733,10 @@ $api_url .= '&page=' . $page . '&limit=' . $limit;
         $isInStock = $row['quantity'] > 0;
         $eff_price = catalog_effective_price($row);
         $is_on_sale = catalog_on_sale($row);
-        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$eff_price.", ".$row['quantity'].")" : "";
+        $disc_pct = ($is_on_sale && (float)$row['price'] > 0)
+            ? (int) round(((float)$row['price'] - $eff_price) / (float)$row['price'] * 100)
+            : 0;
+        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$eff_price.", ".$row['quantity'].", ".(float)$row['price'].")" : "";
         $cardClass = $isInStock ? 'product-card' : 'product-card out-of-stock-product';
 
         // Check if product is in wishlist
@@ -754,15 +773,15 @@ $heartClass = $isInWishlist ? 'active' : '';
                 </div>' : '') . '
                 
                 ' . ($totalSold > 10 ? '<div class="p-image-badge">Best Seller</div>' : '') . '
-                ' . ($is_on_sale ? '<div class="p-image-sale">SALE</div>' : '') . '
+                ' . ($is_on_sale ? '<div class="p-image-sale">Sale' . ($disc_pct > 0 ? ' <small>-' . $disc_pct . '%</small>' : '') . '</div>' : '') . '
             </div>
 
             <div class="p-name" onclick="'.$onClick.'">'.$row['name'].'</div>
             ' . (((int)($row['review_count'] ?? 0)) > 0 ? '
             <div class="p-rating" onclick="'.$onClick.'">' . shop_stars((float)$row['avg_rating']) . ' <span>('.(int)$row['review_count'].')</span></div>' : '') . '
             <div class="p-bottom-row">
-                <div class="p-price" onclick="'.$onClick.'">PHP <span>'.number_format($eff_price, 2).'</span>'.($is_on_sale ? '<span class="p-was">PHP '.number_format($row['price'], 2).'</span>' : '').'</div>
-                
+                <div class="p-price'.($is_on_sale ? ' on-sale' : '').'" onclick="'.$onClick.'"><span class="p-now">PHP '.number_format($eff_price, 2).'</span>'.($is_on_sale ? '<span class="p-was">PHP '.number_format($row['price'], 2).'</span>' : '').'</div>
+
                 ' . ($isInStock ? '
                 <button class="btn-action" onclick="event.stopPropagation(); quickAdd('.$row['id'].')">
                     <i class="fas fa-shopping-cart"></i> Add
@@ -892,7 +911,7 @@ $heartClass = $isInWishlist ? 'active' : '';
     let currentQty = 1;
     let currentStock = 0;
 
-    function openModal(id, name, desc, image, price, stock) {
+    function openModal(id, name, desc, image, price, stock, listPrice) {
         currentModalId = id;
         currentStock = stock;
         currentQty = 1;
@@ -900,7 +919,10 @@ $heartClass = $isInWishlist ? 'active' : '';
         document.getElementById('modalImg').src = image; // already resolved by img_url() in PHP
         document.getElementById('modalTitle').innerText = name;
         document.getElementById('modalDesc').innerText = desc || 'No description available.';
-        document.getElementById('modalPrice').innerText = 'PHP ' + parseFloat(price).toFixed(2);
+        var lp = parseFloat(listPrice || price);
+        var onSale = lp > parseFloat(price) + 0.001;
+        document.getElementById('modalPrice').innerHTML = 'PHP ' + parseFloat(price).toFixed(2)
+            + (onSale ? ' <span style="text-decoration:line-through;color:#b0b0b0;font-size:16px;font-weight:500;">PHP ' + lp.toFixed(2) + '</span>' : '');
         
         const stockEl = document.getElementById('modalStock');
         const addBtn = document.getElementById('modalAddBtn');

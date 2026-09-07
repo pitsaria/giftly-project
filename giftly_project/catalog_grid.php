@@ -40,7 +40,9 @@ $total_rows  = $total_res ? (int) $total_res->fetch_assoc()['c'] : 0;
 $total_pages = max(1, (int) ceil($total_rows / $cat_limit));
 
 $prod_res = $conn->query("SELECT * FROM products WHERE $where
-                          ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, id ASC
+                          ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END,
+                                   CASE WHEN " . catalog_price_sql('') . " < price THEN 0 ELSE 1 END,
+                                   id ASC
                           LIMIT $cat_limit OFFSET $offset");
 
 // wishlist state
@@ -91,8 +93,12 @@ if (isset($_SESSION['user_id'])) {
     .ci-name { font-size: 17px; font-weight: 600; color: #222; line-height: 1.4; margin-bottom: 6px; text-align: left; }
     .ci-desc { font-size: 13px; color: #999; line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .ci-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; border-top: 1px solid #f5f5f5; }
-    .ci-price { font-size: 16px; font-weight: 500; color: #888; }
-    .ci-price span { font-weight: 700; color: #222; }
+    .ci-price { font-size: 16px; font-weight: 500; color: #888; display: flex; flex-direction: column; line-height: 1.1; gap: 2px; }
+    .ci-price .ci-now { font-weight: 700; color: #222; white-space: nowrap; }
+    .ci-price.on-sale .ci-now { color: #e6398f; }
+    .ci-price .ci-was { font-weight: 500; color: #adadad; text-decoration: line-through; font-size: 12px; white-space: nowrap; }
+    .ci-badge.sale { background: linear-gradient(135deg, #ff5c8a, #e6398f); color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; box-shadow: 0 4px 12px rgba(230,57,143,.35); }
+    .ci-badge.sale small { font-size: 10px; font-weight: 700; opacity: .95; }
 
     .ci-add { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; border-radius: 50px; padding: 8px 22px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(254,165,182,0.2); }
     .ci-add:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 20px rgba(254,165,182,0.35); }
@@ -198,6 +204,8 @@ if (isset($_SESSION['user_id'])) {
                 $rvs = reviews_summary($conn, $id);
                 $eff_price  = catalog_effective_price($row);
                 $is_on_sale = catalog_on_sale($row);
+                $disc_pct   = ($is_on_sale && (float)$row['price'] > 0)
+                    ? (int) round(((float)$row['price'] - $eff_price) / (float)$row['price'] * 100) : 0;
                 $onClick = $inStock
                     ? htmlspecialchars(
                         "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $eff_price . ", " . (int) $row['quantity'] . ")",
@@ -213,7 +221,7 @@ if (isset($_SESSION['user_id'])) {
                     </button>
                     <?php if (!$inStock): ?><div class="ci-ribbon">Sold Out</div><?php endif; ?>
                     <?php if ($sold > 10): ?><div class="ci-badge">Popular</div><?php endif; ?>
-                    <?php if ($is_on_sale): ?><div class="ci-badge" style="top:<?php echo $sold > 10 ? '46px' : '12px'; ?>;background:linear-gradient(135deg,#ff8ba7,#e6738f);color:#fff;">SALE</div><?php endif; ?>
+                    <?php if ($is_on_sale): ?><div class="ci-badge sale" style="top:<?php echo $sold > 10 ? '46px' : '12px'; ?>;">Sale<?php if ($disc_pct > 0): ?> <small>-<?php echo $disc_pct; ?>%</small><?php endif; ?></div><?php endif; ?>
                 </div>
                 <div class="ci-name" onclick="<?php echo $onClick; ?>"><?php echo htmlspecialchars($row['name']); ?></div>
                 <?php if ($rvs['count'] > 0): ?>
@@ -223,7 +231,7 @@ if (isset($_SESSION['user_id'])) {
                     <div class="ci-desc"><?php echo htmlspecialchars($row['description']); ?></div>
                 <?php endif; ?>
                 <div class="ci-bottom">
-                    <div class="ci-price" onclick="<?php echo $onClick; ?>">PHP <span><?php echo number_format($eff_price, 2); ?></span><?php if ($is_on_sale): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:13px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
+                    <div class="ci-price<?php echo $is_on_sale ? ' on-sale' : ''; ?>" onclick="<?php echo $onClick; ?>"><span class="ci-now">PHP <?php echo number_format($eff_price, 2); ?></span><?php if ($is_on_sale): ?><span class="ci-was">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                     <?php if ($inStock): ?>
                         <button class="ci-add" onclick="event.stopPropagation(); catQuickAdd(<?php echo $id; ?>)">
                             <i class="fas fa-shopping-cart"></i> Add

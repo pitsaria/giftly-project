@@ -392,7 +392,8 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         <div class="product-grid">
             <?php
             // Showing actual products from your database!
-            $sql = "SELECT * FROM products WHERE product_type = 'catalog'" . catalog_visible_filter() . " ORDER BY id DESC LIMIT 4";
+            $sql = "SELECT * FROM products WHERE product_type = 'catalog'" . catalog_visible_filter()
+                 . " ORDER BY CASE WHEN " . catalog_price_sql('') . " < price THEN 0 ELSE 1 END, id DESC LIMIT 4";
             $result = $conn->query($sql);
             
             // Array of colors to cycle through for the bottom of the cards
@@ -417,8 +418,8 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                             <!-- NEW DESCRIPTION PREVIEW -->
                             <div class="p-desc"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>                        
                             <div class="p-bottom-row">
-                                <?php $eff = catalog_effective_price($row); ?>
-                                <div class="p-price">PHP <?php echo number_format($eff, 2); ?><?php if (catalog_on_sale($row)): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
+                                <?php $eff = catalog_effective_price($row); $os = catalog_on_sale($row); ?>
+                                <div class="p-price" style="<?php echo $os ? 'color:#e6398f;' : ''; ?>white-space:nowrap;">PHP <?php echo number_format($eff, 2); ?><?php if ($os): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                                 
                                 <!-- 🚨 UPDATED: Check if user is logged in -->
                                 <?php if (isset($_SESSION['user_id'])): ?>
