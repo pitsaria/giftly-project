@@ -1,5 +1,6 @@
 <?php
 include 'db_connect.php';
+include_once 'mail_lib.php';
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -40,6 +41,9 @@ if (isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST[
     if ($conn->query($sql) === TRUE) {
         // Set the success flag
         $_SESSION['order_updated'] = true;
+        if ($new_status !== ($cur_row['status'] ?? '') && function_exists('send_status_email')) {
+            send_status_email($conn, $order_id, $new_status);
+        }
         // Redirect back to the admin page
         header("Location: admin_orders.php");
         exit();

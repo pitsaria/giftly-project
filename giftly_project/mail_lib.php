@@ -141,6 +141,55 @@ if (!function_exists('mail_send')) {
         return mail_send($order['to_email'], $heading, mail_wrap($title, $inner));
     }
 
+    /**
+     * Email the customer when an admin moves an order to 'shipped' or
+     * 'delivered'. Other statuses are ignored. No-op if email isn't configured.
+     */
+    function send_status_email($conn, $order_id, $status) {
+        if (!mail_configured()) return false;
+        $status   = strtolower(trim((string) $status));
+        if (!in_array($status, ['shipped', 'delivered'], true)) return false;
+        $order_id = (int) $order_id;
+
+        $o = $conn->query("SELECT o.*, u.email AS to_email FROM orders o
+                           JOIN users u ON u.id = o.user_id WHERE o.id = $order_id");
+        $order = $o ? $o->fetch_assoc() : null;
+        if (!$order || empty($order['to_email'])) {
+            mail_last_error("order #$order_id: no order / no customer email");
+            return false;
+        }
+
+        $addr = htmlspecialchars($order['address'] . ', ' . $order['city']);
+        $when = !empty($order['delivery_date']) ? date('F j, Y', strtotime($order['delivery_date'])) : 'soon';
+
+        if ($status === 'shipped') {
+            $heading = 'Your order is on the way — #' . $order_id;
+            $title   = 'On the way 🚚';
+            $inner   = '<p style="color:#555;font-size:14px;line-height:1.6;">Good news — order <strong>#' . $order_id
+                     . '</strong> has been shipped and is heading to you.</p>'
+                     . '<p style="color:#777;font-size:13px;line-height:1.6;">Delivering to: ' . $addr . '<br>Expected: ' . htmlspecialchars($when) . '</p>'
+                     . '<p style="font-size:13px;"><a href="' . htmlspecialchars(app_base_url_safe()) . '/profile.php?tab=orders" style="color:#ff8ba7;font-weight:600;">Track it in My Orders</a></p>';
+        } else {
+            $heading = 'Your order was delivered — #' . $order_id;
+            $title   = 'Delivered ✅';
+            $inner   = '<p style="color:#555;font-size:14px;line-height:1.6;">Order <strong>#' . $order_id
+                     . '</strong> has been marked delivered. We hope you love it! 🎁</p>'
+                     . '<p style="color:#777;font-size:13px;line-height:1.6;">Once you\'ve got it in hand, head to '
+                     . '<a href="' . htmlspecialchars(app_base_url_safe()) . '/profile.php?tab=orders" style="color:#ff8ba7;font-weight:600;">My Orders</a> '
+                     . 'to confirm receipt and leave a review.</p>';
+        }
+
+        return mail_send($order['to_email'], $heading, mail_wrap($title, $inner));
+    }
+
+    /** Best-effort site URL for links inside emails. */
+    function app_base_url_safe() {
+        $env = getenv('APP_BASE_URL') ?: getenv('RENDER_EXTERNAL_URL');
+        if ($env) return rtrim($env, '/');
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return 'https://' . $host;
+    }
+
     /** Branded HTML shell for an email body. */
     function mail_wrap($heading, $inner) {
         $h = htmlspecialchars($heading);

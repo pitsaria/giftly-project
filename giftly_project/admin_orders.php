@@ -2,6 +2,7 @@
 include 'db_connect.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
+include_once 'mail_lib.php';
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 
@@ -51,6 +52,11 @@ if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_
         $sql = "UPDATE orders SET status = '$new_status' WHERE id = $order_id";
         if ($conn->query($sql) === TRUE) {
             $show_updated = true; // Show the banner right here
+            // tell the customer their order shipped / was delivered
+            if ($new_status !== $cur_status && function_exists('send_status_email')) {
+                $ok = send_status_email($conn, $order_id, $new_status);
+                error_log("status email order #$order_id -> $new_status: " . ($ok ? 'sent' : 'skipped/failed - ' . mail_last_error()));
+            }
         }
     }
 }
