@@ -12,9 +12,14 @@ if ($uid <= 0) {
     exit();
 }
 
-// light throttle: one resend per 30s
-if (!empty($_SESSION['pending_otp_started']) && time() - (int) $_SESSION['pending_otp_started'] < 30) {
-    echo json_encode(['status' => 'error', 'message' => 'Please wait a few seconds before requesting another code.']);
+// Cooldown: block repeated requests within the cooldown window.
+$wait = otp_seconds_until_resend($conn, $uid);
+if ($wait > 0) {
+    echo json_encode([
+        'status'      => 'error',
+        'retry_after' => $wait,
+        'message'     => "Please wait {$wait}s before requesting a new code.",
+    ]);
     exit();
 }
 
@@ -27,5 +32,5 @@ if (!$u) {
 
 $sent = otp_start($conn, $u, $_SESSION['pending_otp_redirect'] ?? 'index.php');
 echo json_encode($sent
-    ? ['status' => 'success', 'message' => 'A new code is on its way.']
+    ? ['status' => 'success', 'retry_after' => otp_resend_cooldown(), 'message' => 'A new code is on its way.']
     : ['status' => 'error', 'message' => "Couldn't send the code right now. Try again shortly."]);

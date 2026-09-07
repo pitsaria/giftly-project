@@ -6,6 +6,11 @@ if (isset($_SESSION['just_logged_in'])) {
 require_once __DIR__ . '/auth_lib.php';
 $__otp_pending = function_exists('otp_pending') && otp_pending();
 $__otp_email   = $__otp_pending ? otp_mask_email($_SESSION['pending_otp_email'] ?? '') : '';
+$__otp_cooldown = function_exists('otp_resend_cooldown') ? (int) otp_resend_cooldown() : 60;
+$__otp_wait = 0;
+if ($__otp_pending && isset($conn) && function_exists('otp_seconds_until_resend')) {
+    $__otp_wait = (int) otp_seconds_until_resend($conn, (int) ($_SESSION['pending_otp_user'] ?? 0));
+}
 ?>
 
 <!-- LOGIN MODAL OVERLAY -->
@@ -96,7 +101,7 @@ if (!empty($error_msg)): ?>
                 </div>
                 <button type="button" class="login-submit-btn" onclick="submitOtp()">Verify &amp; sign in</button>
                 <div style="text-align:center; margin-top:14px; font-size:13.5px; color:#555;">
-                    Didn't get it? <a href="javascript:void(0)" onclick="resendOtp()" class="login-forgot-link" style="display:inline;">Resend code</a>
+                    Didn't get it? <a href="javascript:void(0)" id="otpResendLink" onclick="resendOtp()" class="login-forgot-link" style="display:inline;">Resend code</a><span id="otpResendTimer" style="display:none; color:#999;"></span>
                 </div>
                 <div style="text-align:center; margin-top:8px;">
                     <a href="javascript:void(0)" onclick="otpBackToLogin()" style="font-size:12.5px; color:#999;">&larr; Use a different account</a>
@@ -336,11 +341,41 @@ function closeLoginModal(clearError = false) {
 }
 
 /* --- OTP (email code) step --- */
+var OTP_RESEND_COOLDOWN = <?php echo $__otp_cooldown; ?>;
+var otpResendTimerId = null;
+function otpStartResendCooldown(secs) {
+    var link = document.getElementById('otpResendLink');
+    var timer = document.getElementById('otpResendTimer');
+    if (!link || !timer) return;
+    if (otpResendTimerId) { clearInterval(otpResendTimerId); otpResendTimerId = null; }
+    var remaining = parseInt(secs, 10) || 0;
+    if (remaining <= 0) {
+        link.style.pointerEvents = 'auto'; link.style.opacity = '1';
+        timer.style.display = 'none';
+        return;
+    }
+    link.style.pointerEvents = 'none';
+    link.style.opacity = '0.5';
+    timer.style.display = 'inline';
+    function tick() {
+        if (remaining <= 0) {
+            clearInterval(otpResendTimerId); otpResendTimerId = null;
+            link.style.pointerEvents = 'auto'; link.style.opacity = '1';
+            timer.style.display = 'none';
+            return;
+        }
+        timer.textContent = ' — resend in ' + remaining + 's';
+        remaining--;
+    }
+    tick();
+    otpResendTimerId = setInterval(tick, 1000);
+}
 function showOtpStep() {
     var f = document.getElementById('loginFormStep');
     var o = document.getElementById('loginOtpStep');
     if (f) f.style.display = 'none';
     if (o) { o.style.display = 'block'; var i = document.getElementById('otpCodeInput'); if (i) setTimeout(function(){ i.focus(); }, 200); }
+    otpStartResendCooldown(<?php echo (int) $__otp_wait; ?>);
 }
 function otpSetError(msg) {
     var e = document.getElementById('otpError');
@@ -370,12 +405,19 @@ function submitOtp() {
         .catch(function () { otpSetError('Network error. Please try again.'); });
 }
 function resendOtp() {
+    var link = document.getElementById('otpResendLink');
+    if (link && link.style.pointerEvents === 'none') return; // still cooling down
     otpSetNotice('Sending a new code…');
     fetch('resend_otp.php', { method: 'POST', credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-            if (d.status === 'success') otpSetNotice(d.message || 'A new code is on its way.');
-            else otpSetError(d.message || "Couldn't resend the code.");
+            if (d.status === 'success') {
+                otpSetNotice(d.message || 'A new code is on its way.');
+                otpStartResendCooldown(d.retry_after || OTP_RESEND_COOLDOWN);
+            } else {
+                otpSetError(d.message || "Couldn't resend the code.");
+                if (d.retry_after) otpStartResendCooldown(d.retry_after);
+            }
         })
         .catch(function () { otpSetError('Network error. Please try again.'); });
 }

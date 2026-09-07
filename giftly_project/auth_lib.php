@@ -74,6 +74,44 @@ if (!function_exists('auth_ensure_schema')) {
         return !empty($_SESSION['pending_otp_user']);
     }
 
+    /** How long (seconds) a user must wait between code requests. */
+    function otp_resend_cooldown() {
+        $env = (int) getenv('OTP_RESEND_COOLDOWN');
+        return $env > 0 ? $env : 60;
+    }
+
+    /**
+     * Seconds the user still has to wait before another code can be sent for
+     * this account (0 = ready now). Compared entirely on the DB clock so it's
+     * timezone-safe.
+     */
+    function otp_seconds_until_resend($conn, $uid) {
+        $uid = (int) $uid;
+        if ($uid <= 0) return 0;
+        $cd = (int) otp_resend_cooldown();
+        // created_at is UTC wall-clock; compare against UTC 'now' so this is
+        // independent of the DB session timezone.
+        $r = $conn->query("SELECT CEIL(EXTRACT(EPOCH FROM (
+                               MAX(created_at) + INTERVAL '$cd seconds'
+                               - (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
+                           ))) AS wait
+                           FROM login_otps WHERE user_id = $uid");
+        $wait = ($r && $r->num_rows) ? (int) ($r->fetch_assoc()['wait'] ?? 0) : 0;
+        return $wait > 0 ? $wait : 0;
+    }
+
+    /** (Re)establish the pending-OTP session for $user. */
+    function otp_pending_session($user, $redirect_to = 'index.php') {
+        $_SESSION['pending_otp_user']     = (int) $user['id'];
+        $_SESSION['pending_otp_email']    = $user['email'];
+        $_SESSION['pending_otp_name']     = $user['name'];
+        $_SESSION['pending_otp_role']     = $user['role'];
+        $_SESSION['pending_otp_redirect'] = $redirect_to ?: 'index.php';
+        if (empty($_SESSION['pending_otp_started'])) {
+            $_SESSION['pending_otp_started'] = time();
+        }
+    }
+
     /** Mask an email for display: j***e@gmail.com */
     function otp_mask_email($email) {
         $parts = explode('@', (string) $email);
@@ -89,6 +127,16 @@ if (!function_exists('auth_ensure_schema')) {
      */
     function otp_start($conn, $user, $redirect_to = 'index.php') {
         $uid = (int) $user['id'];
+
+        // Cooldown: if a code was sent very recently, don't fire off another
+        // email — the existing one is still valid. Just (re)open the pending
+        // step. This stops rapid "resend" clicks and login re-submits from
+        // spamming the inbox.
+        if (otp_seconds_until_resend($conn, $uid) > 0) {
+            otp_pending_session($user, $redirect_to);
+            return true;
+        }
+
         $conn->query("DELETE FROM login_otps WHERE user_id = $uid");
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -106,12 +154,8 @@ if (!function_exists('auth_ensure_schema')) {
         $conn->query("INSERT INTO login_otps (user_id, code_hash, expires_at)
                       VALUES ($uid, '$hash', '$exp')");
 
-        $_SESSION['pending_otp_user']     = $uid;
-        $_SESSION['pending_otp_email']    = $user['email'];
-        $_SESSION['pending_otp_name']     = $user['name'];
-        $_SESSION['pending_otp_role']     = $user['role'];
-        $_SESSION['pending_otp_redirect'] = $redirect_to ?: 'index.php';
-        $_SESSION['pending_otp_started']  = time();
+        otp_pending_session($user, $redirect_to);
+        $_SESSION['pending_otp_started'] = time();
         return true;
     }
 
