@@ -21,6 +21,10 @@ if (isset($conn)) {
         include_once __DIR__ . '/contact_lib.php';
         if (function_exists('contact_ensure_schema')) contact_ensure_schema($conn);
     }
+    if (file_exists(__DIR__ . '/promo_lib.php')) {
+        include_once __DIR__ . '/promo_lib.php';
+        if (function_exists('promo_ensure_schema')) promo_ensure_schema($conn);
+    }
 }
 ?>
 <!DOCTYPE html>
