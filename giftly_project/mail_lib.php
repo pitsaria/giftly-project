@@ -1,40 +1,56 @@
 <?php
 /**
- * Outbound email via the Resend HTTPS API (no SDK).
+ * Outbound email via the Brevo (Sendinblue) HTTPS API — no SDK, no domain
+ * needed: Brevo just requires ONE verified sender address, then you can send
+ * to any recipient. Free tier is 300 emails/day.
  *
  * Env vars (Render):
- *   RESEND_API_KEY   re_...           (required — without it email is a no-op)
- *   MAIL_FROM        "Giftly <you@yourdomain.com>"
- *                    default "Giftly <onboarding@resend.dev>" — note Resend only
- *                    delivers from onboarding@resend.dev to YOUR OWN account
- *                    email until you verify a domain.
+ *   BREVO_API_KEY    xkeysib-...      (required — without it email is a no-op)
+ *   MAIL_FROM        "Giftly <your-verified-sender@example.com>"
+ *                    the email here MUST be a verified sender in Brevo
+ *                    (Senders, Domains & Dedicated IPs -> Senders).
  */
 
 if (!function_exists('mail_send')) {
 
-    function mail_configured() { return trim((string) getenv('RESEND_API_KEY')) !== ''; }
-    function mail_from()       { return getenv('MAIL_FROM') ?: 'Giftly <onboarding@resend.dev>'; }
+    function mail_api_key()   { return trim((string) getenv('BREVO_API_KEY')); }
+    function mail_configured() { return mail_api_key() !== ''; }
+
+    /** Parse MAIL_FROM ("Name <email>" or "email") into ['name'=>, 'email'=>]. */
+    function mail_sender() {
+        $raw = getenv('MAIL_FROM') ?: 'Giftly <no-reply@giftly.example>';
+        if (preg_match('/^\s*"?(.*?)"?\s*<\s*([^>]+?)\s*>\s*$/', $raw, $m)) {
+            return ['name' => $m[1] !== '' ? $m[1] : 'Giftly', 'email' => trim($m[2])];
+        }
+        return ['name' => 'Giftly', 'email' => trim($raw)];
+    }
 
     /** Send an HTML email. Returns true on success. */
     function mail_send($to, $subject, $html, $text = '') {
-        $key = trim((string) getenv('RESEND_API_KEY'));
+        $key = mail_api_key();
         if ($key === '' || !$to) return false;
 
+        $recips = array_map(function ($addr) { return ['email' => $addr]; }, is_array($to) ? array_values($to) : [$to]);
+        $sender = mail_sender();
+
         $payload = [
-            'from'    => mail_from(),
-            'to'      => is_array($to) ? array_values($to) : [$to],
-            'subject' => $subject,
-            'html'    => $html,
+            'sender'      => $sender,
+            'to'          => $recips,
+            'subject'     => $subject,
+            'htmlContent' => $html,
         ];
-        if ($text !== '') $payload['text'] = $text;
+        if ($text !== '') $payload['textContent'] = $text;
         $body = json_encode($payload);
 
+        $url = 'https://api.brevo.com/v3/smtp/email';
+        $headers = ['api-key: ' . $key, 'Content-Type: application/json', 'Accept: application/json'];
+
         if (function_exists('curl_init')) {
-            $ch = curl_init('https://api.resend.com/emails');
+            $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_POST           => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $key, 'Content-Type: application/json'],
+                CURLOPT_HTTPHEADER     => $headers,
                 CURLOPT_CONNECTTIMEOUT => 8,
                 CURLOPT_TIMEOUT        => 15,
                 CURLOPT_POSTFIELDS     => $body,
@@ -46,12 +62,12 @@ if (!function_exists('mail_send')) {
         } else {
             $ctx = stream_context_create(['http' => [
                 'method'  => 'POST',
-                'header'  => "Authorization: Bearer $key\r\nContent-Type: application/json\r\n",
+                'header'  => implode("\r\n", $headers) . "\r\n",
                 'content' => $body,
                 'timeout' => 15,
                 'ignore_errors' => true,
             ]]);
-            $resp = @file_get_contents('https://api.resend.com/emails', false, $ctx);
+            $resp = @file_get_contents($url, false, $ctx);
             $code = 0; $errs = '';
             if (isset($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $m)) {
                 $code = (int) $m[1];
@@ -59,7 +75,7 @@ if (!function_exists('mail_send')) {
         }
 
         if ($code >= 200 && $code < 300) return true;
-        error_log('Resend email failed (' . $code . '): ' . ($errs ?: '') . ' ' . (string) $resp);
+        error_log('Brevo email failed (' . $code . '): ' . ($errs ?: '') . ' ' . (string) $resp);
         return false;
     }
 
