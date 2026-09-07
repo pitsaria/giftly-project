@@ -2,9 +2,52 @@
 include 'db_connect.php';
 include 'reviews_lib.php';
 include_once 'catalog_lib.php';
+include_once 'promo_lib.php';
 reviews_ensure_schema($conn);
 catalog_ensure_schema($conn);
+promo_ensure_schema($conn);
 include 'header.php';
+
+// --- live promos for the "Special Promotions" section ---
+$home_promos = [];
+$hp = $conn->query("SELECT * FROM promos
+                    WHERE active = TRUE
+                      AND (starts_at IS NULL OR starts_at <= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
+                      AND (ends_at   IS NULL OR ends_at   >  (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))
+                    ORDER BY (code IS NULL), id DESC
+                    LIMIT 4");
+while ($hp && $r = $hp->fetch_assoc()) $home_promos[] = $r;
+
+function home_promo_card($p) {
+    $type = $p['type'];
+    $headline = 'Special offer';
+    $icon = 'fa-gift';
+    if ($type === 'percent') {
+        $headline = rtrim(rtrim(number_format((float) $p['value'], 2), '0'), '.') . '% OFF';
+        $icon = 'fa-percent';
+    } elseif ($type === 'fixed') {
+        $headline = 'PHP ' . number_format((float) $p['value'], 0) . ' OFF';
+        $icon = 'fa-tags';
+    } elseif ($type === 'free_shipping') {
+        $headline = 'FREE SHIPPING';
+        $icon = 'fa-truck';
+    } elseif ($type === 'free_item') {
+        $headline = 'FREE GIFT';
+        $icon = 'fa-gift';
+    }
+    $bits = [];
+    if ($type === 'free_shipping' && (float) $p['min_spend'] > 0) {
+        $bits[] = 'On orders over PHP ' . number_format((float) $p['min_spend'], 0);
+    } elseif ((float) $p['min_spend'] > 0) {
+        $bits[] = 'On orders over PHP ' . number_format((float) $p['min_spend'], 0);
+    }
+    if (promo_bool($p['first_order_only'])) $bits[] = 'First order only';
+    if ($type === 'free_item') $bits[] = 'Buy ' . max(1, (int) ($p['free_item_min_qty'] ?? 3)) . '+ items';
+    if (!empty($p['ends_at'])) $bits[] = 'Ends ' . date('M j', strtotime($p['ends_at']));
+    if (empty($bits)) $bits[] = 'On your whole order';
+    $cond = implode(' · ', $bits);
+    return ['headline' => $headline, 'icon' => $icon, 'cond' => $cond, 'code' => $p['code'] ? strtoupper($p['code']) : ''];
+}
 
 // recent real customer reviews for the homepage
 $home_reviews = [];
@@ -270,6 +313,22 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         object-fit: contain; 
     }
 
+    /* --- promo code chip --- */
+    .promo-code-chip {
+        display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+        background: #222; color: #fff; border: none; border-radius: 12px;
+        padding: 9px 14px; font-family: 'Poppins', sans-serif; font-size: 13px;
+        font-weight: 700; letter-spacing: .5px; cursor: pointer; transition: 0.2s;
+    }
+    .promo-code-chip:hover { background: #000; transform: translateY(-1px); }
+    .promo-code-chip .pcc-hint { font-weight: 500; font-size: 11px; opacity: .7; letter-spacing: 0; }
+    .promo-code-chip.copied { background: #2e7d32; }
+    .promo-auto-chip {
+        display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+        background: rgba(255,255,255,.6); color: #555; border-radius: 12px;
+        padding: 8px 13px; font-size: 12px; font-weight: 600;
+    }
+
     /* --- THE PASTEL GRADIENT BACKGROUNDS --- */
     .p-birthday { background: linear-gradient(135deg, #fff0f5, #ffd6d9); }
     .p-bundle { background: linear-gradient(135deg, #f3edff, #e1d5f4); }
@@ -520,55 +579,60 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
 <div class="container">
     <h2 class="section-header" style="font-size: 32px;">Special Promotions</h2>
     <div class="promo-grid">
-        
-        <!-- 1. Birthday Special -->
+        <?php if (!empty($home_promos)):
+            $__pastels = ['p-birthday', 'p-bundle', 'p-shipping', 'p-seasonal'];
+            foreach ($home_promos as $__i => $__pp):
+                $__c = home_promo_card($__pp);
+        ?>
+        <div class="promo-card <?php echo $__pastels[$__i % 4]; ?>">
+            <div class="promo-text">
+                <div class="promo-title"><?php echo htmlspecialchars($__c['headline']); ?></div>
+                <?php if ($__c['cond']): ?><div class="promo-desc"><?php echo htmlspecialchars($__c['cond']); ?></div><?php endif; ?>
+                <?php if ($__c['code']): ?>
+                    <button type="button" class="promo-code-chip" onclick="copyPromoCode(this, '<?php echo htmlspecialchars($__c['code'], ENT_QUOTES); ?>')">
+                        <i class="fas fa-tag"></i> <span class="pcc-code"><?php echo htmlspecialchars($__c['code']); ?></span>
+                        <span class="pcc-hint">Tap to copy</span>
+                    </button>
+                <?php else: ?>
+                    <div class="promo-auto-chip"><i class="fas fa-bolt"></i> Applied automatically at checkout</div>
+                <?php endif; ?>
+            </div>
+            <div class="promo-image">
+                <i class="fas <?php echo $__c['icon']; ?>" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i>
+            </div>
+        </div>
+        <?php endforeach; else: ?>
+
         <div class="promo-card p-birthday">
             <div class="promo-text">
                 <div class="promo-title">Birthday<br>Special</div>
                 <div class="promo-desc">Get 15% OFF on selected Birthday Boxes and celebration gifts.</div>
             </div>
-            <div class="promo-image">
-                <!-- <img src="birthday-icon.png" alt="Birthday"> -->
-                <i class="fas fa-birthday-cake" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i>
-            </div>
+            <div class="promo-image"><i class="fas fa-birthday-cake" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i></div>
         </div>
-
-        <!-- 2. Bundle & Save -->
         <div class="promo-card p-bundle">
             <div class="promo-text">
                 <div class="promo-title">Bundle &<br>Save</div>
                 <div class="promo-desc">Buy any Giftly Bundle and save up to 20%</div>
             </div>
-            <div class="promo-image">
-                <!-- <img src="bundle-icon.png" alt="Bundle"> -->
-                <i class="fas fa-gifts" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i>
-            </div>
+            <div class="promo-image"><i class="fas fa-gifts" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i></div>
         </div>
-
-        <!-- 3. Free Shipping -->
         <div class="promo-card p-shipping">
             <div class="promo-text">
                 <div class="promo-title">Free<br>Shipping</div>
-                <div class="promo-desc">Enjoy FREE delivery on orders over P1,500.</div>
+                <div class="promo-desc">Enjoy FREE delivery on orders over PHP 300.</div>
             </div>
-            <div class="promo-image">
-                <!-- <img src="shipping-icon.png" alt="Shipping"> -->
-                <i class="fas fa-truck" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i>
-            </div>
+            <div class="promo-image"><i class="fas fa-truck" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i></div>
         </div>
-
-        <!-- 4. Seasonal Collection -->
         <div class="promo-card p-seasonal">
             <div class="promo-text">
                 <div class="promo-title">Seasonal<br>Collection</div>
                 <div class="promo-desc">Shop exclusive limited-edition gift boxes for holidays</div>
             </div>
-            <div class="promo-image">
-                <!-- <img src="seasonal-icon.png" alt="Seasonal"> -->
-                <i class="fas fa-leaf" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i>
-            </div>
+            <div class="promo-image"><i class="fas fa-leaf" style="font-size: 60px; color: rgba(0,0,0,0.1);"></i></div>
         </div>
 
+        <?php endif; ?>
     </div>
 </div>
 
@@ -650,5 +714,27 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         alert('Please log in to add items to your cart! 🎁');
         // Open the login modal
         openLoginModal();
+    }
+
+    function copyPromoCode(btn, code) {
+        var done = function () {
+            var hint = btn.querySelector('.pcc-hint');
+            btn.classList.add('copied');
+            if (hint) hint.textContent = 'Copied!';
+            setTimeout(function () {
+                btn.classList.remove('copied');
+                if (hint) hint.textContent = 'Tap to copy';
+            }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(done).catch(done);
+        } else {
+            try {
+                var t = document.createElement('textarea');
+                t.value = code; document.body.appendChild(t); t.select();
+                document.execCommand('copy'); document.body.removeChild(t);
+            } catch (e) {}
+            done();
+        }
     }
 </script>
