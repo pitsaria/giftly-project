@@ -16,6 +16,13 @@ if (!function_exists('mail_send')) {
     function mail_api_key()   { return trim((string) getenv('BREVO_API_KEY')); }
     function mail_configured() { return mail_api_key() !== ''; }
 
+    /** Last failure reason from mail_send() / send_order_email(), for diagnostics. */
+    function mail_last_error($set = null) {
+        static $e = '';
+        if ($set !== null) $e = (string) $set;
+        return $e;
+    }
+
     /** Parse MAIL_FROM ("Name <email>" or "email") into ['name'=>, 'email'=>]. */
     function mail_sender() {
         $raw = getenv('MAIL_FROM') ?: 'Giftly <no-reply@giftly.example>';
@@ -74,8 +81,10 @@ if (!function_exists('mail_send')) {
             }
         }
 
-        if ($code >= 200 && $code < 300) return true;
-        error_log('Brevo email failed (' . $code . '): ' . ($errs ?: '') . ' ' . (string) $resp);
+        if ($code >= 200 && $code < 300) { mail_last_error(''); return true; }
+        $why = 'Brevo HTTP ' . $code . ' ' . ($errs ?: '') . ' ' . (string) $resp;
+        mail_last_error($why);
+        error_log('Brevo email failed: ' . $why);
         return false;
     }
 
@@ -86,14 +95,15 @@ if (!function_exists('mail_send')) {
      * No-op (returns false) when email isn't configured.
      */
     function send_order_email($conn, $order_id, $paid = false) {
-        if (!mail_configured()) return false;
+        if (!mail_configured()) { mail_last_error('BREVO_API_KEY not set'); return false; }
         $order_id = (int) $order_id;
 
         $o = $conn->query("SELECT o.*, u.email AS to_email, u.name AS to_name
                            FROM orders o JOIN users u ON u.id = o.user_id
                            WHERE o.id = $order_id");
         $order = $o ? $o->fetch_assoc() : null;
-        if (!$order || empty($order['to_email'])) return false;
+        if (!$order) { mail_last_error("order #$order_id not found"); error_log("send_order_email: $order_id not found"); return false; }
+        if (empty($order['to_email'])) { mail_last_error("no email on the customer's account"); error_log("send_order_email: order #$order_id customer has no email"); return false; }
 
         $rows = '';
         $its = $conn->query("SELECT oi.quantity, oi.price, p.name
