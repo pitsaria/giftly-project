@@ -56,8 +56,8 @@
     ></app-ph-phone-input>
 
     <div class="toggle-row">
-      <button [class.active]="deliveryType === 'me'" (click)="deliveryType = 'me'">For Me</button>
-      <button [class.active]="deliveryType === 'recipient'" (click)="deliveryType = 'recipient'">For Someone Else</button>
+      <button [class.active]="deliveryType === 'me'" (click)="setDeliveryType('me')">For Me</button>
+      <button [class.active]="deliveryType === 'recipient'" (click)="setDeliveryType('recipient')">For Someone Else</button>
     </div>
 
     <ng-container *ngIf="deliveryType === 'recipient'">
@@ -77,7 +77,12 @@
 
     <h2 class="section-title"><ion-icon name="card-outline"></ion-icon> Payment Method</h2>
     <div class="payment-row">
-      <button [class.active]="paymentMethod === 'cod'" (click)="paymentMethod = 'cod'">
+      <button
+        [class.active]="paymentMethod === 'cod'"
+        [class.disabled]="deliveryType === 'recipient'"
+        [disabled]="deliveryType === 'recipient'"
+        (click)="paymentMethod = 'cod'"
+      >
         <ion-icon name="cash-outline"></ion-icon> Cash on Delivery
       </button>
       <button
@@ -95,6 +100,10 @@
         <ion-icon name="card-outline"></ion-icon> Card
       </button>
     </div>
+    <p class="recipient-note" *ngIf="deliveryType === 'recipient'">
+      <ion-icon name="lock-closed-outline"></ion-icon>
+      Gifts sent straight to a recipient must be paid online.
+    </p>
 
     <p class="online-note" *ngIf="paymentMethod === 'online'">
       <ion-icon name="lock-closed-outline"></ion-icon>
@@ -148,8 +157,14 @@
       <div class="box-item" *ngFor="let it of b.items">
         <img [src]="it.image | imgUrl" [alt]="it.name" />
         <div class="bi-text">
-          <span class="bi-name">{{ it.name }}</span>
-          <span class="bi-meta">x{{ it.quantity }} · ₱{{ it.price | number: '1.2-2' }}</span>
+          <span class="bi-name">
+            {{ it.name }}
+            <span class="bi-sale-badge" *ngIf="it.on_sale">SALE</span>
+          </span>
+          <span class="bi-meta">
+            x{{ it.quantity }} · ₱{{ it.price | number: '1.2-2' }}
+            <span class="bi-was" *ngIf="it.on_sale">₱{{ it.list_price | number: '1.2-2' }}</span>
+          </span>
         </div>
         <span class="bi-sub">₱{{ it.price * it.quantity | number: '1.2-2' }}</span>
       </div>

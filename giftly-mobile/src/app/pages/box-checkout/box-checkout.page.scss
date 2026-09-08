@@ -86,6 +86,27 @@
       background: #fff0f5;
       color: #d32f2f;
     }
+
+    &.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  }
+}
+
+.recipient-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a5710d;
+  background: #fff8e1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: -8px 0 16px;
+
+  ion-icon {
+    flex-shrink: 0;
   }
 }
 
@@ -148,11 +169,29 @@
         font-size: 13px;
         font-weight: 600;
         color: #333;
+
+        .bi-sale-badge {
+          display: inline-block;
+          font-size: 9px;
+          font-weight: 700;
+          color: #fff;
+          background: #e6398f;
+          border-radius: 8px;
+          padding: 1px 6px;
+          margin-left: 5px;
+          vertical-align: middle;
+        }
       }
 
       .bi-meta {
         font-size: 12px;
         color: #999;
+
+        .bi-was {
+          text-decoration: line-through;
+          color: #bbb;
+          margin-left: 3px;
+        }
       }
     }
 

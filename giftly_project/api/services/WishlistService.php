@@ -4,12 +4,14 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../catalog_lib.php';
 
 class WishlistService {
     private $conn;
 
     public function __construct($conn) {
         $this->conn = $conn;
+        catalog_ensure_schema($conn);
     }
 
     // GET wishlist
@@ -34,6 +36,9 @@ class WishlistService {
             $inactive = array_key_exists('is_active', $row)
                 && in_array($row['is_active'], [false, 'f', '0', 0], true);
             $row['unavailable'] = $inactive;
+            $row['on_sale'] = catalog_on_sale($row);
+            $row['list_price'] = $row['price'];
+            $row['price'] = (string) catalog_effective_price($row);
             if (!$inactive && $row['quantity'] > 0) {
                 $in_stock[] = $row;
             } else {

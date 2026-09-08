@@ -89,7 +89,10 @@
 
         <div class="prod-grid" *ngIf="products().length">
           <div class="prod-card" *ngFor="let p of products()">
-            <img [src]="p.image | imgUrl" [alt]="p.name" (click)="openProduct(p)" />
+            <div class="image-wrap" (click)="openProduct(p)">
+              <img [src]="p.image | imgUrl" [alt]="p.name" />
+              <div class="sale-ribbon" *ngIf="p.on_sale">SALE</div>
+            </div>
             <div class="p-name" (click)="openProduct(p)">{{ p.name }}</div>
             <div class="p-rating">
               <ng-container *ngIf="p.rating_count; else noRev">
@@ -98,7 +101,10 @@
               </ng-container>
               <ng-template #noRev><span class="p-rating-empty">No reviews yet</span></ng-template>
             </div>
-            <div class="p-price">₱{{ p.price | number: '1.2-2' }}</div>
+            <div class="p-price" [class.on-sale]="p.on_sale">
+              <span class="p-now">₱{{ p.price | number: '1.2-2' }}</span>
+              <span class="p-was" *ngIf="p.on_sale">₱{{ p.list_price | number: '1.2-2' }}</span>
+            </div>
 
             <div class="p-stepper" *ngIf="qtyInBox(p.id) > 0; else addBtn">
               <button (click)="dec(p.id)"><ion-icon name="remove-outline"></ion-icon></button>

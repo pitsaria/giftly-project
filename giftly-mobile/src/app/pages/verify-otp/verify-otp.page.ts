@@ -53,7 +53,12 @@ export class VerifyOtpPage implements OnInit {
     this.emailMasked = this.route.snapshot.queryParamMap.get('email') ?? '';
     if (!this.otpRef) {
       this.router.navigateByUrl('/login');
+      return;
     }
+    // The first code was already sent by login() — start the same countdown
+    // the website shows immediately, not just after a manual resend.
+    const initialCooldown = Number(this.route.snapshot.queryParamMap.get('cooldown') ?? 60);
+    this.startCooldown(initialCooldown);
   }
 
   async verify(): Promise<void> {
@@ -76,16 +81,16 @@ export class VerifyOtpPage implements OnInit {
   async resend(): Promise<void> {
     if (this.cooldown() > 0) return;
     try {
-      await this.auth.resendOtp(this.otpRef);
+      const { cooldown } = await this.auth.resendOtp(this.otpRef);
       await this.toast('A new code is on its way.');
-      this.startCooldown();
+      this.startCooldown(cooldown);
     } catch (err: any) {
       await this.toast(err?.error?.error ?? "Couldn't send a new code. Try again shortly.");
     }
   }
 
-  private startCooldown(): void {
-    this.cooldown.set(30);
+  private startCooldown(seconds: number): void {
+    this.cooldown.set(seconds);
     clearInterval(this.cooldownTimer);
     this.cooldownTimer = setInterval(() => {
       this.cooldown.update((n) => n - 1);

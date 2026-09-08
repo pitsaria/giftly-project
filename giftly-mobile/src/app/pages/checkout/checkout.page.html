@@ -51,8 +51,8 @@
   ></app-ph-phone-input>
 
   <div class="toggle-row">
-    <button [class.active]="deliveryType === 'me'" (click)="deliveryType = 'me'">For Me</button>
-    <button [class.active]="deliveryType === 'recipient'" (click)="deliveryType = 'recipient'">For Someone Else</button>
+    <button [class.active]="deliveryType === 'me'" (click)="setDeliveryType('me')">For Me</button>
+    <button [class.active]="deliveryType === 'recipient'" (click)="setDeliveryType('recipient')">For Someone Else</button>
   </div>
 
   <ng-container *ngIf="deliveryType === 'recipient'">
@@ -75,7 +75,12 @@
 
   <h2 class="section-title"><ion-icon name="card-outline"></ion-icon> Payment Method</h2>
   <div class="payment-row">
-    <button [class.active]="paymentMethod === 'cod'" (click)="paymentMethod = 'cod'">
+    <button
+      [class.active]="paymentMethod === 'cod'"
+      [class.disabled]="deliveryType === 'recipient'"
+      [disabled]="deliveryType === 'recipient'"
+      (click)="paymentMethod = 'cod'"
+    >
       <ion-icon name="cash-outline"></ion-icon> Cash on Delivery
     </button>
     <button
@@ -93,6 +98,10 @@
       <ion-icon name="card-outline"></ion-icon> Card
     </button>
   </div>
+  <p class="recipient-note" *ngIf="deliveryType === 'recipient'">
+    <ion-icon name="lock-closed-outline"></ion-icon>
+    Gifts sent straight to a recipient must be paid online.
+  </p>
 
   <p class="online-note" *ngIf="paymentMethod === 'online'">
     <ion-icon name="lock-closed-outline"></ion-icon>

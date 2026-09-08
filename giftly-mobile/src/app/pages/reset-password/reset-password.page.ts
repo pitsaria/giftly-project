@@ -17,9 +17,11 @@ import {
 import { AuthService } from '../../core/auth.service';
 import { PasswordStrengthInputComponent } from '../../shared/password-strength-input/password-strength-input.component';
 
-// Mirrors giftly_project/modal_reset_password.php + reset_password_ajax.php.
-// The token normally arrives pre-filled from Forgot Password's response, but
-// stays editable in case it needs to be pasted in manually.
+type Step = 'code' | 'password';
+
+// Steps 2+3 of the website's rebuilt forgot-password flow
+// (forgot_password_verify_ajax.php + reset_password_ajax.php / pwd_otp_lib.php):
+// verify the emailed 6-digit code, then choose a new password.
 @Component({
   selector: 'app-reset-password',
   templateUrl: 'reset-password.page.html',
@@ -46,28 +48,71 @@ export class ResetPasswordPage implements OnInit {
   private route = inject(ActivatedRoute);
   private toastCtrl = inject(ToastController);
 
-  token = '';
+  readonly step = signal<Step>('code');
+
+  resetRef = '';
+  emailMasked = '';
+  code = '';
   password = '';
   passwordValid = false;
   confirmPassword = '';
-  // Signal, not a plain field: mutating a plain field inside an async/await
-  // continuation isn't guaranteed to schedule a re-render — a signal write
-  // always does (see the fix applied across Cart/Profile/Checkout/Login).
   readonly submitting = signal(false);
+  readonly cooldown = signal(0);
+  private cooldownTimer: ReturnType<typeof setInterval> | undefined;
 
   get confirmMismatch(): boolean {
     return this.confirmPassword.length > 0 && this.confirmPassword !== this.password;
   }
 
   ngOnInit(): void {
-    this.token = this.route.snapshot.queryParamMap.get('token') ?? '';
+    this.resetRef = this.route.snapshot.queryParamMap.get('ref') ?? '';
+    this.emailMasked = this.route.snapshot.queryParamMap.get('email') ?? '';
+    if (!this.resetRef) {
+      this.router.navigateByUrl('/forgot-password');
+      return;
+    }
+    const initialCooldown = Number(this.route.snapshot.queryParamMap.get('cooldown') ?? 60);
+    this.startCooldown(initialCooldown);
+  }
+
+  async verifyCode(): Promise<void> {
+    const code = this.code.replace(/\D/g, '');
+    if (code.length !== 6) {
+      await this.toast('Enter the 6-digit code.');
+      return;
+    }
+    this.submitting.set(true);
+    try {
+      await this.auth.verifyResetCode(this.resetRef, code);
+      this.step.set('password');
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? 'That code is incorrect.');
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  async resend(): Promise<void> {
+    if (this.cooldown() > 0) return;
+    try {
+      const { cooldown } = await this.auth.resendResetCode(this.resetRef);
+      await this.toast('A new code is on its way.');
+      this.startCooldown(cooldown);
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? "Couldn't send a new code. Try again shortly.");
+    }
+  }
+
+  private startCooldown(seconds: number): void {
+    this.cooldown.set(seconds);
+    clearInterval(this.cooldownTimer);
+    this.cooldownTimer = setInterval(() => {
+      this.cooldown.update((n) => n - 1);
+      if (this.cooldown() <= 0) clearInterval(this.cooldownTimer);
+    }, 1000);
   }
 
   async submit(): Promise<void> {
-    if (!this.token.trim()) {
-      await this.toast('Please enter your reset code.');
-      return;
-    }
     if (!this.passwordValid) {
       await this.toast('Password must be at least 8 characters and include a letter, a number, and a special character.');
       return;
@@ -79,7 +124,7 @@ export class ResetPasswordPage implements OnInit {
 
     this.submitting.set(true);
     try {
-      await this.auth.resetPassword(this.token.trim(), this.password);
+      await this.auth.resetPassword(this.resetRef, this.password, this.confirmPassword);
       await this.toast('Password reset successfully! Please log in.');
       this.router.navigateByUrl('/login');
     } catch (err: any) {

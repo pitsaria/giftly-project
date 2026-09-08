@@ -72,6 +72,16 @@ switch($path) {
         }
         break;
 
+    case 'auth/verify-reset-code':
+        require_once 'services/AuthService.php';
+        $auth = new AuthService($conn);
+        if ($method == 'POST') {
+            $auth->verifyResetCode($input);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     case 'auth/google':
         require_once 'services/AuthService.php';
         $auth = new AuthService($conn);
@@ -424,6 +434,16 @@ case 'cart/verify-stock':
             $profileSvc->getProfile($headers);
         } elseif ($method == 'PUT') {
             $profileSvc->updateProfile($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'profile/send-pwd-code':
+        require_once 'services/ProfileService.php';
+        $profileSvc = new ProfileService($conn);
+        if ($method == 'POST') {
+            $profileSvc->sendPwdCode($headers);
         } else {
             sendError('Method not allowed', 405);
         }

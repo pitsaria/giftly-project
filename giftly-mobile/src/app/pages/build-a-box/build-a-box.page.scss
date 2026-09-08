@@ -180,12 +180,28 @@
   padding: 10px;
   text-align: center;
 
-  img {
-    width: 100%;
-    height: 92px;
-    object-fit: contain;
-    margin-bottom: 6px;
+  .image-wrap {
+    position: relative;
     cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 92px;
+      object-fit: contain;
+      margin-bottom: 6px;
+    }
+
+    .sale-ribbon {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      background: #e6398f;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
   }
 
   .p-name {
@@ -227,6 +243,21 @@
     font-weight: 700;
     color: #222;
     margin-bottom: 6px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 5px;
+
+    &.on-sale .p-now {
+      color: #e6398f;
+    }
+
+    .p-was {
+      font-weight: 500;
+      font-size: 10px;
+      color: #aaa;
+      text-decoration: line-through;
+    }
   }
 }
 

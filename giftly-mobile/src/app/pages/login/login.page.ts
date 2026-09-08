@@ -61,7 +61,7 @@ export class LoginPage {
       const result = await this.auth.login(this.email, this.password);
       if (isOtpChallenge(result)) {
         this.router.navigate(['/verify-otp'], {
-          queryParams: { ref: result.otpRef, email: result.emailMasked },
+          queryParams: { ref: result.otpRef, email: result.emailMasked, cooldown: result.cooldown },
         });
         return;
       }

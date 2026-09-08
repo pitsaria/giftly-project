@@ -12,6 +12,7 @@ export interface OtpChallenge {
   otpRequired: true;
   otpRef: string;
   emailMasked: string;
+  cooldown: number;
 }
 export type LoginResult = { user: User } | OtpChallenge;
 
@@ -62,6 +63,7 @@ export class AuthService {
         otp_required?: boolean;
         otp_ref?: string;
         email_masked?: string;
+        cooldown?: number;
       }>('auth/login', { email, password })
     );
     if (res.data.otp_required) {
@@ -69,6 +71,7 @@ export class AuthService {
         otpRequired: true,
         otpRef: res.data.otp_ref ?? '',
         emailMasked: res.data.email_masked ?? email,
+        cooldown: res.data.cooldown ?? 60,
       };
     }
     await this.setSession(res.data.token!, res.data.user!);
@@ -83,8 +86,11 @@ export class AuthService {
     return { user: res.data.user };
   }
 
-  async resendOtp(otpRef: string): Promise<void> {
-    await firstValueFrom(this.api.post('auth/resend-otp', { otp_ref: otpRef }));
+  async resendOtp(otpRef: string): Promise<{ cooldown: number }> {
+    const res = await firstValueFrom(
+      this.api.post<{ cooldown?: number }>('auth/resend-otp', { otp_ref: otpRef })
+    );
+    return { cooldown: res.data.cooldown ?? 60 };
   }
 
   async register(name: string, email: string, phone: string, password: string, confirmPassword: string): Promise<void> {
@@ -99,18 +105,36 @@ export class AuthService {
     );
   }
 
-  // Returns a reset token the caller carries straight into resetPassword() —
-  // there's no outbound email configured on the backend (mirrors the
-  // website's own forgot_password_ajax.php, which just prints the link
-  // instead of emailing it), so the app hands the token to the next screen
-  // itself rather than pretending an email was sent.
-  async forgotPassword(email: string): Promise<string> {
-    const res = await firstValueFrom(this.api.post<{ token: string }>('auth/forgot-password', { email }));
-    return res.data.token;
+  // Step 1 of the email → code → new-password flow (pwd_otp_lib.php). The
+  // reset is tracked by a stateless `reset_ref` since the app has no session.
+  async forgotPassword(email: string): Promise<{ resetRef: string; emailMasked: string; cooldown: number }> {
+    const res = await firstValueFrom(
+      this.api.post<{ reset_ref: string; email_masked: string; cooldown: number }>('auth/forgot-password', { email })
+    );
+    return {
+      resetRef: res.data.reset_ref,
+      emailMasked: res.data.email_masked,
+      cooldown: res.data.cooldown ?? 60,
+    };
   }
 
-  async resetPassword(token: string, password: string): Promise<void> {
-    await firstValueFrom(this.api.post('auth/reset-password', { token, password }));
+  // Step 2 — verify the emailed code.
+  async verifyResetCode(resetRef: string, code: string): Promise<void> {
+    await firstValueFrom(this.api.post('auth/verify-reset-code', { reset_ref: resetRef, code }));
+  }
+
+  async resendResetCode(resetRef: string): Promise<{ cooldown: number }> {
+    const res = await firstValueFrom(
+      this.api.post<{ cooldown?: number }>('auth/verify-reset-code', { reset_ref: resetRef, resend: true })
+    );
+    return { cooldown: res.data.cooldown ?? 60 };
+  }
+
+  // Step 3 — set the new password (requires a code already verified in step 2).
+  async resetPassword(resetRef: string, password: string, confirmPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.api.post('auth/reset-password', { reset_ref: resetRef, password, confirm_password: confirmPassword })
+    );
   }
 
   // The server's Google Web client ID, or '' when Google sign-in is disabled.

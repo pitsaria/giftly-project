@@ -220,6 +220,15 @@ export class CheckoutPage implements OnInit {
     if (line) this.city = line;
   }
 
+  // Gifts sent straight to a recipient must be paid online — mirrors
+  // checkout_selected.php's server-side + client-side block on COD.
+  setDeliveryType(type: 'me' | 'recipient'): void {
+    this.deliveryType = type;
+    if (type === 'recipient') {
+      this.paymentMethod = this.onlineEnabled() ? 'online' : 'card';
+    }
+  }
+
   total(): number {
     return this.cartItems().reduce((sum, i) => sum + i.subtotal, 0);
   }

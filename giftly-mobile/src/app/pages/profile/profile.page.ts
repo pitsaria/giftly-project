@@ -124,6 +124,10 @@ export class ProfilePage implements OnInit {
 
   currentPassword = '';
   newPassword = '';
+  pwdCode = '';
+  readonly pwdCooldown = signal(0);
+  readonly sendingPwdCode = signal(false);
+  private pwdCooldownTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor() {
     addIcons({
@@ -232,9 +236,36 @@ export class ProfilePage implements OnInit {
     }
   }
 
+  async sendPwdCode(): Promise<void> {
+    if (this.pwdCooldown() > 0 || this.sendingPwdCode()) return;
+    this.sendingPwdCode.set(true);
+    try {
+      const { cooldown } = await this.profileSvc.sendPasswordCode();
+      await this.toast('We emailed a 6-digit code to confirm your password change.');
+      this.startPwdCooldown(cooldown);
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.sendingPwdCode.set(false);
+    }
+  }
+
+  private startPwdCooldown(seconds: number): void {
+    this.pwdCooldown.set(seconds);
+    clearInterval(this.pwdCooldownTimer);
+    this.pwdCooldownTimer = setInterval(() => {
+      this.pwdCooldown.update((n) => n - 1);
+      if (this.pwdCooldown() <= 0) clearInterval(this.pwdCooldownTimer);
+    }, 1000);
+  }
+
   async saveProfile(): Promise<void> {
     const profile = this.profile();
     if (!profile) return;
+    if (this.newPassword && !this.pwdCode.trim()) {
+      await this.toast('Enter the code we emailed you to confirm your password change.');
+      return;
+    }
     this.saving.set(true);
     try {
       await this.profileSvc.updateProfile({
@@ -244,9 +275,11 @@ export class ProfilePage implements OnInit {
         phone: profile.phone,
         current_password: this.currentPassword || undefined,
         new_password: this.newPassword || undefined,
+        pwd_code: this.newPassword ? this.pwdCode.trim() : undefined,
       });
       this.currentPassword = '';
       this.newPassword = '';
+      this.pwdCode = '';
       await this.toast('Profile updated successfully!');
     } catch (err) {
       await this.toast(describeError(err));

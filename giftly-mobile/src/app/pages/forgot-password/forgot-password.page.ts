@@ -17,11 +17,9 @@ import { AuthService } from '../../core/auth.service';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Mirrors giftly_project/modal_forgot_password.php + forgot_password_ajax.php.
-// The backend has no outbound email configured (the website itself just
-// prints the reset link instead of emailing it), so this hands the reset
-// token straight to the Reset Password screen rather than pretending an
-// email was sent.
+// Step 1 of the website's rebuilt forgot-password flow: email -> 6-digit
+// code -> new password (modal_forgot_password.php + forgot_password_ajax.php
+// / pwd_otp_lib.php). Steps 2+3 live on the Reset Password screen.
 @Component({
   selector: 'app-forgot-password',
   templateUrl: 'forgot-password.page.html',
@@ -63,10 +61,12 @@ export class ForgotPasswordPage {
 
     this.submitting.set(true);
     try {
-      const token = await this.auth.forgotPassword(this.email);
-      this.router.navigate(['/reset-password'], { queryParams: { token } });
+      const { resetRef, emailMasked, cooldown } = await this.auth.forgotPassword(this.email);
+      this.router.navigate(['/reset-password'], {
+        queryParams: { ref: resetRef, email: emailMasked, cooldown },
+      });
     } catch (err: any) {
-      const message = err?.error?.error ?? 'Could not generate a reset code. Please try again.';
+      const message = err?.error?.error ?? "Couldn't send the code right now. Please try again.";
       await this.toast(message);
     } finally {
       this.submitting.set(false);

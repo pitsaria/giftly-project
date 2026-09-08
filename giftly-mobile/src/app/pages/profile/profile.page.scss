@@ -120,6 +120,28 @@ h3 {
   margin: 20px 0 10px;
 }
 
+.pwd-code-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  .pwd-code-input {
+    flex: 1;
+  }
+}
+
+.google-account-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #888;
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 16px;
+}
+
 .stats-row {
   display: flex;
   gap: 12px;
@@ -406,11 +428,27 @@ h3 {
   padding: 12px;
   text-align: center;
 
-  img {
-    width: 100%;
-    height: 90px;
-    object-fit: contain;
-    margin-bottom: 6px;
+  .w-image-wrap {
+    position: relative;
+
+    img {
+      width: 100%;
+      height: 90px;
+      object-fit: contain;
+      margin-bottom: 6px;
+    }
+
+    .sale-ribbon {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      background: #e6398f;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
   }
 
   .w-name {
@@ -425,6 +463,21 @@ h3 {
     font-weight: 700;
     color: var(--ion-color-primary);
     margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 5px;
+
+    &.on-sale .w-now {
+      color: #e6398f;
+    }
+
+    .w-was {
+      font-weight: 500;
+      font-size: 10px;
+      color: #aaa;
+      text-decoration: line-through;
+    }
   }
 
   .w-actions {

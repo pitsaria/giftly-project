@@ -5,6 +5,7 @@ require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../auth_lib.php';
 require_once __DIR__ . '/../../mail_lib.php';
+require_once __DIR__ . '/../../pwd_otp_lib.php';
 
 class AuthService {
     private $conn;
@@ -44,6 +45,7 @@ class AuthService {
                     'otp_required' => true,
                     'otp_ref'      => $otp_ref,
                     'email_masked' => otp_mask_email($user['email']),
+                    'cooldown'     => otp_resend_cooldown(),
                 ], 'Enter the code we emailed you.');
             }
             // Couldn't send the code — log in directly rather than locking them out.
@@ -107,10 +109,11 @@ class AuthService {
         if (!$row) {
             sendError('Your sign-in session expired. Please log in again.');
         }
-        if (time() - strtotime($row['created_at']) < 30) {
-            sendError('Please wait a few seconds before requesting another code.');
-        }
         $uid = (int) $row['user_id'];
+        $wait = otp_seconds_until_resend($this->conn, $uid);
+        if ($wait > 0) {
+            sendError("Please wait {$wait}s before requesting another code.");
+        }
         $ur = $this->conn->query("SELECT * FROM users WHERE id = $uid");
         $user = ($ur && $ur->num_rows) ? $ur->fetch_assoc() : null;
         if (!$user) {
@@ -118,7 +121,7 @@ class AuthService {
         }
         [, $sent] = $this->startOtp($user, $ref);
         if ($sent) {
-            sendSuccess(['otp_ref' => $ref], 'A new code is on its way.');
+            sendSuccess(['otp_ref' => $ref, 'cooldown' => otp_resend_cooldown()], 'A new code is on its way.');
         }
         sendError("Couldn't send the code right now. Try again shortly.");
     }
@@ -232,57 +235,140 @@ class AuthService {
         sendSuccess(null, 'Logged out successfully');
     }
 
-    // 📧 FORGOT PASSWORD — mirrors forgot_password_ajax.php's token generation,
-    // adapted for the API: returns the token directly instead of an emailed
-    // link, since this project has no outbound mail configured either way.
+    // 📧 FORGOT PASSWORD — step 1 of the website's rebuilt email → code → new
+    // password flow (pwd_otp_lib.php). Mobile has no session, so the in-flight
+    // reset is tracked by a stateless `reset_ref` (same pattern as login_otps'
+    // otp_ref) instead of $_SESSION['pwd_reset_uid'].
     public function forgotPassword($input) {
-        $email = $input['email'] ?? '';
+        pwd_otp_ensure_schema($this->conn);
+        $this->ensureResetRef();
 
-        if (empty($email)) {
+        $email = trim($input['email'] ?? '');
+        if ($email === '') {
             sendError('Please enter your email address.');
         }
 
-        $emailEsc = mysqli_real_escape_string($this->conn, $email);
-        $check = $this->conn->query("SELECT id FROM users WHERE email = '$emailEsc'");
+        $emailEsc = $this->conn->real_escape_string($email);
+        $check = $this->conn->query("SELECT id, email, google_id FROM users WHERE email = '$emailEsc'");
         if (!$check || $check->num_rows == 0) {
             sendError('Email address not found in our system.', 404);
         }
+        $user = $check->fetch_assoc();
 
-        $token = bin2hex(random_bytes(50));
-        // Unlike the website's copy of this flow, token_expiry is actually
-        // enforced below in resetPassword() — so this is a real, short-lived
-        // window rather than dead configuration.
-        $expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
-        $this->conn->query("UPDATE users SET reset_token = '$token', token_expiry = '$expiry' WHERE email = '$emailEsc'");
+        // Google-only accounts have a random password hash they never set —
+        // steer them to "Sign in with Google" instead.
+        if (!empty($user['google_id'])) {
+            sendError('This account uses "Sign in with Google". Use that button to sign in.');
+        }
 
-        sendSuccess(['token' => $token], 'Reset code generated. Use it to set a new password within the next hour.');
+        [$ref, $sent, $err] = $this->sendResetCode($this->conn, (int) $user['id'], $user['email']);
+        if (!$sent) {
+            sendError($err ?: "Couldn't send the code right now. Try again shortly.");
+        }
+
+        sendSuccess([
+            'reset_ref'    => $ref,
+            'email_masked' => otp_mask_email($user['email']),
+            'cooldown'     => pwd_otp_cooldown(),
+        ], 'We emailed a 6-digit code to ' . $user['email'] . '.');
     }
 
-    // 🔑 RESET PASSWORD — mirrors reset_password_ajax.php, with the added
-    // token_expiry check that script never actually performed.
+    // POST auth/verify-reset-code  { reset_ref, code } or { reset_ref, resend: true }
+    public function verifyResetCode($input) {
+        pwd_otp_ensure_schema($this->conn);
+        $this->ensureResetRef();
+
+        $ref = trim($input['reset_ref'] ?? '');
+        if ($ref === '') {
+            sendError('Your reset session expired. Please request a new code.');
+        }
+        $uid = $this->uidByResetRef($ref, 'reset');
+        if ($uid <= 0) {
+            sendError('Your reset session expired. Please request a new code.');
+        }
+
+        if (!empty($input['resend'])) {
+            $wait = pwd_otp_seconds_until_resend($this->conn, $uid, 'reset');
+            if ($wait > 0) {
+                sendError("Please wait {$wait}s before requesting a new code.");
+            }
+            $ur = $this->conn->query("SELECT email FROM users WHERE id = $uid");
+            $email = ($ur && $ur->num_rows) ? ($ur->fetch_assoc()['email'] ?? '') : '';
+            [, $sent, $err] = $this->sendResetCode($this->conn, $uid, $email, $ref);
+            if (!$sent) {
+                sendError($err ?: "Couldn't send the code right now.");
+            }
+            sendSuccess(['cooldown' => pwd_otp_cooldown()], 'A new code is on its way.');
+        }
+
+        [$ok, $err] = pwd_otp_verify($this->conn, $uid, $input['code'] ?? '', 'reset');
+        if (!$ok) {
+            sendError($err);
+        }
+        sendSuccess(null, 'Code verified. Choose a new password.');
+    }
+
+    // 🔑 RESET PASSWORD — step 3, requires a code already verified in step 2.
     public function resetPassword($input) {
-        $token = $input['token'] ?? '';
-        $password = $input['password'] ?? '';
+        pwd_otp_ensure_schema($this->conn);
+        $this->ensureResetRef();
 
-        if (empty($token) || empty($password)) {
-            sendError('Please fill in all fields.');
+        $ref      = trim($input['reset_ref'] ?? '');
+        $password = (string) ($input['password'] ?? '');
+        $confirm  = (string) ($input['confirm_password'] ?? $password);
+
+        $uid = $ref !== '' ? $this->uidByResetRef($ref, 'reset') : 0;
+        if ($uid <= 0 || !pwd_otp_is_verified($this->conn, $uid, 'reset')) {
+            sendError('Please verify the emailed code first.');
+        }
+        if ($password !== $confirm) {
+            sendError('The two passwords do not match.');
+        }
+        [$strong, $serr] = pwd_strength_check($password);
+        if (!$strong) {
+            sendError($serr);
         }
 
-        $tokenEsc = mysqli_real_escape_string($this->conn, $token);
-        $check = $this->conn->query("SELECT id, token_expiry FROM users WHERE reset_token = '$tokenEsc'");
-        if (!$check || $check->num_rows == 0) {
-            sendError('Invalid or expired reset code. Please request a new one.', 400);
+        $hashed = $this->conn->real_escape_string(password_hash($password, PASSWORD_DEFAULT));
+        $this->conn->query("UPDATE users SET password = '$hashed' WHERE id = $uid");
+        pwd_otp_clear($this->conn, $uid, 'reset');
+
+        sendSuccess(null, 'Password updated. You can now sign in.');
+    }
+
+    // Send/resend a password-reset code, keeping `reset_ref` pointed at
+    // whichever password_otps row is currently active (a fresh insert, or the
+    // still-in-cooldown row reused by pwd_otp_send). Returns [ref, sent, err].
+    private function sendResetCode($conn, $uid, $email, $ref = '') {
+        if ($ref === '') {
+            $ref = bin2hex(random_bytes(16));
         }
-
-        $row = $check->fetch_assoc();
-        if (empty($row['token_expiry']) || strtotime($row['token_expiry']) < time()) {
-            sendError('Invalid or expired reset code. Please request a new one.', 400);
+        [$sent, $err] = pwd_otp_send($conn, $uid, $email, 'reset');
+        if ($sent) {
+            $refEsc = $conn->real_escape_string($ref);
+            $conn->query("UPDATE password_otps SET reset_ref = '$refEsc' WHERE user_id = " . (int) $uid . " AND purpose = 'reset'");
         }
+        return [$ref, $sent, $err];
+    }
 
-        $hashed = password_hash($password, PASSWORD_DEFAULT);
-        $this->conn->query("UPDATE users SET password = '$hashed', reset_token = NULL, token_expiry = NULL WHERE reset_token = '$tokenEsc'");
+    private function uidByResetRef($ref, $purpose) {
+        $refEsc = $this->conn->real_escape_string($ref);
+        $pEsc   = $this->conn->real_escape_string($purpose);
+        $r = $this->conn->query("SELECT user_id FROM password_otps WHERE reset_ref = '$refEsc' AND purpose = '$pEsc' ORDER BY id DESC LIMIT 1");
+        return ($r && $r->num_rows) ? (int) $r->fetch_assoc()['user_id'] : 0;
+    }
 
-        sendSuccess(null, 'Password reset successfully! You can now log in.');
+    // password_otps predates reset_ref on stores set up before the mobile
+    // password-reset flow existed.
+    private function ensureResetRef() {
+        static $ok = false;
+        if ($ok) return;
+        $ok = true;
+        $c = $this->conn->query("SELECT 1 FROM information_schema.columns
+                                 WHERE table_name = 'password_otps' AND column_name = 'reset_ref'");
+        if (!$c || $c->num_rows === 0) {
+            $this->conn->query("ALTER TABLE password_otps ADD COLUMN IF NOT EXISTS reset_ref VARCHAR(64)");
+        }
     }
 
     // GET auth/google — the configured Web client ID (empty when the feature

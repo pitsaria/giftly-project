@@ -64,9 +64,39 @@
       <ion-input type="email" label="Email" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.email" class="field"></ion-input>
       <ion-input type="tel" label="Phone" labelPlacement="stacked" fill="outline" [(ngModel)]="profile()!.phone" class="field"></ion-input>
 
-      <h3>Change Password (optional)</h3>
-      <ion-input type="password" label="Current Password" labelPlacement="stacked" fill="outline" [(ngModel)]="currentPassword" class="field"></ion-input>
-      <ion-input type="password" label="New Password" labelPlacement="stacked" fill="outline" [(ngModel)]="newPassword" class="field"></ion-input>
+      <ng-container *ngIf="!profile()!.google_linked; else googleAccountNote">
+        <h3>Change Password (optional)</h3>
+        <ion-input type="password" label="Current Password" labelPlacement="stacked" fill="outline" [(ngModel)]="currentPassword" class="field"></ion-input>
+        <ion-input type="password" label="New Password" labelPlacement="stacked" fill="outline" [(ngModel)]="newPassword" class="field"></ion-input>
+
+        <div class="pwd-code-row" *ngIf="newPassword">
+          <ion-input
+            type="tel"
+            inputmode="numeric"
+            maxlength="6"
+            label="Emailed Code"
+            labelPlacement="stacked"
+            fill="outline"
+            placeholder="123456"
+            [(ngModel)]="pwdCode"
+            class="field pwd-code-input"
+          ></ion-input>
+          <ion-button
+            fill="outline"
+            size="small"
+            [disabled]="pwdCooldown() > 0 || sendingPwdCode()"
+            (click)="sendPwdCode()"
+          >
+            {{ pwdCooldown() > 0 ? pwdCooldown() + 's' : 'Send code' }}
+          </ion-button>
+        </div>
+      </ng-container>
+      <ng-template #googleAccountNote>
+        <p class="google-account-note">
+          <ion-icon name="lock-closed-outline"></ion-icon>
+          This account signs in with Google and has no password to change.
+        </p>
+      </ng-template>
 
       <ion-button expand="block" class="giftly-btn-primary" [disabled]="saving()" (click)="saveProfile()">
         {{ saving() ? 'Saving...' : 'Save Changes' }}
@@ -152,9 +182,15 @@
     <div class="tab-panel" *ngIf="tab() === 'wishlist' && wishlist() && !loading() && !error()">
       <div class="wishlist-grid">
         <div class="wishlist-item" *ngFor="let p of [...wishlist()!.in_stock, ...wishlist()!.out_of_stock]">
-          <img [src]="p.image | imgUrl" [alt]="p.name" />
+          <div class="w-image-wrap">
+            <img [src]="p.image | imgUrl" [alt]="p.name" />
+            <div class="sale-ribbon" *ngIf="p.on_sale">SALE</div>
+          </div>
           <div class="w-name">{{ p.name }}</div>
-          <div class="w-price">₱{{ p.price }}</div>
+          <div class="w-price" [class.on-sale]="p.on_sale">
+            <span class="w-now">₱{{ p.price }}</span>
+            <span class="w-was" *ngIf="p.on_sale">₱{{ p.list_price }}</span>
+          </div>
           <div class="w-flag" *ngIf="p.unavailable">No longer available</div>
           <div class="w-actions">
             <button (click)="toggleWishlist(p.id)"><ion-icon name="heart"></ion-icon></button>

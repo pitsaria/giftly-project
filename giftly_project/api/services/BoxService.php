@@ -76,7 +76,8 @@ class BoxService {
         $total = $count_res ? intval($count_res->fetch_assoc()['total']) : 0;
 
         $res = $this->conn->query("
-            SELECT p.id, p.name, p.description, p.price, p.image, p.quantity, p.category_id
+            SELECT p.id, p.name, p.description, p.price AS list_price,
+                   " . catalog_price_sql('p.') . " AS price, p.image, p.quantity, p.category_id
             FROM products p
             JOIN product_box_sizes pbs ON pbs.product_id = p.id
             WHERE $where
@@ -87,11 +88,15 @@ class BoxService {
         $products = [];
         while ($res && $row = $res->fetch_assoc()) {
             $rv = reviews_summary($this->conn, intval($row['id']));
+            $eff = floatval($row['price']);
+            $lst = floatval($row['list_price']);
             $products[] = [
                 'id'           => intval($row['id']),
                 'name'         => $row['name'],
                 'description'  => $row['description'],
-                'price'        => floatval($row['price']),
+                'price'        => $eff,
+                'list_price'   => $lst,
+                'on_sale'      => $eff < $lst,
                 'image'        => $row['image'],
                 'quantity'     => intval($row['quantity']),
                 'category_id'  => intval($row['category_id']),
@@ -344,6 +349,11 @@ class BoxService {
                 $card_holder = $this->conn->real_escape_string(mb_substr($card_holder_raw, 0, 120));
             }
 
+            // Gifts sent straight to a recipient must be paid online — no COD.
+            if ($delivery_type === 'recipient' && $payment === 'cod') {
+                throw new Exception("Cash on Delivery isn't available for gifts sent straight to a recipient. Please choose an online payment.");
+            }
+
             // The box letter (with its card style) becomes the order's gift message.
             $letter_txt = trim($box['letter'] ?? '');
             $styles = bab_card_styles();
@@ -466,6 +476,8 @@ class BoxService {
                 'product_id'  => intval($it['product_id']),
                 'name'        => $it['name'],
                 'price'       => floatval($it['price']),
+                'list_price'  => floatval($it['list_price'] ?? $it['price']),
+                'on_sale'     => (bool) ($it['on_sale'] ?? false),
                 'image'       => $it['image'],
                 'quantity'    => intval($it['quantity']),
                 'stock'       => intval($it['stock']),

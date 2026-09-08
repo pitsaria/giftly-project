@@ -4,12 +4,14 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../pwd_otp_lib.php';
 
 class ProfileService {
     private $conn;
 
     public function __construct($conn) {
         $this->conn = $conn;
+        pwd_otp_ensure_schema($conn);
     }
 
     // GET profile
@@ -21,7 +23,7 @@ class ProfileService {
         }
 
         $user = $this->conn->query(
-            "SELECT name, email, phone, profile_pic FROM users WHERE id = $user_id"
+            "SELECT name, email, phone, profile_pic, google_id FROM users WHERE id = $user_id"
         )->fetch_assoc();
 
         $nameParts = explode(' ', $user['name'], 2);
@@ -38,8 +40,37 @@ class ProfileService {
             'phone' => $user['phone'],
             'profile_pic' => $user['profile_pic'],
             'order_count' => intval($orderCount),
-            'address_count' => intval($addressCount)
+            'address_count' => intval($addressCount),
+            // Google-linked accounts have a random password they never set —
+            // mobile hides the change-password section for these entirely.
+            'google_linked' => !empty($user['google_id']),
         ]);
+    }
+
+    // POST profile/send-pwd-code — email a 6-digit code to confirm a password
+    // change (mirrors profile_send_pwd_code.php).
+    public function sendPwdCode($headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+            return;
+        }
+
+        $u = $this->conn->query("SELECT email, google_id FROM users WHERE id = $user_id")->fetch_assoc();
+        if (!empty($u['google_id'])) {
+            sendError('This account signs in with Google and has no password to change.');
+        }
+
+        $wait = pwd_otp_seconds_until_resend($this->conn, $user_id, 'change');
+        if ($wait > 0) {
+            sendError("Please wait {$wait}s before requesting another code.");
+        }
+
+        [$sent, $err] = pwd_otp_send($this->conn, $user_id, $u['email'], 'change');
+        if (!$sent) {
+            sendError($err ?: "Couldn't send the code right now.");
+        }
+        sendSuccess(['cooldown' => pwd_otp_cooldown()], 'We emailed a 6-digit code to ' . $u['email'] . '.');
     }
 
     // PUT profile { firstname, lastname, email, phone, current_password?, new_password? }
@@ -50,7 +81,7 @@ class ProfileService {
             return;
         }
 
-        $user = $this->conn->query("SELECT name, email, phone, password FROM users WHERE id = $user_id")->fetch_assoc();
+        $user = $this->conn->query("SELECT name, email, phone, password, google_id FROM users WHERE id = $user_id")->fetch_assoc();
         $nameParts = explode(' ', $user['name'], 2);
 
         $firstname = !empty($input['firstname']) ? $this->conn->real_escape_string($input['firstname']) : $nameParts[0];
@@ -61,15 +92,30 @@ class ProfileService {
 
         $new_pass = $input['new_password'] ?? '';
         if (!empty($new_pass)) {
+            if (!empty($user['google_id'])) {
+                sendError('This account signs in with Google and has no password to change.');
+                return;
+            }
             $current_pass = $input['current_password'] ?? '';
             if (!password_verify($current_pass, $user['password'])) {
                 sendError('Current password is incorrect');
+                return;
+            }
+            [$strong, $strong_err] = pwd_strength_check($new_pass);
+            if (!$strong) {
+                sendError($strong_err);
+                return;
+            }
+            [$code_ok, $code_err] = pwd_otp_verify($this->conn, $user_id, $input['pwd_code'] ?? '', 'change');
+            if (!$code_ok) {
+                sendError($code_err ?: 'Enter the code we emailed you.');
                 return;
             }
             $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
             $this->conn->query(
                 "UPDATE users SET name = '$fullname', email = '$email', phone = '$phone', password = '$hashed' WHERE id = $user_id"
             );
+            pwd_otp_clear($this->conn, $user_id, 'change');
         } else {
             $this->conn->query(
                 "UPDATE users SET name = '$fullname', email = '$email', phone = '$phone' WHERE id = $user_id"

@@ -113,6 +113,11 @@ class OrderService {
             $card_holder = $this->conn->real_escape_string(mb_substr($card_holder_raw, 0, 120));
         }
 
+        // Gifts sent straight to a recipient must be paid online — no COD.
+        if (trim((string) $recipient_name) !== '' && $payment_method === 'cod') {
+            sendError("Cash on Delivery isn't available for gifts sent straight to a recipient. Please choose an online payment.");
+        }
+
         // --- promos / discounts (re-evaluated server-side from the real cart) ---
         $item_count = array_sum(array_column($items, 'quantity'));
         $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;

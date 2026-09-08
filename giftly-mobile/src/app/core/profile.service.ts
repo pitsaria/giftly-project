@@ -10,6 +10,8 @@ export interface ProfileUpdate {
   phone?: string;
   current_password?: string;
   new_password?: string;
+  // Required alongside new_password — the emailed 6-digit confirmation code.
+  pwd_code?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +25,11 @@ export class ProfileService {
 
   async updateProfile(update: ProfileUpdate): Promise<void> {
     await firstValueFrom(this.api.put('profile', update));
+  }
+
+  async sendPasswordCode(): Promise<{ cooldown: number }> {
+    const res = await firstValueFrom(this.api.post<{ cooldown?: number }>('profile/send-pwd-code', {}));
+    return { cooldown: res.data.cooldown ?? 60 };
   }
 
   async uploadPicture(file: File): Promise<string> {

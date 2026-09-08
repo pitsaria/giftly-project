@@ -140,6 +140,8 @@ export interface Profile {
   profile_pic: string | null;
   order_count: number;
   address_count: number;
+  // Google-linked accounts have no password to change — hides that section.
+  google_linked: boolean;
 }
 
 // === Build-a-Box ===
@@ -164,6 +166,8 @@ export interface BoxProduct {
   name: string;
   description: string;
   price: number;
+  list_price: number;
+  on_sale: boolean;
   image: string;
   quantity: number;
   category_id: number;
@@ -175,6 +179,8 @@ export interface BoxLineItem {
   product_id: number;
   name: string;
   price: number;
+  list_price: number;
+  on_sale: boolean;
   image: string;
   quantity: number;
   stock: number;
