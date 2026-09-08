@@ -1,17 +1,45 @@
-.greeting {
-  font-size: 20px;
-  font-weight: 700;
-  color: #222;
-  padding: 14px 20px 4px;
+// The page rides on the hero's warm tint so the strip behind the
+// transparent top bar and status bar reads as one panel with the hero.
+ion-content {
+  --background: #ffe7e3;
+}
+
+// Full-bleed hero: kill Ionic's header offset so the hero can start at the
+// very top, under the overlaid bar and status bar.
+ion-content::part(scroll) {
+  padding-top: 0;
+}
+
+.hero-wrap {
+  position: relative;
+  background: #ffe7e3;
+  overflow: hidden;
+
+  // Dissolve the warm hero into the page. The fade lands on the SAME pale
+  // warm tone the page body starts with (--giftly-hero-fade), and the body
+  // then eases that tone to neutral over a long distance — so hero and body
+  // are one continuous surface with no visible band or edge.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 72px;
+    background: linear-gradient(to bottom, rgba(253, 239, 233, 0) 0%, var(--giftly-hero-fade) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
+:host {
+  --giftly-hero-fade: #fdefe9;
 }
 
 .hero-scroller {
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  gap: 14px;
-  margin-top: 10px;
-  padding: 6px 20px 10px;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -23,61 +51,58 @@
   position: relative;
   flex: 0 0 100%;
   scroll-snap-align: start;
-  min-height: 190px;
-  padding: 22px 20px;
-  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  // top pad clears the status bar + the overlaid top bar
+  padding: calc(var(--ion-safe-area-top, 0px) + 70px) 22px 46px;
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.09);
   cursor: pointer;
 
   .hero-glow {
     position: absolute;
-    right: -34px;
-    bottom: -34px;
-    width: 190px;
-    height: 190px;
+    right: -70px;
+    top: 24px;
+    width: 240px;
+    height: 240px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 68%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%);
     pointer-events: none;
   }
 
   .hero-image {
-    position: absolute;
-    right: -6px;
-    bottom: -4px;
-    width: 47%;
-    max-width: 176px;
+    display: block;
+    width: 82%;
+    max-width: 292px;
+    margin: 2px auto 8px;
     object-fit: contain;
-    object-position: bottom right;
-    filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.14));
+    filter: drop-shadow(0 16px 22px rgba(180, 90, 110, 0.2));
     animation: heroFloat 4.5s ease-in-out infinite;
   }
 
   .hero-text {
     position: relative;
     z-index: 1;
-    width: 60%;
   }
 
   .hero-kicker {
     display: inline-block;
     font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1.4px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--ion-color-primary);
-    background: rgba(255, 255, 255, 0.7);
-    padding: 3px 9px;
+    background: rgba(255, 255, 255, 0.72);
+    padding: 4px 11px;
     border-radius: 50px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   h1 {
-    font-size: 20px;
+    font-size: 25px;
     font-weight: 700;
-    line-height: 1.28;
-    color: #1f1f1f;
-    margin: 0 0 7px;
+    line-height: 1.24;
+    color: #2b2024;
+    margin: 0 0 8px;
 
     span {
       color: var(--ion-color-primary);
@@ -85,23 +110,31 @@
   }
 
   p {
-    font-size: 12px;
-    color: #5a5a5a;
-    line-height: 1.5;
-    margin: 0 0 14px;
+    font-size: 12.5px;
+    color: #6f5c60;
+    line-height: 1.55;
+    margin: 0 0 16px;
+  }
+
+  .hero-cta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .hero-cta {
+    flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: 12.5px;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 600;
     color: #fff;
     background: var(--giftly-gradient);
-    padding: 9px 16px;
+    padding: 11px 20px;
     border-radius: 50px;
-    box-shadow: 0 6px 14px rgba(254, 165, 182, 0.4);
+    box-shadow: 0 10px 20px rgba(254, 165, 182, 0.42);
 
     ion-icon {
       font-size: 13px;
@@ -119,24 +152,34 @@
   }
 }
 
-.hero-dots {
+.hero-dashes {
+  flex-shrink: 0;
   display: flex;
-  justify-content: center;
   gap: 6px;
-  padding: 12px 0 4px;
+  pointer-events: none;
 
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #e6d9dc;
+  .dash {
+    width: 9px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 111, 145, 0.3);
     transition: all 0.2s ease;
 
     &.active {
-      width: 16px;
+      width: 24px;
       background: var(--ion-color-primary);
     }
   }
+}
+
+.home-body {
+  position: relative;
+  margin-top: -1px;
+  // Continues the hero's warm tone and eases it to the app background over
+  // the first stretch of the page, so there's no seam where the hero ends.
+  background: linear-gradient(to bottom, var(--giftly-hero-fade) 0, var(--ion-background-color) 320px);
+  min-height: 60vh;
+  padding-bottom: 6px;
 }
 
 .resume-card {
@@ -229,11 +272,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     box-shadow: var(--giftly-shadow-1);
+
+    &.has-image {
+      background: #fff;
+    }
 
     ion-icon {
       font-size: 24px;
       color: rgba(0, 0, 0, 0.55);
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
   }
 
@@ -262,7 +316,7 @@
 
 .section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   padding: 0 20px 12px;
 
@@ -273,10 +327,26 @@
     margin: 0;
   }
 
-  a {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ion-color-primary);
+  .see-all-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--giftly-shadow-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--giftly-press-transition);
+
+    &:active {
+      transform: scale(0.9);
+    }
+
+    ion-icon {
+      font-size: 16px;
+      color: var(--ion-color-primary);
+    }
   }
 }
 

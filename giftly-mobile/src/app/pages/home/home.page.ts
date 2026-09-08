@@ -105,10 +105,21 @@ export class HomePage implements OnInit {
   readonly loadingCategories = signal(true);
   readonly categorySkeletonRows = Array.from({ length: 4 });
 
+  // category id -> a product image from that category, used as the tile
+  // thumbnail. Loaded after the categories themselves so the tiles show
+  // immediately and gain their picture a moment later; missing entries fall
+  // back to the pastel icon tile.
+  readonly categoryImages = signal<Record<number, string>>({});
+
   readonly recentOrder = signal<Order | null>(null);
   readonly loadingRecentOrder = signal(false);
 
   readonly activeSlide = signal(0);
+
+  // True while the page is still at the top and the hero sits under the bar —
+  // drives the top bar's transparent overlay. Flips off after a small scroll
+  // so the bar solidifies over the rest of the page.
+  readonly heroAtTop = signal(true);
 
   // Mirrors the 3 hero slides in index.php's carousel.
   readonly slides: HeroSlide[] = [
@@ -209,6 +220,10 @@ export class HomePage implements OnInit {
     this.activeSlide.set(Math.round(el.scrollLeft / el.clientWidth));
   }
 
+  onContentScroll(ev: CustomEvent<{ scrollTop: number }>): void {
+    this.heroAtTop.set((ev.detail?.scrollTop ?? 0) < 40);
+  }
+
   categoryTileClass(index: number): string {
     return CATEGORY_TILE_CLASSES[index % CATEGORY_TILE_CLASSES.length];
   }
@@ -253,9 +268,29 @@ export class HomePage implements OnInit {
     this.loadingCategories.set(true);
     try {
       this.categories.set(await this.productSvc.getCategories());
+      void this.loadCategoryImages();
     } finally {
       this.loadingCategories.set(false);
     }
+  }
+
+  // One products fetch, then keep the first image seen per category. Cheaper
+  // than a request per tile and covers every category in a typical catalog.
+  private async loadCategoryImages(): Promise<void> {
+    try {
+      const { products } = await this.productSvc.getAll({ page: 1, limit: 100 });
+      const map: Record<number, string> = {};
+      for (const p of products) {
+        if (p.image && !(p.category_id in map)) map[p.category_id] = p.image;
+      }
+      this.categoryImages.set(map);
+    } catch {
+      // Non-critical — tiles keep the pastel icon fallback.
+    }
+  }
+
+  categoryImage(categoryId: number): string {
+    return this.categoryImages()[categoryId] ?? '';
   }
 
   async loadRecentOrder(): Promise<void> {

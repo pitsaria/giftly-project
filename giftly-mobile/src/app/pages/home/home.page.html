@@ -1,37 +1,40 @@
-<app-top-bar></app-top-bar>
+<app-top-bar [transparent]="heroAtTop()"></app-top-bar>
 
-<ion-content [fullscreen]="true">
+<ion-content [fullscreen]="true" [scrollEvents]="true" (ionScroll)="onContentScroll($any($event))">
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="greeting">Hello, {{ auth.user()?.name || 'there' }}!</div>
-
-  <div class="hero-scroller" (scroll)="onHeroScroll($event)">
-    <div
-      class="hero-slide"
-      *ngFor="let slide of slides"
-      [style.background]="slide.gradient"
-      [routerLink]="slide.link"
-      [queryParams]="slide.linkParams || null"
-    >
-      <div class="hero-glow"></div>
-      <img [src]="slide.image" [alt]="slide.lead" class="hero-image" />
-      <div class="hero-text">
-        <span class="hero-kicker">{{ slide.kicker }}</span>
-        <h1>{{ slide.lead }} <span>{{ slide.highlight }}</span> {{ slide.trail }}</h1>
-        <p>{{ slide.subtitle }}</p>
-        <span class="hero-cta">
-          {{ slide.ctaLabel }}
-          <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
-        </span>
+  <div class="hero-wrap">
+    <div class="hero-scroller" (scroll)="onHeroScroll($event)">
+      <div
+        class="hero-slide"
+        *ngFor="let slide of slides"
+        [style.background]="slide.gradient"
+        [routerLink]="slide.link"
+        [queryParams]="slide.linkParams || null"
+      >
+        <div class="hero-glow"></div>
+        <img [src]="slide.image" [alt]="slide.lead" class="hero-image" />
+        <div class="hero-text">
+          <span class="hero-kicker">{{ slide.kicker }}</span>
+          <h1>{{ slide.lead }} <span>{{ slide.highlight }}</span> {{ slide.trail }}</h1>
+          <p>{{ slide.subtitle }}</p>
+          <div class="hero-cta-row">
+            <span class="hero-cta">
+              {{ slide.ctaLabel }}
+              <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
+            </span>
+            <div class="hero-dashes">
+              <span class="dash" *ngFor="let s of slides; let i = index" [class.active]="activeSlide() === i"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="hero-dots">
-    <span class="dot" *ngFor="let slide of slides; let i = index" [class.active]="activeSlide() === i"></span>
-  </div>
+  <div class="home-body">
 
   <div class="resume-card" *ngIf="recentOrder() as order" (click)="trackRecentOrder()">
     <div class="resume-icon"><ion-icon name="gift-outline"></ion-icon></div>
@@ -45,7 +48,9 @@
   <div class="section-block">
     <div class="section-head">
       <h2>Shop by Category</h2>
-      <a routerLink="/tabs/shop">See all</a>
+      <a routerLink="/tabs/shop" class="see-all-btn" aria-label="See all categories">
+        <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
+      </a>
     </div>
 
     <div class="category-scroller" *ngIf="loadingCategories()">
@@ -57,8 +62,9 @@
 
     <div class="category-scroller" *ngIf="!loadingCategories()">
       <div class="category-tile" *ngFor="let cat of categories(); let i = index" (click)="goToShop(cat.id)">
-        <div class="category-icon" [ngClass]="categoryTileClass(i)">
-          <ion-icon name="pricetag-outline"></ion-icon>
+        <div class="category-icon" [ngClass]="categoryImage(cat.id) ? 'has-image' : categoryTileClass(i)">
+          <img *ngIf="categoryImage(cat.id) as img; else catIcon" [src]="img | imgUrl" [alt]="cat.name" />
+          <ng-template #catIcon><ion-icon name="pricetag-outline"></ion-icon></ng-template>
         </div>
         <span class="category-name">{{ cat.name }}</span>
       </div>
@@ -69,7 +75,9 @@
   <div class="section-block">
     <div class="section-head">
       <h2>Featured Products</h2>
-      <a (click)="goToShop()">See all</a>
+      <a (click)="goToShop()" class="see-all-btn" aria-label="See all products">
+        <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
+      </a>
     </div>
 
     <div class="featured-scroller" *ngIf="loadingFeatured()">
@@ -141,5 +149,7 @@
     <h2>Gifts for every moment</h2>
     <p>Plushies, keychains, phone charms, hair accessories, and chocolates — browse the full collection and find something meaningful.</p>
     <ion-button expand="block" class="giftly-btn-primary" (click)="goToShop()">Browse the Shop</ion-button>
+  </div>
+
   </div>
 </ion-content>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, effect, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Router } from '@angular/router';
@@ -24,6 +24,11 @@ export class TopBarComponent {
   // Pages other than Shop just want the icon to take them to Shop's search
   // box; the Shop page itself listens to reveal its inline searchbar instead.
   @Output() search = new EventEmitter<void>();
+
+  // Home sets this true while its full-bleed hero is under the bar, so the
+  // toolbar drops its background and hairline and floats over the artwork;
+  // Home flips it back to false once the page is scrolled past the hero.
+  @Input() transparent = false;
 
   // Bumps the cart badge whenever the count changes, instead of it just
   // silently updating — a small nudge that something was actually added.

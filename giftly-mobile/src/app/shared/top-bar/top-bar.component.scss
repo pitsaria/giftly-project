@@ -1,3 +1,59 @@
+.giftly-top-bar {
+  ion-toolbar {
+    --background: var(--ion-background-color);
+  }
+
+  // Overlay mode (Home's hero): let the warm hero show straight through the
+  // status bar and toolbar. A gentle top-down white scrim keeps the logo and
+  // icons legible over the artwork without a hard bar edge.
+  &.transparent {
+    box-shadow: none;
+
+    ion-toolbar {
+      --background: transparent;
+      --border-width: 0;
+      --box-shadow: none;
+    }
+
+    &::after {
+      display: none;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+      pointer-events: none;
+    }
+
+    // Icons float over the artwork as frosted white pills, matching the
+    // approved hero mockup.
+    .icon-btn {
+      --background: rgba(255, 255, 255, 0.72);
+      --background-hover: rgba(255, 255, 255, 0.82);
+      --background-activated: rgba(255, 255, 255, 0.92);
+      --background-focused: rgba(255, 255, 255, 0.88);
+      --border-radius: 50%;
+      --box-shadow: 0 2px 10px rgba(180, 110, 120, 0.16);
+      --color: #6f5560;
+      --padding-start: 0;
+      --padding-end: 0;
+      width: 38px;
+      height: 38px;
+
+      ion-icon {
+        font-size: 19px;
+      }
+    }
+
+    .cart-btn ion-badge {
+      top: -1px;
+      right: -1px;
+    }
+  }
+}
+
 .brand-link {
   display: flex;
   align-items: center;

@@ -35,6 +35,20 @@ ion-content {
   --background: var(--ion-background-color);
 }
 
+// This is a native app — never show a desktop-style scrollbar. Hides the
+// track on the scroll container Ionic renders inside every ion-content
+// (visible when the app runs in a browser preview / device emulator).
+ion-content::part(scroll) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+ion-content::part(scroll)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 // Darker placeholder / hint text than Ionic's default so it reads on the
 // off-white ground (mirrors the website's "readable placeholders" pass).
 ion-input,
