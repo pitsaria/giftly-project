@@ -56,6 +56,18 @@
     font-size: 14px;
     font-weight: 500;
     color: #222;
+
+    .free-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #2e7d32;
+      background: #e8f5e9;
+      border-radius: 8px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
   }
 
   .item-meta {
@@ -91,6 +103,21 @@
 
       strong {
         color: var(--ion-color-primary);
+      }
+    }
+
+    &.saved {
+      padding-top: 0;
+
+      strong {
+        font-size: 11px;
+        font-weight: 600;
+        color: #2e7d32;
+
+        ion-icon {
+          font-size: 11px;
+          vertical-align: -1px;
+        }
       }
     }
   }

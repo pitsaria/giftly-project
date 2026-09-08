@@ -13,6 +13,7 @@
       <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
     </button>
     <div class="out-of-stock-ribbon" *ngIf="!inStock()">Out of Stock</div>
+    <div class="sale-ribbon" *ngIf="product.on_sale">SALE</div>
   </div>
 
   <h1>{{ product.name }}</h1>
@@ -20,7 +21,10 @@
     <ion-icon name="star" *ngFor="let s of ratingStars()"></ion-icon>
     <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
   </div>
-  <div class="price">₱{{ product.price }}</div>
+  <div class="price" [class.on-sale]="product.on_sale">
+    <span class="now">₱{{ product.price }}</span>
+    <span class="was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
+  </div>
   <p class="description">{{ product.description }}</p>
 
   <div class="quantity-row" *ngIf="mode === 'cart' && inStock()">

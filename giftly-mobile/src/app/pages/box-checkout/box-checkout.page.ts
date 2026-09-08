@@ -18,12 +18,13 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline } from 'ionicons/icons';
-import { Address, Box } from '../../core/models';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline } from 'ionicons/icons';
+import { Address, Box, PromoEval } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { BoxService } from '../../core/box.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
+import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
@@ -62,6 +63,7 @@ export class BoxCheckoutPage implements OnInit {
   private boxSvc = inject(BoxService);
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
+  private promoSvc = inject(PromoService);
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -95,15 +97,24 @@ export class BoxCheckoutPage implements OnInit {
 
   readonly blocked = computed(() => (this.box()?.issues.length ?? 0) > 0);
   readonly shippingFee = computed(() => {
+    const ev = this.promoEval();
+    if (ev) return ev.shipping_fee;
     const sub = this.box()?.subtotal ?? 0;
     return sub > 0 && sub < 300 ? 50 : 0;
   });
-  readonly grandTotal = computed(
-    () => (this.box()?.subtotal ?? 0) + this.shippingFee() + (this.box()?.box_price ?? 0)
-  );
+  readonly grandTotal = computed(() => {
+    const ev = this.promoEval();
+    if (ev) return ev.total;
+    return (this.box()?.subtotal ?? 0) + this.shippingFee() + (this.box()?.box_price ?? 0);
+  });
+
+  // Promo code (mirrors box_checkout.php's promo box).
+  promoCodeInput = '';
+  readonly promoEval = signal<PromoEval | null>(null);
+  readonly applyingCode = signal(false);
 
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -127,11 +138,53 @@ export class BoxCheckoutPage implements OnInit {
         const def = addresses.find((a) => a.is_default) ?? addresses[0];
         this.selectAddress(def.id);
       }
+      await this.evaluatePromo('');
     } catch (err) {
       this.error.set(describeError(err));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async evaluatePromo(code: string): Promise<void> {
+    if (!this.boxId) {
+      this.promoEval.set(null);
+      return;
+    }
+    const result = await this.promoSvc.evaluate('box', { code, boxId: this.boxId });
+    this.promoEval.set(result);
+  }
+
+  async applyPromoCode(): Promise<void> {
+    const code = this.promoCodeInput.trim();
+    if (!code) return;
+    this.applyingCode.set(true);
+    try {
+      await this.evaluatePromo(code);
+      if (this.promoEval()?.code_error) {
+        await this.toast(this.promoEval()!.code_error);
+      }
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.applyingCode.set(false);
+    }
+  }
+
+  async removePromoCode(): Promise<void> {
+    this.promoCodeInput = '';
+    this.applyingCode.set(true);
+    try {
+      await this.evaluatePromo('');
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.applyingCode.set(false);
+    }
+  }
+
+  absAmount(n: number): number {
+    return Math.abs(n);
   }
 
   selectAddress(id: number): void {
@@ -220,6 +273,7 @@ export class BoxCheckoutPage implements OnInit {
         delivery_type: this.deliveryType,
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipient_phone: recipientPhone,
+        promo_code: this.promoEval()?.code || undefined,
         ...(this.paymentMethod === 'card'
           ? {
               card_number: this.cardNumber,
@@ -251,6 +305,9 @@ export class BoxCheckoutPage implements OnInit {
         city: this.city,
         recipientName: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipientPhone,
+        discountAmount: res.discount || undefined,
+        promoCode: res.promo_code || undefined,
+        freeItemName: res.free_item || undefined,
       });
       this.router.navigateByUrl('/order-confirmation');
     } catch (err) {

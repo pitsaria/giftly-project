@@ -15,6 +15,7 @@ export interface Product {
   id: number;
   name: string;
   description: string;
+  // Effective price — sale price when one is active, else the list price.
   price: string;
   image: string;
   quantity: number;
@@ -25,6 +26,10 @@ export interface Product {
   product_type?: 'catalog' | 'occasion_box' | 'basket';
   is_active?: boolean;
   unavailable?: boolean;
+  // Sale pricing (catalog_lib.php) — list_price is the pre-sale price, only
+  // meaningful for the strikethrough when on_sale is true.
+  on_sale?: boolean;
+  list_price?: string;
 }
 
 export type ProductType = 'catalog' | 'occasion_box' | 'basket';
@@ -48,6 +53,9 @@ export interface CartItem {
   // Product was deactivated by the shop while it sat in the cart.
   is_active?: boolean;
   unavailable?: boolean;
+  // Sale pricing — see Product.on_sale / Product.list_price.
+  on_sale?: boolean;
+  list_price?: string;
 }
 
 export interface Cart {
@@ -108,6 +116,10 @@ export interface Order {
   // Online (PayMongo) payments.
   payment_status?: 'unpaid' | 'paid' | 'failed';
   paid_at?: string | null;
+  // Promo engine (promo_lib.php) — set when a discount/free-item promo applied.
+  promo_code?: string | null;
+  discount_amount?: string;
+  free_item_product_id?: number | null;
 }
 
 export interface OrderItem {
@@ -203,4 +215,54 @@ export interface ReviewData {
   reviews: Review[];
   my_review: Review | null;
   can_review: boolean;
+}
+
+// === Promos ===
+// Mirrors promo_lib.php's promo_evaluate() output, surfaced by
+// api/services/PromoService.php (promo/evaluate + promos/active).
+
+export interface PromoLine {
+  label: string;
+  amount: number; // negative for a discount, 0 for a "Free: X" line
+}
+
+export interface PromoFreeItem {
+  promo_id: number;
+  code: string | null;
+  product_id: number;
+  name: string;
+  image: string;
+  value: number;
+}
+
+export interface PromoFreeItemNudge {
+  name: string;
+  more: number;
+}
+
+export interface PromoEval {
+  scope: 'products' | 'box';
+  item_count: number;
+  subtotal: number;
+  discount: number;
+  shipping_fee: number;
+  shipping_waived: boolean;
+  box_price: number;
+  total: number;
+  lines: PromoLine[];
+  code: string;
+  code_error: string;
+  code_min_spend: number;
+  code_max_discount: number;
+  code_terms: string;
+  free_item: PromoFreeItem | null;
+  free_item_nudge: PromoFreeItemNudge | null;
+}
+
+// The live "Special Promotions" cards on the home page.
+export interface HomePromo {
+  headline: string;
+  icon: string;
+  cond: string;
+  code: string;
 }

@@ -53,6 +53,10 @@ h1 {
       text-align: right;
     }
 
+    &.discount strong {
+      color: #2e7d32;
+    }
+
     &:last-child {
       border-bottom: none;
     }

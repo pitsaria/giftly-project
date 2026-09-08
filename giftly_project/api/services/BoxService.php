@@ -11,6 +11,8 @@ require_once __DIR__ . '/../../build_a_box_lib.php';
 require_once __DIR__ . '/../../catalog_lib.php';
 require_once __DIR__ . '/../../reviews_lib.php';
 require_once __DIR__ . '/../../paymongo_lib.php';
+require_once __DIR__ . '/../../orders_lib.php';
+require_once __DIR__ . '/../../promo_lib.php';
 
 class BoxService {
     private $conn;
@@ -21,6 +23,8 @@ class BoxService {
         catalog_ensure_schema($conn);
         reviews_ensure_schema($conn);
         pay_ensure_schema($conn);
+        orders_ensure_schema($conn);
+        promo_ensure_schema($conn);
     }
 
     private function getUserId($headers) {
@@ -288,7 +292,7 @@ class BoxService {
             $box = $bres->fetch_assoc();
             if ($box['status'] === 'ordered') throw new Exception('This box has already been ordered.');
 
-            $ires = $this->conn->query("SELECT bi.product_id, bi.quantity, p.name, p.price, p.quantity AS stock, p.is_active
+            $ires = $this->conn->query("SELECT bi.product_id, bi.quantity, p.name, " . catalog_price_sql('p.') . " AS price, p.quantity AS stock, p.is_active
                                         FROM box_items bi JOIN products p ON p.id = bi.product_id
                                         WHERE bi.box_id = $box_id FOR UPDATE");
             $items = [];
@@ -359,16 +363,34 @@ class BoxService {
             }
 
             $total_amount = 0;
-            foreach ($items as $it) $total_amount += $it['price'] * $it['quantity'];
-            $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
-            $grand_total  = $total_amount + $shipping_fee + floatval($box['box_price']);
+            $box_item_qty = 0;
+            foreach ($items as $it) {
+                $total_amount += $it['price'] * $it['quantity'];
+                $box_item_qty += (int) $it['quantity'];
+            }
+            $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
+
+            // --- promos / discounts (re-evaluated server-side) ---
+            $promo_code_input = isset($input['promo_code']) ? trim((string) $input['promo_code']) : null;
+            $promo_eval = promo_evaluate($this->conn, $user_id, [
+                'scope'        => 'box',
+                'subtotal'     => $total_amount,
+                'shipping_fee' => $base_shipping_fee,
+                'item_count'   => $box_item_qty,
+                'code'         => $promo_code_input,
+            ]);
+            $discount_amount = $promo_eval['discount'];
+            $grand_total = $promo_eval['final_total'] + floatval($box['box_price']);
+            $promo_code_sql = $promo_eval['code'] !== '' ? "'" . $this->conn->real_escape_string($promo_eval['code']) . "'" : 'NULL';
+            $promo_id_sql = $promo_eval['code_id'] !== null ? (int) $promo_eval['code_id'] : 'NULL';
 
             $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, sender_phone, address, city,
                         recipient_name, recipient_phone, gift_message, payment_method, delivery_date, delivery_time,
-                        card_last4, card_holder)
+                        card_last4, card_holder, promo_code, promo_id, discount_amount)
                     VALUES ($user_id, $grand_total, 'pending', '$fullname', '$sender_phone', '$address', '$city',
                         '$recipient', '$recipient_phone', '$gift_message', '$payment', '$delivery_date', '$delivery_time',
-                        " . ($card_last4 !== '' ? "'$card_last4'" : 'NULL') . ", " . ($card_holder !== '' ? "'$card_holder'" : 'NULL') . ")";
+                        " . ($card_last4 !== '' ? "'$card_last4'" : 'NULL') . ", " . ($card_holder !== '' ? "'$card_holder'" : 'NULL') . ",
+                        $promo_code_sql, $promo_id_sql, $discount_amount)";
             if (!$this->conn->query($sql)) throw new Exception('Failed to create order.');
             $order_id = intval($this->conn->insert_id);
             if ($order_id <= 0) {
@@ -380,6 +402,19 @@ class BoxService {
                 $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $pid, $q, $pr)");
                 $this->conn->query("UPDATE products SET quantity = quantity - $q WHERE id = $pid");
             }
+
+            // Free gift (buy N + 1 free) — only if the freebie is still in stock
+            $free_item_name = null;
+            if (!empty($promo_eval['free_item'])) {
+                $fip = (int) $promo_eval['free_item']['product_id'];
+                $this->conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = $fip AND quantity > 0");
+                if ($this->conn->affected_rows > 0) {
+                    $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $fip, 1, 0)");
+                    $this->conn->query("UPDATE orders SET free_item_product_id = $fip WHERE id = $order_id");
+                    $free_item_name = $promo_eval['free_item']['name'];
+                }
+            }
+            promo_record($this->conn, $promo_eval, $user_id, $order_id);
 
             $this->conn->query("UPDATE boxes SET status = 'ordered', updated_at = CURRENT_TIMESTAMP WHERE id = $box_id AND user_id = $user_id");
 
@@ -402,9 +437,12 @@ class BoxService {
             }
 
             sendSuccess([
-                'order_id'      => $order_id,
-                'grand_total'   => $grand_total,
-                'payment'       => $payment,
+                'order_id'        => $order_id,
+                'grand_total'     => $grand_total,
+                'discount'        => $discount_amount,
+                'promo_code'      => $promo_eval['code'],
+                'free_item'       => $free_item_name,
+                'payment'         => $payment,
                 'checkout_url'  => $checkout_url,
                 'pay_error'     => $pay_error,
                 'delivery_date' => $input['delivery_date'] ?? $delivery_date,

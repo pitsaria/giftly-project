@@ -22,10 +22,11 @@ import {
   star,
   arrowForward,
 } from 'ionicons/icons';
-import { Category, Order, Product } from '../../core/models';
+import { Category, HomePromo, Order, Product } from '../../core/models';
 import { ProductService } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService } from '../../core/order.service';
+import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { OrderDetailComponent } from '../../components/order-detail/order-detail.component';
@@ -57,12 +58,15 @@ interface HeroSlide {
   linkParams?: Record<string, string>;
 }
 
-interface PromoTile {
-  title: string;
-  highlight: string;
-  desc: string;
+interface PromoCardVm {
+  headline: string;
+  cond: string;
+  code: string;
   icon: string;
   className: string;
+  // False for the 4 static fallback tiles — no code chip / "applied
+  // automatically" chip shown for those, since they aren't real promos.
+  isLive: boolean;
 }
 
 @Component({
@@ -87,6 +91,7 @@ export class HomePage implements OnInit {
   private productSvc = inject(ProductService);
   private cart = inject(CartService);
   private orderSvc = inject(OrderService);
+  private promoSvc = inject(PromoService);
   private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
   auth = inject(AuthService);
@@ -141,38 +146,57 @@ export class HomePage implements OnInit {
     },
   ];
 
-  // Mirrors index.php's "Special Promotions" section (static promo copy,
-  // same as the website — not tied to any promotions backend).
-  readonly promos: PromoTile[] = [
+  // Mirrors index.php's "Special Promotions" section — live promos from the
+  // promo engine when any are active, else the same 4 static fallback cards
+  // the website shows when none are.
+  private readonly fallbackPromos: PromoCardVm[] = [
     {
-      title: 'Birthday',
-      highlight: 'Special',
-      desc: 'Get 15% OFF on selected Birthday Boxes and celebration gifts.',
+      headline: 'Birthday Special',
+      cond: 'Get 15% OFF on selected Birthday Boxes and celebration gifts.',
+      code: '',
       icon: 'gift-outline',
       className: 'p-birthday',
+      isLive: false,
     },
     {
-      title: 'Bundle and',
-      highlight: 'Save',
-      desc: 'Buy any Giftly Bundle and save up to 20%',
+      headline: 'Bundle and Save',
+      cond: 'Buy any Giftly Bundle and save up to 20%',
+      code: '',
       icon: 'cube-outline',
       className: 'p-bundle',
+      isLive: false,
     },
     {
-      title: 'Free',
-      highlight: 'Shipping',
-      desc: 'Enjoy FREE delivery on orders over ₱1,500.',
+      headline: 'Free Shipping',
+      cond: 'Enjoy FREE delivery on orders over ₱1,500.',
+      code: '',
       icon: 'car-outline',
       className: 'p-shipping',
+      isLive: false,
     },
     {
-      title: 'Seasonal',
-      highlight: 'Collection',
-      desc: 'Shop exclusive limited-edition gift boxes for holidays',
+      headline: 'Seasonal Collection',
+      cond: 'Shop exclusive limited-edition gift boxes for holidays',
+      code: '',
       icon: 'leaf-outline',
       className: 'p-seasonal',
+      isLive: false,
     },
   ];
+  private readonly livePromos = signal<HomePromo[]>([]);
+
+  promos(): PromoCardVm[] {
+    const live = this.livePromos();
+    if (!live.length) return this.fallbackPromos;
+    return live.map((p, i) => ({
+      headline: p.headline,
+      cond: p.cond,
+      code: p.code,
+      icon: p.icon,
+      className: CATEGORY_TILE_CLASSES[i % CATEGORY_TILE_CLASSES.length],
+      isLive: true,
+    }));
+  }
 
   constructor() {
     addIcons({ giftOutline, addCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
@@ -193,7 +217,25 @@ export class HomePage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.loadFeatured(), this.loadCategories(), this.loadRecentOrder()]);
+    await Promise.all([this.loadFeatured(), this.loadCategories(), this.loadRecentOrder(), this.loadPromos()]);
+  }
+
+  async loadPromos(): Promise<void> {
+    try {
+      this.livePromos.set(await this.promoSvc.activePromos());
+    } catch {
+      // Non-critical — falls back to the static tiles.
+      this.livePromos.set([]);
+    }
+  }
+
+  async copyPromoCode(code: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(code);
+      await this.toast(`Code ${code} copied!`);
+    } catch {
+      await this.toast(code);
+    }
   }
 
   async loadFeatured(): Promise<void> {
@@ -236,7 +278,7 @@ export class HomePage implements OnInit {
   }
 
   async handleRefresh(event: any): Promise<void> {
-    await Promise.all([this.loadFeatured(), this.loadCategories(), this.loadRecentOrder()]);
+    await Promise.all([this.loadFeatured(), this.loadCategories(), this.loadRecentOrder(), this.loadPromos()]);
     event.target.complete();
   }
 

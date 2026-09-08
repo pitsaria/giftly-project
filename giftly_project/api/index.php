@@ -209,6 +209,27 @@ case 'cart/verify-stock':
         }
         break;
 
+    // === PROMO SERVICE ===
+    case 'promo/evaluate':
+        require_once 'services/PromoService.php';
+        $promoSvc = new PromoService($conn);
+        if ($method == 'POST') {
+            $promoSvc->evaluate($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'promos/active':
+        require_once 'services/PromoService.php';
+        $promoSvc = new PromoService($conn);
+        if ($method == 'GET') {
+            $promoSvc->activePromos();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === ORDER SERVICE ===
     case 'orders':
         require_once 'services/OrderService.php';

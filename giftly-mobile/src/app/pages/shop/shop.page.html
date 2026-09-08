@@ -49,6 +49,7 @@
           <ion-icon [name]="isWishlisted(product) ? 'heart' : 'heart-outline'"></ion-icon>
         </button>
         <div class="out-of-stock-ribbon" *ngIf="product.quantity <= 0">Out of Stock</div>
+        <div class="sale-ribbon" *ngIf="product.on_sale">-{{ salePercent(product) }}%</div>
       </div>
       <div class="p-name">{{ product.name }}</div>
       <div class="p-rating">
@@ -58,7 +59,10 @@
         </ng-container>
         <ng-template #noReviews><span class="p-rating-empty">No reviews yet</span></ng-template>
       </div>
-      <div class="p-price">₱{{ product.price }}</div>
+      <div class="p-price" [class.on-sale]="product.on_sale">
+        <span class="p-now">₱{{ product.price }}</span>
+        <span class="p-was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
+      </div>
       <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
         <ion-icon name="add-circle"></ion-icon>
       </button>

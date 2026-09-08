@@ -183,6 +183,50 @@
   }
 }
 
+.promo-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  .promo-input {
+    flex: 1;
+  }
+}
+
+.promo-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff5f9;
+  border-radius: 12px;
+  padding: 10px 14px;
+
+  .promo-applied-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: #c72463;
+
+    ion-icon {
+      font-size: 16px;
+    }
+
+    .promo-terms {
+      font-size: 11px;
+      color: #999;
+      width: 100%;
+    }
+  }
+}
+
+.promo-error {
+  font-size: 12px;
+  color: #d32f2f;
+  margin: 6px 2px 0;
+}
+
 .summary {
   background: #fafafa;
   border-radius: 16px;
@@ -195,6 +239,10 @@
     font-size: 14px;
     color: #555;
     margin-bottom: 8px;
+
+    &.discount {
+      color: #2e7d32;
+    }
 
     &.total {
       font-size: 16px;

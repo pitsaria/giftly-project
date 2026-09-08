@@ -52,7 +52,10 @@
       <img [src]="item.image | imgUrl" [alt]="item.name" />
       <div class="item-info">
         <div class="item-name">{{ item.name }}</div>
-        <div class="item-price">₱{{ item.price }}</div>
+        <div class="item-price">
+          ₱{{ item.price }}
+          <span class="item-was" *ngIf="item.on_sale">₱{{ item.list_price }}</span>
+        </div>
         <div class="unavailable-flag" *ngIf="isUnavailable(item)">
           {{ item.unavailable || item.is_active === false ? 'No longer available' : 'Out of stock' }}
         </div>
@@ -72,6 +75,14 @@
 </ion-content>
 
 <ion-footer *ngIf="items().length">
+  <div class="free-gift-banner" *ngIf="freeItem() as fi">
+    <ion-icon name="gift-outline"></ion-icon>
+    <span>You've unlocked a <strong>FREE {{ fi.name }}</strong>! 🎁</span>
+  </div>
+  <div class="free-gift-banner nudge" *ngIf="!freeItem() && freeItemNudge() as nudge">
+    <ion-icon name="gift-outline"></ion-icon>
+    <span>Add {{ nudge.more }} more item{{ nudge.more === 1 ? '' : 's' }} for a free {{ nudge.name }}!</span>
+  </div>
   <div class="checkout-bar">
     <div class="total">
       <span>Total</span>

@@ -107,10 +107,20 @@
   <div class="section-block">
     <h2 class="promos-title">Special Promotions</h2>
     <div class="promo-grid">
-      <div class="promo-card" [ngClass]="promo.className" *ngFor="let promo of promos">
+      <div class="promo-card" [ngClass]="promo.className" *ngFor="let promo of promos()">
         <div class="promo-text">
-          <div class="promo-title">{{ promo.title }}<br />{{ promo.highlight }}</div>
-          <div class="promo-desc">{{ promo.desc }}</div>
+          <div class="promo-title">{{ promo.headline }}</div>
+          <div class="promo-desc">{{ promo.cond }}</div>
+          <ng-container *ngIf="promo.isLive">
+            <button
+              class="promo-code-chip"
+              *ngIf="promo.code"
+              (click)="copyPromoCode(promo.code)"
+            >
+              <ion-icon name="pricetag-outline"></ion-icon> {{ promo.code }}
+            </button>
+            <div class="promo-auto-chip" *ngIf="!promo.code">Applied automatically at checkout</div>
+          </ng-container>
         </div>
         <ion-icon [name]="promo.icon" class="promo-icon"></ion-icon>
       </div>

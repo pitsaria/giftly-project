@@ -5,6 +5,9 @@ require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../paymongo_lib.php';
 require_once __DIR__ . '/../../mail_lib.php';
+require_once __DIR__ . '/../../catalog_lib.php';
+require_once __DIR__ . '/../../orders_lib.php';
+require_once __DIR__ . '/../../promo_lib.php';
 
 class OrderService {
     private $conn;
@@ -12,6 +15,9 @@ class OrderService {
     public function __construct($conn) {
         $this->conn = $conn;
         pay_ensure_schema($conn);
+        catalog_ensure_schema($conn);
+        orders_ensure_schema($conn);
+        promo_ensure_schema($conn);
     }
 
     // 📋 GET ORDERS
@@ -55,7 +61,7 @@ class OrderService {
         }
         
         $ids_string = implode(',', array_map('intval', $selected_ids));
-        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, p.price, p.name, p.is_active
+        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, " . catalog_price_sql('p.') . " AS price, p.name, p.is_active
                                            FROM carts c
                                            JOIN products p ON c.product_id = p.id
                                            WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
@@ -107,9 +113,21 @@ class OrderService {
             $card_holder = $this->conn->real_escape_string(mb_substr($card_holder_raw, 0, 120));
         }
 
-        // Calculate shipping
-        $shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
-        $grand_total = $total_amount + $shipping_fee;
+        // --- promos / discounts (re-evaluated server-side from the real cart) ---
+        $item_count = array_sum(array_column($items, 'quantity'));
+        $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
+        $promo_code_input = isset($input['promo_code']) ? trim((string) $input['promo_code']) : null;
+        $promo_eval = promo_evaluate($this->conn, $user_id, [
+            'scope'        => 'products',
+            'subtotal'     => $total_amount,
+            'shipping_fee' => $base_shipping_fee,
+            'item_count'   => $item_count,
+            'code'         => $promo_code_input,
+        ]);
+        $discount_amount = $promo_eval['discount'];
+        $grand_total = $promo_eval['final_total'];
+        $promo_code_sql = $promo_eval['code'] !== '' ? "'" . $this->conn->real_escape_string($promo_eval['code']) . "'" : 'NULL';
+        $promo_id_sql = $promo_eval['code_id'] !== null ? (int) $promo_eval['code_id'] : 'NULL';
 
         $card_last4_sql = $card_last4 !== null ? "'" . $card_last4 . "'" : 'NULL';
         $card_holder_sql = $card_holder !== null ? "'" . $card_holder . "'" : 'NULL';
@@ -117,11 +135,13 @@ class OrderService {
         // Insert order
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city,
                                     payment_method, delivery_date, delivery_time, gift_message,
-                                    recipient_name, recipient_phone, sender_phone, card_last4, card_holder)
+                                    recipient_name, recipient_phone, sender_phone, card_last4, card_holder,
+                                    promo_code, promo_id, discount_amount)
                 VALUES ($user_id, $grand_total, 'pending', '$fullname', '$address', '$city',
                         '$payment_method', '$delivery_date', '$delivery_time', '$gift_message',
-                        '$recipient_name', '$recipient_phone', '$sender_phone', $card_last4_sql, $card_holder_sql)";
-        
+                        '$recipient_name', '$recipient_phone', '$sender_phone', $card_last4_sql, $card_holder_sql,
+                        $promo_code_sql, $promo_id_sql, $discount_amount)";
+
         if ($this->conn->query($sql)) {
             $order_id = (int) $this->conn->insert_id;
             if ($order_id <= 0) {
@@ -136,6 +156,20 @@ class OrderService {
                 // Update stock
                 $this->conn->query("UPDATE products SET quantity = quantity - {$item['quantity']} WHERE id = {$item['product_id']}");
             }
+
+            // Free gift (buy N + 1 free) — only if the freebie is still in stock
+            $free_item_name = null;
+            if (!empty($promo_eval['free_item'])) {
+                $fip = (int) $promo_eval['free_item']['product_id'];
+                $this->conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = $fip AND quantity > 0");
+                if ($this->conn->affected_rows > 0) {
+                    $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price)
+                                        VALUES ($order_id, $fip, 1, 0)");
+                    $this->conn->query("UPDATE orders SET free_item_product_id = $fip WHERE id = $order_id");
+                    $free_item_name = $promo_eval['free_item']['name'];
+                }
+            }
+            promo_record($this->conn, $promo_eval, $user_id, $order_id);
 
             // Clear cart
             $this->conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
@@ -159,9 +193,12 @@ class OrderService {
             }
 
             sendSuccess([
-                'order_id'     => $order_id,
-                'checkout_url' => $checkout_url,
-                'pay_error'    => $pay_error,
+                'order_id'         => $order_id,
+                'checkout_url'     => $checkout_url,
+                'pay_error'        => $pay_error,
+                'discount_amount'  => $discount_amount,
+                'promo_code'       => $promo_eval['code'],
+                'free_item_name'   => $free_item_name,
             ], 'Order placed successfully!');
         } else {
             sendError('Failed to place order: ' . $this->conn->error);

@@ -15,7 +15,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, starOutline } from 'ionicons/icons';
+import { closeOutline, starOutline, pricetagOutline } from 'ionicons/icons';
 import { Order, OrderItem } from '../../core/models';
 import { OrderService } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -85,7 +85,7 @@ export class OrderDetailComponent implements OnInit {
   }
 
   constructor() {
-    addIcons({ closeOutline, starOutline });
+    addIcons({ closeOutline, starOutline, pricetagOutline });
   }
 
   canConfirmReceived(): boolean {

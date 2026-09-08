@@ -15,7 +15,7 @@ import {
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { giftOutline } from 'ionicons/icons';
+import { giftOutline, pricetagOutline } from 'ionicons/icons';
 import { Order } from '../../core/models';
 import { OrderService } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -62,7 +62,7 @@ export class OrdersPage implements OnInit {
   auth = inject(AuthService);
 
   constructor() {
-    addIcons({ giftOutline });
+    addIcons({ giftOutline, pricetagOutline });
   }
 
   readonly orders = signal<Order[]>([]);

@@ -54,6 +54,18 @@
     font-size: 12px;
     font-weight: 600;
   }
+
+  .sale-ribbon {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #e6398f;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
 }
 
 h1 {
@@ -86,6 +98,20 @@ h1 {
   font-weight: 700;
   color: var(--ion-color-primary);
   margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+
+  &.on-sale .now {
+    color: #e6398f;
+  }
+
+  .was {
+    font-size: 14px;
+    font-weight: 500;
+    color: #aaa;
+    text-decoration: line-through;
+  }
 }
 
 .description {

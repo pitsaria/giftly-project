@@ -40,11 +40,15 @@ export interface BoxCheckoutPayload {
   card_holder?: string;
   card_expiry?: string;
   card_cvc?: string;
+  promo_code?: string;
 }
 
 export interface BoxOrderResult {
   order_id: number;
   grand_total: number;
+  discount?: number;
+  promo_code?: string;
+  free_item?: string | null;
   payment: string;
   checkout_url?: string;
   pay_error?: string;

@@ -19,9 +19,10 @@ import {
   AlertController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { removeOutline, addOutline, trashOutline, bagHandleOutline } from 'ionicons/icons';
-import { CartItem } from '../../core/models';
+import { removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline } from 'ionicons/icons';
+import { CartItem, PromoFreeItem, PromoFreeItemNudge } from '../../core/models';
 import { CartService } from '../../core/cart.service';
+import { PromoService } from '../../core/promo.service';
 import { describeError } from '../../core/http-error';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
@@ -53,6 +54,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
 })
 export class CartPage implements OnInit {
   private cart = inject(CartService);
+  private promoSvc = inject(PromoService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -66,8 +68,13 @@ export class CartPage implements OnInit {
   private loadToken = 0;
   readonly skeletonRows = Array.from({ length: 3 });
 
+  // Free-gift nudge (mirrors cart.php's #cartFreeGift), debounced on selection change.
+  readonly freeItem = signal<PromoFreeItem | null>(null);
+  readonly freeItemNudge = signal<PromoFreeItemNudge | null>(null);
+  private promoTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
-    addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline });
+    addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -101,6 +108,7 @@ export class CartPage implements OnInit {
       // Keep previously selected items selected if still in the cart.
       const validIds = new Set(cart.items.map((i) => i.cart_id));
       this.selected.update((prev) => new Set([...prev].filter((id) => validIds.has(id))));
+      this.schedulePromoCheck();
     } catch (err) {
       if (token !== this.loadToken) return;
       this.error.set(describeError(err));
@@ -137,6 +145,7 @@ export class CartPage implements OnInit {
       }
       return next;
     });
+    this.schedulePromoCheck();
   }
 
   allSelected(): boolean {
@@ -150,6 +159,27 @@ export class CartPage implements OnInit {
     } else {
       this.selected.set(new Set(this.selectableItems().map((i) => i.cart_id)));
     }
+    this.schedulePromoCheck();
+  }
+
+  // Debounced so rapid checkbox taps don't fire a request per click.
+  private schedulePromoCheck(): void {
+    clearTimeout(this.promoTimer);
+    const ids = [...this.selected()];
+    if (ids.length === 0) {
+      this.freeItem.set(null);
+      this.freeItemNudge.set(null);
+      return;
+    }
+    this.promoTimer = setTimeout(async () => {
+      try {
+        const result = await this.promoSvc.evaluate('products', { selectedIds: ids });
+        this.freeItem.set(result.free_item);
+        this.freeItemNudge.set(result.free_item_nudge);
+      } catch {
+        // Non-critical — the nudge just doesn't show this cycle.
+      }
+    }, 400);
   }
 
   selectedTotal(): number {

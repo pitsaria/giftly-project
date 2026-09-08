@@ -3,12 +3,23 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../catalog_lib.php';
 
 class ProductService {
     private $conn;
-    
+
     public function __construct($conn) {
         $this->conn = $conn;
+        catalog_ensure_schema($conn);
+    }
+
+    // Sale-aware pricing: keep `price` meaning "what you pay right now"
+    // (mirrors catalog_price_sql('p.') on the website); the original price
+    // moves to `list_price` for a strikethrough, `on_sale` flags the badge.
+    private function applySalePricing(array &$row): void {
+        $row['on_sale'] = catalog_on_sale($row);
+        $row['list_price'] = $row['price'];
+        $row['price'] = (string) catalog_effective_price($row);
     }
     
     // 📦 GET ALL PRODUCTS
@@ -65,9 +76,10 @@ public function getAll($params) {
     
     $products = [];
     while ($row = $result->fetch_assoc()) {
+        $this->applySalePricing($row);
         $products[] = $row;
     }
-    
+
     sendSuccess([
         'products' => $products,
         'pagination' => [
@@ -87,8 +99,10 @@ public function getAll($params) {
         if ($result->num_rows == 0) {
             sendError('Product not found', 404);
         }
-        
-        sendSuccess($result->fetch_assoc());
+
+        $row = $result->fetch_assoc();
+        $this->applySalePricing($row);
+        sendSuccess($row);
     }
     
     // ➕ CREATE PRODUCT (Admin only)

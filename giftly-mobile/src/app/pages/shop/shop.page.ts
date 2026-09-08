@@ -111,6 +111,13 @@ export class ShopPage implements OnInit {
     return Array.from({ length: Math.min(5, Math.max(0, avg)) });
   }
 
+  salePercent(product: Product): number {
+    const list = Number(product.list_price ?? 0);
+    const now = Number(product.price ?? 0);
+    if (list <= 0 || now >= list) return 0;
+    return Math.round((1 - now / list) * 100);
+  }
+
   async ngOnInit(): Promise<void> {
     // Covers the categories fetch too, not just loadProducts() below —
     // otherwise the skeleton grid doesn't appear until categories resolves.

@@ -21,7 +21,10 @@
     <div class="item-row" *ngFor="let item of d.items">
       <img [src]="item.image | imgUrl" [alt]="item.name" />
       <div class="item-info">
-        <div class="item-name">{{ item.name }}</div>
+        <div class="item-name">
+          {{ item.name }}
+          <span class="free-badge" *ngIf="d.free_item_product_id === item.product_id">FREE</span>
+        </div>
         <div class="item-meta">Qty {{ item.quantity }} · ₱{{ item.price }}</div>
       </div>
       <ion-button
@@ -52,6 +55,13 @@
       <div class="row"><span>Delivery Time</span><strong>{{ d.delivery_time }}</strong></div>
       <div class="row"><span>Payment</span><strong>{{ paymentLabel(d) }}</strong></div>
       <div class="row total"><span>Total</span><strong>₱{{ d.total_amount }}</strong></div>
+      <div class="row saved" *ngIf="d.discount_amount && +d.discount_amount > 0">
+        <span></span>
+        <strong>
+          <ion-icon name="pricetag-outline"></ion-icon>
+          Saved ₱{{ d.discount_amount }}<span *ngIf="d.promo_code"> ({{ d.promo_code }})</span>
+        </strong>
+      </div>
     </div>
 
     <ion-button

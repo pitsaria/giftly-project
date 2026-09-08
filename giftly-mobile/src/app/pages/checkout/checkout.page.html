@@ -142,8 +142,27 @@
     </p>
   </div>
 
+  <h2 class="section-title"><ion-icon name="pricetag-outline"></ion-icon> Promo Code</h2>
+  <div class="promo-row" *ngIf="!promoEval()?.code">
+    <ion-input placeholder="Enter code" fill="outline" [(ngModel)]="promoCodeInput" class="field promo-input"></ion-input>
+    <ion-button fill="outline" [disabled]="applyingCode() || !promoCodeInput.trim()" (click)="applyPromoCode()">Apply</ion-button>
+  </div>
+  <div class="promo-applied" *ngIf="promoEval()?.code as code">
+    <div class="promo-applied-text">
+      <ion-icon name="pricetag-outline"></ion-icon>
+      <span><strong>{{ code }}</strong> applied</span>
+      <span class="promo-terms" *ngIf="promoEval()?.code_terms">{{ promoEval()!.code_terms }}</span>
+    </div>
+    <ion-button fill="clear" size="small" [disabled]="applyingCode()" (click)="removePromoCode()">Remove</ion-button>
+  </div>
+  <p class="promo-error" *ngIf="promoEval()?.code_error">{{ promoEval()!.code_error }}</p>
+
   <div class="summary">
     <div class="row"><span>Subtotal</span><span>₱{{ total() | number: '1.2-2' }}</span></div>
+    <div class="row discount" *ngFor="let line of promoEval()?.lines ?? []">
+      <span>{{ line.label }}</span>
+      <span>{{ line.amount === 0 ? 'FREE' : '− ₱' + (absAmount(line.amount) | number: '1.2-2') }}</span>
+    </div>
     <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
     <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
   </div>

@@ -91,6 +91,18 @@
       padding: 2px 8px;
       border-radius: 10px;
     }
+
+    .sale-ribbon {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      background: #e6398f;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
   }
 
   .p-name {
@@ -132,6 +144,21 @@
     font-size: 14px;
     color: #222;
     margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+
+    &.on-sale .p-now {
+      color: #e6398f;
+    }
+
+    .p-was {
+      font-weight: 500;
+      font-size: 11px;
+      color: #aaa;
+      text-decoration: line-through;
+    }
   }
 
   .add-btn {

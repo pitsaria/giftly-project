@@ -3,14 +3,16 @@
 
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
+require_once __DIR__ . '/../../catalog_lib.php';
 
 class CartService {
     private $conn;
-    
+
     public function __construct($conn) {
         $this->conn = $conn;
+        catalog_ensure_schema($conn);
     }
-    
+
     // 🛒 GET CART
     public function getCart($headers) {
         $user_id = $this->getUserId($headers);
@@ -18,9 +20,9 @@ class CartService {
             sendError('Unauthorized', 401);
             return;
         }
-        
+
         $sql = "SELECT c.id as cart_id, c.quantity,
-                       p.id, p.name, p.description, p.price, p.image, p.category_id,
+                       p.id, p.name, p.description, p.price, p.sale_price, p.sale_ends, p.image, p.category_id,
                        p.quantity as stock, p.is_active
                 FROM carts c
                 JOIN products p ON c.product_id = p.id
@@ -36,6 +38,10 @@ class CartService {
             $unavailable = array_key_exists('is_active', $row)
                 && in_array($row['is_active'], [false, 'f', '0', 0], true);
             $row['unavailable'] = $unavailable;
+            // Sale-aware pricing: same rewrite as ProductService.
+            $row['on_sale'] = catalog_on_sale($row);
+            $row['list_price'] = $row['price'];
+            $row['price'] = (string) catalog_effective_price($row);
             $subtotal = $unavailable ? 0 : $row['price'] * $row['quantity'];
             $total += $subtotal;
             $row['subtotal'] = $subtotal;

@@ -19,12 +19,13 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline } from 'ionicons/icons';
-import { Address, CartItem } from '../../core/models';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline } from 'ionicons/icons';
+import { Address, CartItem, PromoEval } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
+import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
@@ -63,6 +64,7 @@ export class CheckoutPage implements OnInit {
   private cart = inject(CartService);
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
+  private promoSvc = inject(PromoService);
   private auth = inject(AuthService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
@@ -96,8 +98,13 @@ export class CheckoutPage implements OnInit {
   cardCvc = '';
   readonly onlineEnabled = signal(false);
 
+  // Promo code (mirrors checkout_selected.php's promo box).
+  promoCodeInput = '';
+  readonly promoEval = signal<PromoEval | null>(null);
+  readonly applyingCode = signal(false);
+
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -130,6 +137,7 @@ export class CheckoutPage implements OnInit {
         const def = addresses.find((a) => a.is_default) ?? addresses[0];
         this.selectAddress(def.id);
       }
+      await this.evaluatePromo('');
     } catch (err) {
       if (token !== this.loadToken) return;
       this.error.set(describeError(err));
@@ -138,6 +146,50 @@ export class CheckoutPage implements OnInit {
         clearTimeout(this.slowLoadTimer);
         this.loading.set(false);
       }
+    }
+  }
+
+  // Re-evaluates promos server-side from the real (selected) cart items —
+  // called with '' on load (surfaces auto discounts/free shipping/free item)
+  // and again whenever the user applies/removes a typed code.
+  private async evaluatePromo(code: string): Promise<void> {
+    const items = this.cartItems();
+    if (items.length === 0) {
+      this.promoEval.set(null);
+      return;
+    }
+    const result = await this.promoSvc.evaluate('products', {
+      code,
+      selectedIds: items.map((i) => i.cart_id),
+    });
+    this.promoEval.set(result);
+  }
+
+  async applyPromoCode(): Promise<void> {
+    const code = this.promoCodeInput.trim();
+    if (!code) return;
+    this.applyingCode.set(true);
+    try {
+      await this.evaluatePromo(code);
+      if (this.promoEval()?.code_error) {
+        await this.toast(this.promoEval()!.code_error);
+      }
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.applyingCode.set(false);
+    }
+  }
+
+  async removePromoCode(): Promise<void> {
+    this.promoCodeInput = '';
+    this.applyingCode.set(true);
+    try {
+      await this.evaluatePromo('');
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.applyingCode.set(false);
     }
   }
 
@@ -173,12 +225,19 @@ export class CheckoutPage implements OnInit {
   }
 
   shippingFee(): number {
+    const eval_ = this.promoEval();
+    if (eval_) return eval_.shipping_fee;
     const t = this.total();
     return t > 0 && t < 300 ? 50 : 0;
   }
 
   grandTotal(): number {
-    return this.total() + this.shippingFee();
+    const eval_ = this.promoEval();
+    return eval_ ? eval_.total : this.total() + this.shippingFee();
+  }
+
+  absAmount(n: number): number {
+    return Math.abs(n);
   }
 
   async placeOrder(): Promise<void> {
@@ -243,6 +302,7 @@ export class CheckoutPage implements OnInit {
         sender_phone: senderPhone,
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipient_phone: recipientPhone,
+        promo_code: this.promoEval()?.code || undefined,
         ...(this.paymentMethod === 'card'
           ? {
               card_number: this.cardNumber,
@@ -277,6 +337,9 @@ export class CheckoutPage implements OnInit {
         recipientName: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipientPhone,
         giftMessage: this.giftMessage || undefined,
+        discountAmount: placed.discountAmount || undefined,
+        promoCode: placed.promoCode || undefined,
+        freeItemName: placed.freeItemName || undefined,
       });
       this.router.navigateByUrl('/order-confirmation');
     } catch (err) {

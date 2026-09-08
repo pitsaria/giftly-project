@@ -14,6 +14,14 @@
 
     <div class="details-box">
       <div class="row"><span>Order ID</span><strong>#{{ order.orderId }}</strong></div>
+      <div class="row discount" *ngIf="order.discountAmount">
+        <span>Discount<span *ngIf="order.promoCode"> ({{ order.promoCode }})</span></span>
+        <strong>− ₱{{ order.discountAmount | number: '1.2-2' }}</strong>
+      </div>
+      <div class="row discount" *ngIf="order.freeItemName">
+        <span>Free gift 🎁</span>
+        <strong>{{ order.freeItemName }}</strong>
+      </div>
       <div class="row"><span>Total Paid</span><strong>₱{{ order.total | number: '1.2-2' }}</strong></div>
       <div class="row"><span>Payment Method</span><strong>{{ paymentLabel() }}</strong></div>
       <div class="row"><span>Delivery Date</span><strong>{{ order.deliveryDate | date: 'mediumDate' }}</strong></div>

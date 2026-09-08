@@ -60,6 +60,10 @@
           </div>
           <div class="order-meta">{{ o.created_at | date: 'mediumDate' }}</div>
           <div class="order-total">₱{{ o.total_amount }}</div>
+          <div class="order-saved" *ngIf="o.discount_amount && +o.discount_amount > 0">
+            <ion-icon name="pricetag-outline"></ion-icon>
+            Saved ₱{{ o.discount_amount }}<span *ngIf="o.promo_code"> ({{ o.promo_code }})</span>
+          </div>
           <div class="pay-flag" [ngClass]="paymentClass(o)">{{ paymentLabel(o) }}</div>
           <div class="cancel-flag" *ngIf="o.cancel_status === 'requested'">Cancellation requested</div>
         </div>

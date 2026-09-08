@@ -14,6 +14,10 @@ export interface OrderConfirmation {
   recipientName?: string;
   recipientPhone?: string;
   giftMessage?: string;
+  // Promo engine — set when a discount/free-item promo applied at checkout.
+  discountAmount?: number;
+  promoCode?: string;
+  freeItemName?: string;
 }
 
 export type PaymentMethod = 'cod' | 'card' | 'online';
@@ -35,6 +39,8 @@ export interface CreateOrderPayload {
   card_holder?: string;
   card_expiry?: string;
   card_cvc?: string;
+  // A typed promo code to apply (re-validated server-side either way).
+  promo_code?: string;
 }
 
 export interface OrderPlaced {
@@ -43,6 +49,9 @@ export interface OrderPlaced {
   checkoutUrl: string;
   // Non-empty when 'online' but PayMongo couldn't start (order still saved & payable).
   payError: string;
+  discountAmount: number;
+  promoCode: string;
+  freeItemName: string;
 }
 
 export interface PaymentStatus {
@@ -71,12 +80,22 @@ export class OrderService {
 
   async createOrder(payload: CreateOrderPayload): Promise<OrderPlaced> {
     const res = await firstValueFrom(
-      this.api.post<{ order_id: number; checkout_url?: string; pay_error?: string }>('orders', payload)
+      this.api.post<{
+        order_id: number;
+        checkout_url?: string;
+        pay_error?: string;
+        discount_amount?: number;
+        promo_code?: string;
+        free_item_name?: string | null;
+      }>('orders', payload)
     );
     return {
       orderId: res.data.order_id,
       checkoutUrl: res.data.checkout_url ?? '',
       payError: res.data.pay_error ?? '',
+      discountAmount: Number(res.data.discount_amount ?? 0),
+      promoCode: res.data.promo_code ?? '',
+      freeItemName: res.data.free_item_name ?? '',
     };
   }
 
