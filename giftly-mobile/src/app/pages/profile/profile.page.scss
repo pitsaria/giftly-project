@@ -250,19 +250,19 @@ ion-item.address-card-wrap {
     border-radius: 50%;
   }
 
-  .delete-btn {
-    background: #fdeded;
-    color: #d32f2f;
-    border: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-  }
 }
 
 ion-item-option {
-  font-size: 20px;
-  width: 64px;
+  width: 56px;
+
+  // Ionic's own ::slotted([slot=icon-only]) rule forces the icon to 1.8em
+  // (relative to the item-option's font-size) — that shadow-internal rule's
+  // specificity (0,1,1) beats a plain `ion-item-option ion-icon` selector
+  // (0,0,2), so !important is the only reliable way to win. Matches the
+  // 20px trash icon size used on the cart page's swipe-to-delete.
+  ion-icon {
+    font-size: 20px !important;
+  }
 }
 
 .default-check {
