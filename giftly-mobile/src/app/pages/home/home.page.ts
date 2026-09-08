@@ -304,6 +304,13 @@ export class HomePage implements OnInit {
     }
   }
 
+  salePercent(product: Product): number {
+    const list = Number(product.list_price ?? 0);
+    const now = Number(product.price ?? 0);
+    if (list <= 0 || now >= list) return 0;
+    return Math.round((1 - now / list) * 100);
+  }
+
   async quickAdd(product: Product, ev: Event): Promise<void> {
     ev.stopPropagation();
     if (!this.auth.isLoggedIn()) {

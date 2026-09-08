@@ -84,6 +84,7 @@
       <div class="featured-card" *ngFor="let product of featured()" (click)="goToShop()">
         <div class="image-wrap">
           <img [src]="product.image | imgUrl" [alt]="product.name" />
+          <div class="sale-ribbon" *ngIf="product.on_sale">-{{ salePercent(product) }}%</div>
         </div>
         <div class="f-name">{{ product.name }}</div>
         <div class="f-rating">
@@ -94,7 +95,10 @@
           <ng-template #noReviews><span class="f-rating-empty">No reviews yet</span></ng-template>
         </div>
         <div class="f-footer">
-          <span class="f-price">₱{{ product.price }}</span>
+          <span class="f-price" [class.on-sale]="product.on_sale">
+            <span class="f-now">₱{{ product.price }}</span>
+            <span class="f-was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
+          </span>
           <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
             <ion-icon name="add-circle"></ion-icon>
           </button>

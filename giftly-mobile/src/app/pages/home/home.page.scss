@@ -294,11 +294,27 @@
     margin-bottom: 8px;
   }
 
-  .image-wrap img {
-    width: 100%;
-    height: 90px;
-    object-fit: contain;
-    margin-bottom: 8px;
+  .image-wrap {
+    position: relative;
+
+    img {
+      width: 100%;
+      height: 90px;
+      object-fit: contain;
+      margin-bottom: 8px;
+    }
+
+    .sale-ribbon {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      background: #e6398f;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
   }
 
   .f-name {
@@ -340,6 +356,20 @@
       font-weight: 700;
       font-size: 13px;
       color: #222;
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+
+      &.on-sale .f-now {
+        color: #e6398f;
+      }
+
+      .f-was {
+        font-weight: 500;
+        font-size: 10px;
+        color: #aaa;
+        text-decoration: line-through;
+      }
     }
 
     .add-btn {
