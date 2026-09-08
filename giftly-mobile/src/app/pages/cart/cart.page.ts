@@ -15,6 +15,10 @@ import {
   IonIcon,
   IonButton,
   IonSkeletonText,
+  IonItemSliding,
+  IonItem,
+  IonItemOptions,
+  IonItemOption,
   ToastController,
   AlertController,
 } from '@ionic/angular';
@@ -23,6 +27,7 @@ import { removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline 
 import { CartItem, PromoFreeItem, PromoFreeItemNudge } from '../../core/models';
 import { CartService } from '../../core/cart.service';
 import { PromoService } from '../../core/promo.service';
+import { HapticsService } from '../../core/haptics.service';
 import { describeError } from '../../core/http-error';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
@@ -49,12 +54,17 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
     IonIcon,
     IonButton,
     IonSkeletonText,
+    IonItemSliding,
+    IonItem,
+    IonItemOptions,
+    IonItemOption,
     ImgUrlPipe,
   ],
 })
 export class CartPage implements OnInit {
   private cart = inject(CartService);
   private promoSvc = inject(PromoService);
+  private haptics = inject(HapticsService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -210,6 +220,7 @@ export class CartPage implements OnInit {
           role: 'destructive',
           handler: async () => {
             await this.cart.removeItem(item.cart_id);
+            this.haptics.medium();
             await this.refresh();
           },
         },

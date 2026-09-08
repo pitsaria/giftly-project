@@ -27,6 +27,7 @@ import { OrderService, PaymentMethod } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
+import { HapticsService } from '../../core/haptics.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
@@ -65,6 +66,7 @@ export class CheckoutPage implements OnInit {
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
   private promoSvc = inject(PromoService);
+  private haptics = inject(HapticsService);
   private auth = inject(AuthService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
@@ -350,8 +352,10 @@ export class CheckoutPage implements OnInit {
         promoCode: placed.promoCode || undefined,
         freeItemName: placed.freeItemName || undefined,
       });
+      this.haptics.success();
       this.router.navigateByUrl('/order-confirmation');
     } catch (err) {
+      this.haptics.error();
       await this.toast(describeError(err));
     } finally {
       this.submitting.set(false);

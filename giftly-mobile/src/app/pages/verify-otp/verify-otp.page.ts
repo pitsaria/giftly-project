@@ -14,6 +14,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { AuthService } from '../../core/auth.service';
+import { HapticsService } from '../../core/haptics.service';
 
 // Mirrors the website's email-OTP step (auth_lib.php / verify_otp.php).
 // Reached from Login when the server has email configured.
@@ -37,6 +38,7 @@ import { AuthService } from '../../core/auth.service';
 })
 export class VerifyOtpPage implements OnInit {
   private auth = inject(AuthService);
+  private haptics = inject(HapticsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastCtrl = inject(ToastController);
@@ -72,6 +74,7 @@ export class VerifyOtpPage implements OnInit {
       await this.auth.verifyOtp(this.otpRef, code);
       this.router.navigateByUrl('/tabs/home');
     } catch (err: any) {
+      this.haptics.error();
       await this.toast(err?.error?.error ?? 'That code is incorrect.');
     } finally {
       this.submitting.set(false);

@@ -22,10 +22,23 @@
     <ion-searchbar
       [(ngModel)]="search"
       (ionInput)="onSearch()"
+      (ionChange)="commitSearchToRecent()"
       placeholder="Search products..."
       debounce="400"
     ></ion-searchbar>
   </ion-toolbar>
+
+  <div class="recent-searches" *ngIf="searchVisible && !search && recentSearches().length">
+    <div class="recent-header">
+      <span><ion-icon name="time-outline"></ion-icon> Recent</span>
+      <button (click)="clearRecentSearches()">Clear</button>
+    </div>
+    <div class="recent-chips">
+      <ion-chip *ngFor="let term of recentSearches()" (click)="selectRecentSearch(term)">
+        <ion-label>{{ term }}</ion-label>
+      </ion-chip>
+    </div>
+  </div>
 
   <div class="category-row">
     <ion-chip [outline]="selectedCategory !== null" [color]="selectedCategory === null ? 'primary' : undefined" (click)="selectCategory(null)">
@@ -45,7 +58,12 @@
     <div class="product-card" *ngFor="let product of products()" (click)="openProduct(product)">
       <div class="image-wrap">
         <img [src]="product.image | imgUrl" [alt]="product.name" />
-        <button class="heart-btn" [class.active]="isWishlisted(product)" (click)="toggleWishlist(product, $event)">
+        <button
+          class="heart-btn"
+          [class.active]="isWishlisted(product)"
+          [class.pop]="wishlist.justToggled() === product.id"
+          (click)="toggleWishlist(product, $event)"
+        >
           <ion-icon [name]="isWishlisted(product) ? 'heart' : 'heart-outline'"></ion-icon>
         </button>
         <div class="out-of-stock-ribbon" *ngIf="product.quantity <= 0">Out of Stock</div>
@@ -63,8 +81,13 @@
         <span class="p-now">₱{{ product.price }}</span>
         <span class="p-was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
       </div>
-      <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
-        <ion-icon name="add-circle"></ion-icon>
+      <button
+        class="add-btn"
+        [class.added]="justAdded(product.id)"
+        [disabled]="product.quantity <= 0"
+        (click)="quickAdd(product, $event)"
+      >
+        <ion-icon [name]="justAdded(product.id) ? 'checkmark-circle' : 'add-circle'"></ion-icon>
       </button>
     </div>
   </div>

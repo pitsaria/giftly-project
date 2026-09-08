@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { Preferences } from '@capacitor/preferences';
 import {
   IonToolbar,
   IonContent,
@@ -21,7 +22,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { heart, heartOutline, addCircle, star } from 'ionicons/icons';
+import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline } from 'ionicons/icons';
 import { Category, Product, ProductType } from '../../core/models';
 import { ProductService } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
@@ -85,8 +86,14 @@ export class ShopPage implements OnInit {
   readonly productType = signal<ProductType>('catalog');
   readonly skeletonRows = Array.from({ length: 6 });
 
+  // Recent searches, persisted locally (Capacitor Preferences, same
+  // mechanism auth.service.ts uses) so they survive an app restart.
+  private static readonly RECENT_SEARCHES_KEY = 'giftly_recent_searches';
+  private static readonly MAX_RECENT_SEARCHES = 6;
+  readonly recentSearches = signal<string[]>([]);
+
   constructor() {
-    addIcons({ heart, heartOutline, addCircle, star });
+    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline });
   }
 
   readonly segmentTitles: Record<ProductType, string> = {
@@ -109,6 +116,10 @@ export class ShopPage implements OnInit {
   stars(product: Product): number[] {
     const avg = Math.round(Number(product.avg_rating ?? 0));
     return Array.from({ length: Math.min(5, Math.max(0, avg)) });
+  }
+
+  justAdded(productId: number): boolean {
+    return this.cart.justAddedId() === productId;
   }
 
   salePercent(product: Product): number {
@@ -150,10 +161,40 @@ export class ShopPage implements OnInit {
     if (this.auth.isLoggedIn()) {
       await this.wishlist.getWishlist();
     }
+
+    await this.loadRecentSearches();
   }
 
   toggleSearch(): void {
     this.searchVisible = !this.searchVisible;
+  }
+
+  private async loadRecentSearches(): Promise<void> {
+    const { value } = await Preferences.get({ key: ShopPage.RECENT_SEARCHES_KEY });
+    this.recentSearches.set(value ? JSON.parse(value) : []);
+  }
+
+  // Committed on (ionChange) — fires on blur/Enter, unlike the debounced
+  // (ionInput) used for live filtering — so partial keystrokes never get
+  // saved, only a search the user actually settled on.
+  async commitSearchToRecent(): Promise<void> {
+    const term = this.search.trim();
+    if (!term) return;
+    const deduped = this.recentSearches().filter((s) => s.toLowerCase() !== term.toLowerCase());
+    const list = [term, ...deduped].slice(0, ShopPage.MAX_RECENT_SEARCHES);
+    this.recentSearches.set(list);
+    await Preferences.set({ key: ShopPage.RECENT_SEARCHES_KEY, value: JSON.stringify(list) });
+  }
+
+  async selectRecentSearch(term: string): Promise<void> {
+    this.search = term;
+    await this.onSearch();
+    await this.commitSearchToRecent();
+  }
+
+  async clearRecentSearches(): Promise<void> {
+    this.recentSearches.set([]);
+    await Preferences.remove({ key: ShopPage.RECENT_SEARCHES_KEY });
   }
 
   async selectCategory(id: number | null): Promise<void> {

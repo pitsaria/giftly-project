@@ -15,6 +15,7 @@ import { addIcons } from 'ionicons';
 import {
   giftOutline,
   addCircle,
+  checkmarkCircle,
   cubeOutline,
   carOutline,
   leafOutline,
@@ -199,7 +200,7 @@ export class HomePage implements OnInit {
   }
 
   constructor() {
-    addIcons({ giftOutline, addCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
+    addIcons({ giftOutline, addCircle, checkmarkCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
   }
 
   onHeroScroll(ev: Event): void {
@@ -302,6 +303,10 @@ export class HomePage implements OnInit {
     if (data?.cancelled) {
       await this.loadRecentOrder();
     }
+  }
+
+  justAdded(productId: number): boolean {
+    return this.cart.justAddedId() === productId;
   }
 
   salePercent(product: Product): number {

@@ -8,6 +8,7 @@
       class="heart-btn"
       *ngIf="mode === 'cart'"
       [class.active]="isWishlisted()"
+      [class.pop]="justPopped()"
       (click)="toggleWishlist()"
     >
       <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>

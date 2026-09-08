@@ -147,7 +147,12 @@
   padding: 14px;
   background: #fff;
   border-radius: var(--giftly-card-radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--giftly-shadow-2);
+  transition: var(--giftly-press-transition);
+
+  &:active {
+    transform: scale(0.98);
+  }
 
   .resume-icon {
     flex-shrink: 0;
@@ -211,6 +216,11 @@
   align-items: center;
   gap: 6px;
   width: 68px;
+  transition: var(--giftly-press-transition);
+
+  &:active {
+    transform: scale(0.92);
+  }
 
   .category-icon {
     width: 56px;
@@ -219,6 +229,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: var(--giftly-shadow-1);
 
     ion-icon {
       font-size: 24px;
@@ -285,8 +296,13 @@
   flex: 0 0 140px;
   background: #fff;
   border-radius: var(--giftly-card-radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--giftly-shadow-2);
   padding: 12px;
+  transition: var(--giftly-press-transition);
+
+  &:active {
+    transform: scale(0.97);
+  }
 
   &.skeleton .skeleton-image {
     height: 90px;
@@ -378,6 +394,16 @@
       color: var(--ion-color-primary);
       font-size: 22px;
       display: flex;
+      transition: var(--giftly-press-transition), color 200ms ease;
+
+      &:active {
+        transform: scale(0.9);
+      }
+
+      &.added {
+        color: var(--giftly-success);
+        animation: giftly-pop 350ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
 
       &:disabled {
         opacity: 0.4;
@@ -416,6 +442,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  box-shadow: var(--giftly-shadow-1);
 
   .promo-title {
     font-size: 15px;

@@ -43,34 +43,40 @@
       <span>Select all</span>
     </div>
 
-    <div class="cart-item" *ngFor="let item of items()" [class.unavailable]="isUnavailable(item)">
-      <ion-checkbox
-        [checked]="selected().has(item.cart_id)"
-        [disabled]="isUnavailable(item)"
-        (ionChange)="toggleSelect(item.cart_id)"
-      ></ion-checkbox>
-      <img [src]="item.image | imgUrl" [alt]="item.name" />
-      <div class="item-info">
-        <div class="item-name">{{ item.name }}</div>
-        <div class="item-price">
-          ₱{{ item.price }}
-          <span class="item-was" *ngIf="item.on_sale">₱{{ item.list_price }}</span>
+    <ion-item-sliding *ngFor="let item of items()">
+      <ion-item lines="none" class="cart-item-wrap">
+        <div class="cart-item" [class.unavailable]="isUnavailable(item)">
+          <ion-checkbox
+            [checked]="selected().has(item.cart_id)"
+            [disabled]="isUnavailable(item)"
+            (ionChange)="toggleSelect(item.cart_id)"
+          ></ion-checkbox>
+          <img [src]="item.image | imgUrl" [alt]="item.name" />
+          <div class="item-info">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-price">
+              ₱{{ item.price }}
+              <span class="item-was" *ngIf="item.on_sale">₱{{ item.list_price }}</span>
+            </div>
+            <div class="unavailable-flag" *ngIf="isUnavailable(item)">
+              {{ item.unavailable || item.is_active === false ? 'No longer available' : 'Out of stock' }}
+            </div>
+            <div class="stepper" *ngIf="!isUnavailable(item)">
+              <button (click)="decrease(item)"><ion-icon name="remove-outline"></ion-icon></button>
+              <span>{{ item.quantity }}</span>
+              <button (click)="increase(item)" [disabled]="item.quantity >= item.stock">
+                <ion-icon name="add-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="unavailable-flag" *ngIf="isUnavailable(item)">
-          {{ item.unavailable || item.is_active === false ? 'No longer available' : 'Out of stock' }}
-        </div>
-        <div class="stepper" *ngIf="!isUnavailable(item)">
-          <button (click)="decrease(item)"><ion-icon name="remove-outline"></ion-icon></button>
-          <span>{{ item.quantity }}</span>
-          <button (click)="increase(item)" [disabled]="item.quantity >= item.stock">
-            <ion-icon name="add-outline"></ion-icon>
-          </button>
-        </div>
-      </div>
-      <button class="remove-btn" (click)="remove(item)">
-        <ion-icon name="trash-outline"></ion-icon>
-      </button>
-    </div>
+      </ion-item>
+      <ion-item-options side="end">
+        <ion-item-option color="danger" (click)="remove(item)">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-item-option>
+      </ion-item-options>
+    </ion-item-sliding>
   </div>
 </ion-content>
 

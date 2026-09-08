@@ -16,7 +16,7 @@
 
       <ion-button fill="clear" class="icon-btn cart-btn" routerLink="/cart">
         <ion-icon slot="icon-only" name="cart-outline"></ion-icon>
-        <ion-badge *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</ion-badge>
+        <ion-badge [class.bump]="bumping()" *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</ion-badge>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>

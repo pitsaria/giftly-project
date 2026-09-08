@@ -19,6 +19,7 @@ import { closeOutline, starOutline, pricetagOutline } from 'ionicons/icons';
 import { Order, OrderItem } from '../../core/models';
 import { OrderService } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
+import { HapticsService } from '../../core/haptics.service';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { ProductReviewsComponent } from '../product-reviews/product-reviews.component';
 
@@ -35,6 +36,7 @@ export class OrderDetailComponent implements OnInit {
 
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
+  private haptics = inject(HapticsService);
   private router = inject(Router);
   private modalCtrl = inject(ModalController);
   private alertCtrl = inject(AlertController);
@@ -177,6 +179,7 @@ export class OrderDetailComponent implements OnInit {
     this.cancelling.set(true);
     try {
       await this.orderSvc.cancelOrder(this.order.id, reason);
+      this.haptics.medium();
       const t = await this.toastCtrl.create({
         message: 'Cancellation request sent — waiting for admin approval.',
         duration: 2500,

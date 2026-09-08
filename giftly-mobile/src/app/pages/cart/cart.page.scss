@@ -50,12 +50,45 @@
   font-size: 13px;
 }
 
+// ion-item (added for swipe-to-delete via ion-item-sliding) has its own
+// internal flex/slot layout for its shadow-DOM children that doesn't treat
+// plain light-DOM children as a simple row — trying to reuse it broke the
+// row layout. So it's zeroed out entirely and used only as an invisible
+// wrapper; the untouched .cart-item <div> below still does 100% of the
+// visual layout, exactly as it did before ion-item-sliding was added.
+ion-item.cart-item-wrap {
+  --padding-start: 0;
+  --padding-end: 0;
+  --inner-padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --background: #fff;
+  --min-height: auto;
+
+  &::part(native) {
+    padding: 0;
+  }
+}
+
 .cart-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
+
+  // ion-checkbox detects ANY ancestor <ion-item> (Ionic's hostContext() walks
+  // up via closest(), not just direct parents) and sets itself to
+  // `flex: 1 1 0; width: 100%;` internally, expecting to be the item's main
+  // control filling the row. `flex-grow: 1` is what actually forced it to
+  // consume all the free space (overriding `width` alone doesn't cancel
+  // flex-grow) — `flex: none` neutralizes the whole shorthand at once.
+  // !important is required to beat that component-internal :host(.in-item)
+  // rule from outside.
+  ion-checkbox {
+    flex: none !important;
+    width: auto !important;
+  }
 
   &.unavailable img,
   &.unavailable .item-name,
@@ -133,11 +166,18 @@
     }
   }
 
-  .remove-btn {
-    background: none;
-    border: none;
-    color: #d32f2f;
-    font-size: 20px;
+}
+
+ion-item-option {
+  width: 56px;
+
+  // Ionic's own ::slotted([slot=icon-only]) rule forces the icon to 1.8em
+  // (relative to the item-option's font-size) — that shadow-internal rule's
+  // specificity (0,1,1) beats a plain `ion-item-option ion-icon` selector
+  // (0,0,2), so !important is the only reliable way to win and get the icon
+  // back down to the same 20px the rest of the app's icon buttons use.
+  ion-icon {
+    font-size: 20px !important;
   }
 }
 

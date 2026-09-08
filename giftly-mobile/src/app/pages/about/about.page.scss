@@ -58,7 +58,7 @@
   border-radius: 18px;
   padding: 18px 14px;
   text-align: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--giftly-shadow-1);
 
   .avatar {
     width: 60px;
@@ -109,7 +109,7 @@
   border: 1px solid #f5f5f5;
   border-radius: 16px;
   padding: 18px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--giftly-shadow-1);
 
   ion-icon {
     font-size: 24px;

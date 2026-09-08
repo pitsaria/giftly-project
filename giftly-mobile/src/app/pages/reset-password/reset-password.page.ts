@@ -15,6 +15,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { AuthService } from '../../core/auth.service';
+import { HapticsService } from '../../core/haptics.service';
 import { PasswordStrengthInputComponent } from '../../shared/password-strength-input/password-strength-input.component';
 
 type Step = 'code' | 'password';
@@ -44,6 +45,7 @@ type Step = 'code' | 'password';
 })
 export class ResetPasswordPage implements OnInit {
   private auth = inject(AuthService);
+  private haptics = inject(HapticsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastCtrl = inject(ToastController);
@@ -86,6 +88,7 @@ export class ResetPasswordPage implements OnInit {
       await this.auth.verifyResetCode(this.resetRef, code);
       this.step.set('password');
     } catch (err: any) {
+      this.haptics.error();
       await this.toast(err?.error?.error ?? 'That code is incorrect.');
     } finally {
       this.submitting.set(false);

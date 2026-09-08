@@ -12,6 +12,50 @@
   padding-top: 4px;
 }
 
+.recent-searches {
+  padding: 0 16px 8px;
+
+  .recent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 6px;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      ion-icon {
+        font-size: 13px;
+      }
+    }
+
+    button {
+      background: none;
+      border: none;
+      color: var(--ion-color-primary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+  }
+
+  .recent-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    ion-chip {
+      --background: #f4f4f6;
+      font-size: 12.5px;
+      margin: 0;
+    }
+  }
+}
+
 .type-segment {
   margin: 10px 12px 0;
   --background: #f4f4f6;
@@ -44,10 +88,15 @@
 .product-card {
   background: #fff;
   border-radius: var(--giftly-card-radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--giftly-shadow-2);
   padding: 12px;
   text-align: center;
   position: relative;
+  transition: var(--giftly-press-transition);
+
+  &:active {
+    transform: scale(0.97);
+  }
 
   .image-wrap {
     position: relative;
@@ -173,6 +222,17 @@
     align-items: center;
     justify-content: center;
     margin: 0 auto;
+    transition: var(--giftly-press-transition), background 200ms ease, color 200ms ease;
+
+    &:active {
+      transform: scale(0.9);
+    }
+
+    &.added {
+      background: var(--giftly-success-bg);
+      color: var(--giftly-success);
+      animation: giftly-pop 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
     &:disabled {
       opacity: 0.4;
@@ -189,7 +249,7 @@
 .skeleton-card {
   background: #fff;
   border-radius: var(--giftly-card-radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--giftly-shadow-2);
   padding: 12px;
 
   .skeleton-image {

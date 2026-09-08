@@ -1,20 +1,48 @@
 .giftly-tab-bar {
   --background: #ffffff;
   --border: none;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -2px 4px rgba(30, 20, 24, 0.03), 0 -8px 20px rgba(255, 139, 167, 0.08);
 
   ion-tab-button {
     --color: #b0a8ab;
     --color-selected: var(--ion-color-primary);
     font-weight: 500;
+    position: relative;
 
     ion-icon {
       font-size: 22px;
+      transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     ion-label {
       font-size: 11px;
       margin-top: 2px;
+    }
+
+    // A soft pill behind the icon on the active tab, instead of only a
+    // color change — reads as a proper selected state, not just a hover.
+    &::before {
+      content: '';
+      position: absolute;
+      top: 4px;
+      width: 40px;
+      height: 26px;
+      border-radius: 14px;
+      background: var(--ion-color-primary);
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 200ms ease, transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    &.tab-selected {
+      &::before {
+        opacity: 0.12;
+        transform: scale(1);
+      }
+
+      ion-icon {
+        transform: translateY(-1px);
+      }
     }
   }
 }

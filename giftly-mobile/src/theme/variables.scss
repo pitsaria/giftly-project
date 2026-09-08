@@ -50,4 +50,25 @@
   --giftly-gradient: linear-gradient(135deg, #fea5b6 0%, #ff8ba7 100%);
   --giftly-pill-radius: 50px;
   --giftly-card-radius: 20px;
+  --giftly-chip-radius: 12px;
+
+  // Formalized tokens for tones already used ad hoc across page styles
+  // (sale badges, success states, warning banners) — one source of truth.
+  --giftly-success: #2e7d32;
+  --giftly-success-bg: #e8f5e9;
+  --giftly-warning: #a5710d;
+  --giftly-warning-bg: #fff8e1;
+  --giftly-sale: #e6398f;
+
+  // Elevation scale: soft, layered, brand-tinted shadows instead of a single
+  // flat rgba(0,0,0,0.04) everywhere — this is what actually reads as "flat/
+  // dated" vs. cards that feel like they're resting on the page. Each level
+  // stacks a tight dark layer (definition) with a broader tinted layer
+  // (softness), rather than one hard-edged shadow.
+  --giftly-shadow-1: 0 1px 2px rgba(30, 20, 24, 0.04), 0 2px 8px rgba(255, 139, 167, 0.08);
+  --giftly-shadow-2: 0 2px 4px rgba(30, 20, 24, 0.05), 0 8px 20px rgba(255, 139, 167, 0.12);
+  --giftly-shadow-3: 0 6px 12px rgba(30, 20, 24, 0.07), 0 16px 32px rgba(255, 139, 167, 0.16);
+
+  // Shared tap-feedback timing so every pressable surface eases the same way.
+  --giftly-press-transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -16,6 +16,10 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
+  IonItemSliding,
+  IonItem,
+  IonItemOptions,
+  IonItemOption,
   AlertController,
   ToastController,
 } from '@ionic/angular';
@@ -44,6 +48,7 @@ import { AddressService, NewAddress } from '../../core/address.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { CartService } from '../../core/cart.service';
 import { BoxService } from '../../core/box.service';
+import { HapticsService } from '../../core/haptics.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
@@ -76,6 +81,10 @@ type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
     IonSelect,
     IonSelectOption,
     IonCheckbox,
+    IonItemSliding,
+    IonItem,
+    IonItemOptions,
+    IonItemOption,
     TopBarComponent,
     ImgUrlPipe,
     AddressSearchComponent,
@@ -88,6 +97,7 @@ export class ProfilePage implements OnInit {
   private wishlistSvc = inject(WishlistService);
   private cart = inject(CartService);
   private boxSvc = inject(BoxService);
+  private haptics = inject(HapticsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private alertCtrl = inject(AlertController);
@@ -333,6 +343,7 @@ export class ProfilePage implements OnInit {
           handler: async () => {
             try {
               await this.addressSvc.remove(id);
+              this.haptics.medium();
               this.addresses.set(await this.addressSvc.getAll());
             } catch {
               await this.toast('Could not delete this address. Please try again.');
@@ -351,6 +362,10 @@ export class ProfilePage implements OnInit {
     } catch {
       await this.toast('Could not update your wishlist. Please try again.');
     }
+  }
+
+  isJustToggled(productId: number): boolean {
+    return this.wishlistSvc.justToggled() === productId;
   }
 
   async addWishlistItemToCart(productId: number): Promise<void> {
@@ -382,6 +397,7 @@ export class ProfilePage implements OnInit {
           handler: async () => {
             try {
               await this.boxSvc.deleteBox(id);
+              this.haptics.medium();
               this.boxes.set(await this.boxSvc.listBoxes());
             } catch {
               await this.toast('Could not delete this box. Please try again.');

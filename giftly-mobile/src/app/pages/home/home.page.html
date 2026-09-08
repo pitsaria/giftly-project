@@ -99,8 +99,13 @@
             <span class="f-now">₱{{ product.price }}</span>
             <span class="f-was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
           </span>
-          <button class="add-btn" [disabled]="product.quantity <= 0" (click)="quickAdd(product, $event)">
-            <ion-icon name="add-circle"></ion-icon>
+          <button
+            class="add-btn"
+            [class.added]="justAdded(product.id)"
+            [disabled]="product.quantity <= 0"
+            (click)="quickAdd(product, $event)"
+          >
+            <ion-icon [name]="justAdded(product.id) ? 'checkmark-circle' : 'add-circle'"></ion-icon>
           </button>
         </div>
       </div>

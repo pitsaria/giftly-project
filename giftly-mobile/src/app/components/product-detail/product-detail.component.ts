@@ -51,6 +51,10 @@ export class ProductDetailComponent {
     return this.wishlist.productIds().has(this.product.id);
   }
 
+  justPopped(): boolean {
+    return this.wishlist.justToggled() === this.product.id;
+  }
+
   inStock(): boolean {
     return this.product.quantity > 0;
   }

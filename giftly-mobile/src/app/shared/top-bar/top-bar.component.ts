@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Router } from '@angular/router';
@@ -25,8 +25,27 @@ export class TopBarComponent {
   // box; the Shop page itself listens to reveal its inline searchbar instead.
   @Output() search = new EventEmitter<void>();
 
+  // Bumps the cart badge whenever the count changes, instead of it just
+  // silently updating — a small nudge that something was actually added.
+  readonly bumping = signal(false);
+  private bumpTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
     addIcons({ searchOutline, cartOutline, personCircleOutline });
+
+    let prevCount = this.cart.itemCount();
+    effect(() => {
+      const count = this.cart.itemCount();
+      if (count !== prevCount) {
+        prevCount = count;
+        this.bumping.set(false);
+        // Force a reflow so re-adding the class restarts the animation even
+        // if it fires again before the previous bump finished.
+        requestAnimationFrame(() => this.bumping.set(true));
+        clearTimeout(this.bumpTimer);
+        this.bumpTimer = setTimeout(() => this.bumping.set(false), 400);
+      }
+    });
   }
 
   onSearch(): void {
