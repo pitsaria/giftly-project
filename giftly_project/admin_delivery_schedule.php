@@ -110,20 +110,24 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
     .ds-badge.overdue { background: #fdeded; color: #d32f2f; }
     .ds-group-count { margin-left: auto; font-size: 13px; color: #999; }
 
-    .ds-row { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid #f8f8f8; flex-wrap: wrap; }
+    .ds-row {
+        display: grid;
+        grid-template-columns: 60px 54px 130px 1fr 130px 60px 90px 110px 36px;
+        align-items: center; gap: 14px; padding: 16px 24px; border-bottom: 1px solid #f8f8f8;
+    }
     .ds-row:last-child { border-bottom: none; }
-    .ds-time { flex: 0 0 64px; font-size: 13px; font-weight: 700; color: #ff8ba7; }
-    .ds-order-id { flex: 0 0 60px; font-size: 13.5px; color: #444; }
-    .ds-customer { flex: 0 0 140px; font-size: 13.5px; font-weight: 600; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ds-address { flex: 1; min-width: 180px; font-size: 12.5px; color: #777; line-height: 1.4; }
-    .ds-mode { flex: 0 0 auto; font-size: 11px; padding: 4px 11px; border-radius: 20px; white-space: nowrap; }
+    .ds-time { font-size: 13px; font-weight: 700; color: #ff8ba7; }
+    .ds-order-id { font-size: 13.5px; color: #444; }
+    .ds-customer { font-size: 13.5px; font-weight: 600; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ds-address { font-size: 12.5px; color: #777; line-height: 1.4; min-width: 0; }
+    .ds-mode { font-size: 11px; padding: 4px 11px; border-radius: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .ds-mode.me { background: #e3f2fd; color: #1976d2; }
     .ds-mode.recipient { background: #fff3e0; color: #e65100; }
-    .ds-pay { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
-    .ds-total { flex: 0 0 90px; font-weight: 700; font-size: 13.5px; color: #222; text-align: right; }
-    .ds-status-select { border: none; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none; font-family: 'Poppins'; background: #f3f3f3; color: #333; }
-    .ds-status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .ds-view-btn { background: #f3f3f3; border: none; padding: 6px 14px; border-radius: 30px; font-size: 12px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+    .ds-pay { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 20px; white-space: nowrap; text-align: center; justify-self: start; }
+    .ds-total { font-weight: 700; font-size: 13.5px; color: #222; text-align: right; }
+    .ds-status-select { border: none; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none; font-family: 'Poppins'; background: #f3f3f3; color: #333; max-width: 100%; }
+    .ds-status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; justify-self: start; }
+    .ds-view-btn { background: #f3f3f3; border: none; padding: 6px 14px; border-radius: 30px; font-size: 12px; font-weight: 500; cursor: pointer; transition: 0.2s; justify-self: end; }
     .ds-view-btn:hover { background: #ffc1cc; color: #fff; }
 
     .ds-empty { text-align: center; padding: 60px 20px; color: #999; }
@@ -137,8 +141,9 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
 
     @media (max-width: 900px) {
         .ds-stats { grid-template-columns: 1fr; }
-        .ds-row { flex-direction: column; align-items: flex-start; }
+        .ds-row { grid-template-columns: 1fr; row-gap: 6px; justify-items: start; }
         .ds-total { text-align: left; }
+        .ds-view-btn { justify-self: start; }
     }
 </style>
 
