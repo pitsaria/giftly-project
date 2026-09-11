@@ -221,7 +221,6 @@ function promo_conditions_text($p) {
     .row-act a { font-size: 12px; font-weight: 600; text-decoration: none; margin-right: 10px; }
     .row-act .ed { color: #1976d2; }
     .row-act .tg { color: #ef6c00; }
-    .row-act .dl { color: #d32f2f; }
 
     .alert-box { padding: 12px 16px; border-radius: 14px; text-align: center; font-weight: 500; margin-bottom: 20px; font-size: 13.5px; }
     .alert-green { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
@@ -292,7 +291,6 @@ function promo_conditions_text($p) {
                        . '<td style="text-align:right;" class="row-act">'
                        . '<a href="javascript:void(0)" class="ed" onclick=\'openPromoEdit(' . $attr . ')\'><i class="fas fa-pen"></i> Edit</a>'
                        . '<a href="admin_promos.php?toggle=' . (int) $p['id'] . '" class="tg">' . (promo_bool($p['active']) ? 'Disable' : 'Enable') . '</a>'
-                       . '<a href="admin_promos.php?delete=' . (int) $p['id'] . '" class="dl" onclick="return confirm(\'Delete this promo? Its redemption history goes too.\');"><i class="fas fa-trash"></i> Delete</a>'
                        . '</td></tr>';
                 }
             } else {
