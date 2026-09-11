@@ -112,6 +112,30 @@ if (isset($conn)) {
         
         .nav-actions { display: flex; align-items: center; gap: 20px; }
         .nav-actions i { font-size: 18px; color: #555; cursor: pointer; }
+
+        /* --- RESPONSIVE NAV (hamburger below 900px) --- */
+        .nav-hamburger { display: none; background: none; border: none; font-size: 20px; color: #555; cursor: pointer; padding: 6px 4px; margin-left: 4px; }
+        @media (max-width: 900px) {
+            nav { flex-wrap: wrap; padding: 10px 16px; width: 92%; }
+            .nav-logo img { height: 32px !important; }
+            .nav-hamburger { display: inline-flex; align-items: center; justify-content: center; }
+            .nav-links {
+                display: none; width: 100%; order: 3;
+                flex-direction: column; align-items: stretch; gap: 4px;
+                margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+            }
+            .nav-links.open { display: flex; }
+            .nav-links li { width: 100%; }
+            .nav-links a { display: block; padding: 10px 14px; border-radius: 14px; }
+            .nav-links a:hover, .nav-links a.active { background: #fff0f5; }
+            .nav-links a.active::after { display: none; }
+            .nav-actions { gap: 10px; }
+            .nav-actions .btn-nav-login, .nav-actions .btn-nav-signup { padding: 6px 14px; font-size: 12.5px; }
+            .profile-icon-link i { font-size: 26px; }
+        }
+        @media (max-width: 420px) {
+            .nav-actions .btn-nav-signup { display: none; }
+        }
         .btn-nav-login { 
             background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%);
             color: #fff; padding: 6px 24px; border-radius: 50px; 
@@ -280,6 +304,7 @@ if (isset($_SESSION['user_id'])) {
                     <button class="btn-nav-login">Login</button>
                 </a>
             <?php endif; ?>
+            <button class="nav-hamburger" onclick="toggleNavMenu()" aria-label="Menu"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
@@ -311,6 +336,23 @@ if (isset($_SESSION['user_id'])) {
     <?php include 'modal_reauth.php'; ?>
 
     <script>
+// Mobile nav: toggle the collapsed link list, close it on link click or on resize back to desktop
+function toggleNavMenu() {
+    var links = document.querySelector('.nav-links');
+    if (links) links.classList.toggle('open');
+}
+document.addEventListener('DOMContentLoaded', function () {
+    var links = document.querySelector('.nav-links');
+    if (!links) return;
+    links.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () { links.classList.remove('open'); });
+    });
+});
+window.addEventListener('resize', function () {
+    var links = document.querySelector('.nav-links');
+    if (links && window.innerWidth > 900) links.classList.remove('open');
+});
+
 // Refresh the cart-icon count badge (call after any add-to-cart)
 window.updateCartBadge = function () {
     fetch('get_cart_count.php', { credentials: 'same-origin' })
