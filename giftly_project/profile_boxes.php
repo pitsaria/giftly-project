@@ -51,8 +51,7 @@ while ($res && $r = $res->fetch_assoc()) {
 <?php if (empty($boxes)): ?>
     <div class="mb-empty">
         <i class="fas fa-gift"></i>
-        <p style="font-size:16px;margin-bottom:16px;">You haven't built any boxes yet.</p>
-        <a href="build-a-box.php" class="mb-new" style="display:inline-flex;"><i class="fas fa-plus"></i> Build a Box</a>
+        <p style="font-size:16px;">You haven't built any boxes yet.</p>
     </div>
 <?php else: ?>
     <?php foreach ($boxes as $d):
