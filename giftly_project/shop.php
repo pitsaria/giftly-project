@@ -217,18 +217,35 @@ function isInWishlist($product_id, $wishlist_ids) {
     .search-box button { padding: 10px 22px; border-radius: 30px; border: none; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: white; cursor: pointer; transition: 0.2s; margin-left: 8px; font-family: 'Poppins'; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.2); }
     .search-box button:hover { background: linear-gradient(135deg, #ff8ba7 0%, #FEA5B6 100%); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254, 165, 182, 0.4); }
 
-    /* --- SHOP FILTER BAR --- */
-    .filter-bar-shop { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; justify-content: center; background: #fff; border: 1px solid #f0f0f0; border-radius: 20px; padding: 16px 22px; margin-bottom: 25px; box-shadow: 0 3px 12px rgba(0,0,0,0.02); }
-    .fb-group { display: flex; flex-direction: column; gap: 6px; }
+    /* --- SHOP FILTER BUTTON + DROPDOWN PANEL --- */
+    .shop-toolbar { display: flex; justify-content: center; margin-bottom: 25px; position: relative; }
+    .filter-toggle-btn {
+        display: inline-flex; align-items: center; gap: 9px; background: #fff; border: 1.5px solid #eee;
+        border-radius: 30px; padding: 10px 20px; font-size: 13.5px; font-weight: 600; color: #555;
+        cursor: pointer; font-family: 'Poppins'; transition: 0.2s;
+    }
+    .filter-toggle-btn:hover, .filter-toggle-btn.open { border-color: #ffc1cc; color: #ff8ba7; }
+    .filter-count-badge {
+        background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 11px; font-weight: 700;
+        min-width: 18px; height: 18px; border-radius: 50px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px;
+    }
+    .filter-panel {
+        display: none; position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+        flex-direction: column; gap: 16px; background: #fff; border: 1px solid #f0f0f0; border-radius: 20px;
+        padding: 20px 22px; box-shadow: 0 12px 34px rgba(0,0,0,0.1); z-index: 50; width: 260px;
+    }
+    .filter-panel.open { display: flex; }
+    .fb-group { display: flex; flex-direction: column; gap: 6px; width: 100%; }
     .fb-group label { font-size: 11.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
-    .fb-group select, .fb-group input[type="number"] { padding: 8px 12px; border: 1.5px solid #eee; border-radius: 30px; font-size: 13px; font-family: 'Poppins'; outline: none; background: #fafafa; }
+    .fb-group select, .fb-group input[type="number"] { padding: 9px 12px; border: 1.5px solid #eee; border-radius: 30px; font-size: 13px; font-family: 'Poppins'; outline: none; background: #fafafa; width: 100%; }
     .fb-group select:focus, .fb-group input:focus { border-color: #ffc1cc; background: #fff; }
     .fb-price-row { display: flex; align-items: center; gap: 6px; }
-    .fb-price-row input { width: 72px; }
-    .fb-checkbox { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #555; padding: 8px 4px; cursor: pointer; white-space: nowrap; }
+    .fb-price-row input { width: 0; flex: 1; }
+    .fb-checkbox { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 13px; color: #555; cursor: pointer; text-transform: none !important; font-weight: 500 !important; }
     .fb-checkbox input { accent-color: #ff8ba7; width: 16px; height: 16px; cursor: pointer; }
-    .fb-apply { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; padding: 9px 22px; border-radius: 30px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: 'Poppins'; align-self: flex-end; }
-    .fb-clear { align-self: center; color: #999; font-size: 12.5px; text-decoration: underline; }
+    .fb-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .fb-apply { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; padding: 11px; border-radius: 30px; font-weight: 600; font-size: 13.5px; cursor: pointer; font-family: 'Poppins'; width: 100%; }
+    .fb-clear { text-align: center; color: #999; font-size: 12.5px; text-decoration: underline; }
 
     /* --- PREMIUM NIKE-STYLE PRODUCT CARD --- */
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; padding: 10px 0 40px 0; }
@@ -755,51 +772,61 @@ function isInWishlist($product_id, $wishlist_ids) {
         </form>
     </div>
 
-    <form action="shop.php" method="GET" class="filter-bar-shop">
-        <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_id); ?>">
-        <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+    <?php $active_filter_count = ($min_price !== '') + ($max_price !== '') + ($min_rating !== '') + ($on_sale !== '') + ($sort !== ''); ?>
+    <div class="shop-toolbar">
+        <button type="button" class="filter-toggle-btn" onclick="toggleFilterPanel(event)">
+            <i class="fas fa-sliders"></i> Filters
+            <?php if ($active_filter_count > 0): ?><span class="filter-count-badge"><?php echo $active_filter_count; ?></span><?php endif; ?>
+            <i class="fas fa-chevron-down" style="font-size:11px;"></i>
+        </button>
 
-        <div class="fb-group">
-            <label>Price</label>
-            <div class="fb-price-row">
-                <input type="number" name="min_price" placeholder="Min" min="0" step="1" value="<?php echo htmlspecialchars($min_price); ?>">
-                <span>–</span>
-                <input type="number" name="max_price" placeholder="Max" min="0" step="1" value="<?php echo htmlspecialchars($max_price); ?>">
+        <form action="shop.php" method="GET" class="filter-panel" id="filterPanel">
+            <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_id); ?>">
+            <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+
+            <div class="fb-group">
+                <label>Price</label>
+                <div class="fb-price-row">
+                    <input type="number" name="min_price" placeholder="Min" min="0" step="1" value="<?php echo htmlspecialchars($min_price); ?>">
+                    <span>–</span>
+                    <input type="number" name="max_price" placeholder="Max" min="0" step="1" value="<?php echo htmlspecialchars($max_price); ?>">
+                </div>
             </div>
-        </div>
 
-        <div class="fb-group">
-            <label>Rating</label>
-            <select name="min_rating" onchange="this.form.submit()">
-                <option value="">Any rating</option>
-                <?php foreach ([4, 3, 2, 1] as $r): ?>
-                    <option value="<?php echo $r; ?>" <?php echo ($min_rating == $r) ? 'selected' : ''; ?>><?php echo $r; ?>+ stars</option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+            <div class="fb-group">
+                <label>Rating</label>
+                <select name="min_rating">
+                    <option value="">Any rating</option>
+                    <?php foreach ([4, 3, 2, 1] as $r): ?>
+                        <option value="<?php echo $r; ?>" <?php echo ($min_rating == $r) ? 'selected' : ''; ?>><?php echo $r; ?>+ stars</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <div class="fb-group">
-            <label>&nbsp;</label>
-            <label class="fb-checkbox">
-                <input type="checkbox" name="on_sale" value="1" <?php echo $on_sale !== '' ? 'checked' : ''; ?> onchange="this.form.submit()">
-                On sale only
-            </label>
-        </div>
+            <div class="fb-group">
+                <label class="fb-checkbox">
+                    <input type="checkbox" name="on_sale" value="1" <?php echo $on_sale !== '' ? 'checked' : ''; ?>>
+                    On sale only
+                </label>
+            </div>
 
-        <div class="fb-group">
-            <label>Sort by</label>
-            <select name="sort" onchange="this.form.submit()">
-                <?php foreach ($sort_options as $key => $label): ?>
-                    <option value="<?php echo $key; ?>" <?php echo ($sort === $key) ? 'selected' : ''; ?>><?php echo $label; ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+            <div class="fb-group">
+                <label>Sort by</label>
+                <select name="sort">
+                    <?php foreach ($sort_options as $key => $label): ?>
+                        <option value="<?php echo $key; ?>" <?php echo ($sort === $key) ? 'selected' : ''; ?>><?php echo $label; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <button type="submit" class="fb-apply">Apply</button>
-        <?php if ($min_price !== '' || $max_price !== '' || $min_rating !== '' || $on_sale !== '' || $sort !== ''): ?>
-            <a href="shop.php?<?php echo shop_qs(['min_price' => null, 'max_price' => null, 'min_rating' => null, 'on_sale' => null, 'sort' => null, 'page' => null]); ?>" class="fb-clear">Clear filters</a>
-        <?php endif; ?>
-    </form>
+            <div class="fb-actions">
+                <button type="submit" class="fb-apply">Apply Filters</button>
+                <?php if ($active_filter_count > 0): ?>
+                    <a href="shop.php?<?php echo shop_qs(['min_price' => null, 'max_price' => null, 'min_rating' => null, 'on_sale' => null, 'sort' => null, 'page' => null]); ?>" class="fb-clear">Clear all</a>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
 
    <div class="product-grid">
        <?php
@@ -975,6 +1002,21 @@ $heartClass = $isInWishlist ? 'active' : '';
 </div>
 
 <script>
+    function toggleFilterPanel(e) {
+        if (e) e.stopPropagation();
+        document.getElementById('filterPanel').classList.toggle('open');
+        document.querySelector('.filter-toggle-btn').classList.toggle('open');
+    }
+    document.addEventListener('click', function (e) {
+        var panel = document.getElementById('filterPanel');
+        var btn = document.querySelector('.filter-toggle-btn');
+        if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+            panel.classList.remove('open');
+            btn.classList.remove('open');
+        }
+    });
+    document.getElementById('filterPanel').addEventListener('click', function (e) { e.stopPropagation(); });
+
     function scrollCategories(direction) {
         const track = document.getElementById('catScrollTrack');
         const scrollAmount = 200; 
