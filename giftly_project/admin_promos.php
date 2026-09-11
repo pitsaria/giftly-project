@@ -292,7 +292,7 @@ function promo_conditions_text($p) {
                        . '<td style="text-align:right;" class="row-act">'
                        . '<a href="javascript:void(0)" class="ed" onclick=\'openPromoEdit(' . $attr . ')\'><i class="fas fa-pen"></i> Edit</a>'
                        . '<a href="admin_promos.php?toggle=' . (int) $p['id'] . '" class="tg">' . (promo_bool($p['active']) ? 'Disable' : 'Enable') . '</a>'
-                       . '<a href="admin_promos.php?delete=' . (int) $p['id'] . '" class="dl" onclick="return confirm(\'Delete this promo? Its redemption history goes too.\');"><i class="fas fa-trash"></i></a>'
+                       . '<a href="admin_promos.php?delete=' . (int) $p['id'] . '" class="dl" onclick="return confirm(\'Delete this promo? Its redemption history goes too.\');"><i class="fas fa-trash"></i> Delete</a>'
                        . '</td></tr>';
                 }
             } else {
