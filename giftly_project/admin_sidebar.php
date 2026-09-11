@@ -96,6 +96,12 @@ $__sb_badge = 'margin-left:auto; background:#ff8ba7; color:#fff; font-size:11px;
             </a>
         </li>
         <li>
+            <a href="admin_delivery_schedule.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_delivery_schedule.php') ? 'active' : ''; ?>">
+                <i class="fas fa-truck-fast"></i>
+                <span>Delivery Schedule</span>
+            </a>
+        </li>
+        <li>
             <a href="admin_messages.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_messages.php') ? 'active' : ''; ?>">
                 <i class="fas fa-envelope"></i>
                 <span>Messages</span>
