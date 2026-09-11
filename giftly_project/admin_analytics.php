@@ -167,7 +167,7 @@ if ($has_promos && !empty(($has_promos->fetch_assoc()['t'] ?? null))) {
     .an-breakdown-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
     .an-breakdown-row .name { width: 100px; font-size: 13px; color: #555; text-transform: capitalize; }
     .an-track { flex: 1; height: 12px; background: #f3f3f3; border-radius: 50px; overflow: hidden; }
-    .an-fill { height: 100%; border-radius: 50px; }
+    .an-fill { display: block; height: 100%; border-radius: 50px; }
     .an-breakdown-row .c { width: 44px; text-align: right; font-size: 13px; font-weight: 700; color: #222; }
 
     .an-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
