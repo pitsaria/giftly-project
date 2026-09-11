@@ -324,6 +324,11 @@ if ($result->num_rows > 0) {
                                 <i class="fas fa-star"></i> Review items
                             </button>
                         <?php endif; ?>
+                        <?php if (!empty($row['recipient_name']) && $row['status'] !== 'cancelled'): ?>
+                            <a href="gift_send_again.php?order_id=<?php echo $row['id']; ?>" class="btn-order-view" style="background:#fff0f5; color:#ff8ba7;" title="Send another gift to <?php echo htmlspecialchars($row['recipient_name']); ?>">
+                                <i class="fas fa-gift"></i> Send again
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </td>
             </tr>

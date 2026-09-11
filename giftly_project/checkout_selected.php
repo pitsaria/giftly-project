@@ -29,6 +29,9 @@ if($user_data->num_rows > 0) {
     $user_phone = $row['phone'];
 }
 
+// --- "Send a gift to X" / "Send again" pre-fill, set by gift_start.php / gift_send_again.php ---
+$gift_ctx = $_SESSION['gift_context'] ?? null;
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     
     $selected_ids = explode(',', $_POST['selected_ids_hidden']);
@@ -226,6 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
 
     if ($conn->query($sql) === TRUE) {
         $order_id = $conn->insert_id;
+        unset($_SESSION['gift_context']);
 
         foreach($items as $item) {
             $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']})");
@@ -1077,31 +1081,31 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 <h3>2. Delivery Method</h3>
                 
                 <div class="delivery-options">
-                    <label class="delivery-option selected" id="optMe" onclick="selectDelivery('me')">
-                        <input type="radio" name="delivery_type" value="me" checked>
+                    <label class="delivery-option <?php echo $gift_ctx ? '' : 'selected'; ?>" id="optMe" onclick="selectDelivery('me')">
+                        <input type="radio" name="delivery_type" value="me" <?php echo $gift_ctx ? '' : 'checked'; ?>>
                         <i class="fas fa-home" style="font-size: 20px; display: block; margin-bottom: 5px;"></i>
                         Deliver to Me
                     </label>
-                    <label class="delivery-option" id="optRecipient" onclick="selectDelivery('recipient')">
-                        <input type="radio" name="delivery_type" value="recipient">
+                    <label class="delivery-option <?php echo $gift_ctx ? 'selected' : ''; ?>" id="optRecipient" onclick="selectDelivery('recipient')">
+                        <input type="radio" name="delivery_type" value="recipient" <?php echo $gift_ctx ? 'checked' : ''; ?>>
                         <i class="fas fa-user-friends" style="font-size: 20px; display: block; margin-bottom: 5px;"></i>
                         Deliver to Recipient
                     </label>
                 </div>
 
-                <div id="recipientField">
+                <div id="recipientField" class="<?php echo $gift_ctx ? 'show' : ''; ?>">
     <div class="form-row" style="margin-bottom: 10px;">
         <div class="form-group">
             <label>Recipient's Name</label>
-            <input type="text" name="recipient_name" class="form-input" placeholder="Who is this gift for?">
+            <input type="text" name="recipient_name" class="form-input" placeholder="Who is this gift for?" value="<?php echo htmlspecialchars($gift_ctx['name'] ?? ''); ?>" <?php echo $gift_ctx ? 'required' : ''; ?>>
         </div>
         <div class="form-group">
     <label>Recipient's Phone Number</label>
     <div class="phone-input-wrapper">
-        <input type="tel" id="recipientPhone" name="recipient_phone" class="form-input" 
-               placeholder="Recipient's contact number"
-               oninput="validatePhoneNumber('recipientPhone')" 
-               onblur="validatePhoneNumber('recipientPhone')">
+        <input type="tel" id="recipientPhone" name="recipient_phone" class="form-input"
+               placeholder="Recipient's contact number" value="<?php echo htmlspecialchars($gift_ctx['phone'] ?? ''); ?>"
+               oninput="validatePhoneNumber('recipientPhone')"
+               onblur="validatePhoneNumber('recipientPhone')" <?php echo $gift_ctx ? 'required' : ''; ?>>
     </div>
     <div class="phone-error-msg" id="recipientPhone_error">
         <i class="fas fa-exclamation-circle" style="margin-right: 4px;"></i>
@@ -1145,17 +1149,17 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 <div class="form-row">
                     <div class="form-group" style="flex:0 0 38%;">
                         <label>House / Unit / Block / Lot No. <span style="color:#bbb;font-weight:400;">(optional)</span></label>
-                        <input type="text" name="house_no" id="checkoutHouse" class="form-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B">
+                        <input type="text" name="house_no" id="checkoutHouse" class="form-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B" value="<?php echo htmlspecialchars($gift_ctx['house_no'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
                         <label>Street Address</label>
-                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="Street / subdivision" required>
+                        <input type="text" name="address" id="checkoutAddress" class="form-input" placeholder="Street / subdivision" value="<?php echo htmlspecialchars($gift_ctx['street'] ?? ''); ?>" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Barangay, City, Province</label>
-                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="Barangay, City, Province" required>
+                        <input type="text" name="city" id="checkoutCity" class="form-input" placeholder="Barangay, City, Province" value="<?php echo htmlspecialchars($gift_ctx['city_line'] ?? ''); ?>" required>
                     </div>
                 </div>
                 <script>
@@ -2084,6 +2088,11 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
             fillAddressFields();
         }
     })();
+
+    <?php if ($gift_ctx): ?>
+    /* pre-filled via "Send a gift" / "Send again" — put the form in recipient mode */
+    selectDelivery('recipient');
+    <?php endif; ?>
 
     /* --- TERMS AND CONDITIONS MODAL CONTROLS --- */
 function openTermsModal() {

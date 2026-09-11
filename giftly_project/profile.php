@@ -44,6 +44,7 @@ include 'header.php';
         <div class="sidebar-title">Account Settings</div>
         <ul class="sidebar-menu">
             <li><a href="?tab=profile" class="<?php echo ($active_tab == 'profile') ? 'active' : ''; ?>"><i class="fas fa-user"></i> Profile Settings</a></li>
+            <li><a href="?tab=relations" class="<?php echo ($active_tab == 'relations') ? 'active' : ''; ?>"><i class="fas fa-heart"></i> My Relations</a></li>
             <li><a href="?tab=addresses" class="<?php echo ($active_tab == 'addresses') ? 'active' : ''; ?>"><i class="fas fa-map-pin"></i> My Addresses</a></li>
             <li><a href="?tab=orders" class="<?php echo ($active_tab == 'orders') ? 'active' : ''; ?>"><i class="fas fa-shopping-bag"></i> Order History</a></li>
             <li><a href="?tab=boxes" class="<?php echo ($active_tab == 'boxes') ? 'active' : ''; ?>"><i class="fas fa-gift"></i> My Boxes</a></li>
@@ -57,6 +58,11 @@ include 'header.php';
         <!-- TAB 1: PROFILE SETTINGS -->
         <div class="tab-content <?php echo ($active_tab == 'profile') ? 'active' : ''; ?>" id="tab-profile">
             <?php include 'profile_settings.php'; ?>
+        </div>
+
+        <!-- TAB: MY RELATIONS -->
+        <div class="tab-content <?php echo ($active_tab == 'relations') ? 'active' : ''; ?>" id="tab-relations">
+            <?php include 'profile_relations.php'; ?>
         </div>
 
         <!-- TAB 2: ADDRESSES -->

@@ -178,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $conn->query("UPDATE boxes SET status = 'ordered', updated_at = CURRENT_TIMESTAMP WHERE id = $box_id AND user_id = $user_id");
 
         $conn->commit();
+        unset($_SESSION['gift_context']);
 
         // --- ONLINE PAYMENT: hand off to PayMongo's hosted checkout ---
         if ($paymongo_on && $payment === 'online') {
@@ -317,6 +318,9 @@ $blocked = count($data['issues']) > 0;
 $user_row = $conn->query("SELECT name, phone FROM users WHERE id = $user_id")->fetch_assoc();
 $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_id ORDER BY is_default DESC, id DESC");
 
+// --- "Send a gift to X" / "Send again" pre-fill, set by gift_start.php / gift_send_again.php ---
+$gift_ctx = $_SESSION['gift_context'] ?? null;
+
 $subtotal = $data['subtotal'];
 $box_price = floatval($data['box']['box_price']);
 $base_shipping_fee = ($subtotal > 0 && $subtotal < 300) ? 50 : 0;
@@ -436,24 +440,24 @@ unset($_SESSION['box_checkout_error']);
             <div class="co-sec">
                 <h3>2. Delivery</h3>
                 <div class="co-delivery">
-                    <label class="co-opt sel" id="optMe" onclick="coDelivery('me')">
-                        <input type="radio" name="delivery_type" value="me" checked>
+                    <label class="co-opt <?php echo $gift_ctx ? '' : 'sel'; ?>" id="optMe" onclick="coDelivery('me')">
+                        <input type="radio" name="delivery_type" value="me" <?php echo $gift_ctx ? '' : 'checked'; ?>>
                         <i class="fas fa-home" style="display:block;margin-bottom:4px;"></i> Deliver to Me
                     </label>
-                    <label class="co-opt" id="optRec" onclick="coDelivery('recipient')">
-                        <input type="radio" name="delivery_type" value="recipient">
+                    <label class="co-opt <?php echo $gift_ctx ? 'sel' : ''; ?>" id="optRec" onclick="coDelivery('recipient')">
+                        <input type="radio" name="delivery_type" value="recipient" <?php echo $gift_ctx ? 'checked' : ''; ?>>
                         <i class="fas fa-user-friends" style="display:block;margin-bottom:4px;"></i> Deliver to Recipient
                     </label>
                 </div>
-                <div id="recipientBox">
+                <div id="recipientBox" class="<?php echo $gift_ctx ? 'show' : ''; ?>">
                     <div class="co-row">
                         <div class="co-grp">
                             <label>Recipient's Name</label>
-                            <input type="text" name="recipient_name" class="co-input" placeholder="Who is this gift for?">
+                            <input type="text" name="recipient_name" class="co-input" placeholder="Who is this gift for?" value="<?php echo htmlspecialchars($gift_ctx['name'] ?? ''); ?>" <?php echo $gift_ctx ? 'required' : ''; ?>>
                         </div>
                         <div class="co-grp">
                             <label>Recipient's Phone</label>
-                            <input type="tel" name="recipient_phone" class="co-input" placeholder="09XXXXXXXXX" pattern="[0-9]{11}">
+                            <input type="tel" name="recipient_phone" class="co-input" placeholder="09XXXXXXXXX" pattern="[0-9]{11}" value="<?php echo htmlspecialchars($gift_ctx['phone'] ?? ''); ?>" <?php echo $gift_ctx ? 'required' : ''; ?>>
                         </div>
                     </div>
                 </div>
@@ -485,17 +489,17 @@ unset($_SESSION['box_checkout_error']);
                 <div class="co-row">
                     <div class="co-grp" style="flex:0 0 38%;">
                         <label>House / Unit / Block / Lot No. <span style="color:#bbb;font-weight:400;">(optional)</span></label>
-                        <input type="text" name="house_no" id="coHouse" class="co-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B">
+                        <input type="text" name="house_no" id="coHouse" class="co-input" placeholder="e.g. Blk 1 Lot 2 / Unit 4B" value="<?php echo htmlspecialchars($gift_ctx['house_no'] ?? ''); ?>">
                     </div>
                     <div class="co-grp">
                         <label>Street Address</label>
-                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="Street / subdivision" required>
+                        <input type="text" name="address" id="coAddr" class="co-input" placeholder="Street / subdivision" value="<?php echo htmlspecialchars($gift_ctx['street'] ?? ''); ?>" required>
                     </div>
                 </div>
                 <div class="co-row">
                     <div class="co-grp">
                         <label>Barangay, City, Province</label>
-                        <input type="text" name="city" id="coCity" class="co-input" placeholder="Barangay, City, Province" required>
+                        <input type="text" name="city" id="coCity" class="co-input" placeholder="Barangay, City, Province" value="<?php echo htmlspecialchars($gift_ctx['city_line'] ?? ''); ?>" required>
                     </div>
                 </div>
                 <script>
@@ -705,6 +709,13 @@ unset($_SESSION['box_checkout_error']);
             coFillAddr();
         }
     })();
+
+    <?php if ($gift_ctx): ?>
+    /* pre-filled via "Send a gift" / "Send again" — put the form in recipient mode,
+       and drop any stale draft for this box so it doesn't overwrite the prefill below. */
+    try { sessionStorage.removeItem('boxCheckout_<?php echo (int) $box_id; ?>'); } catch (e) {}
+    coDelivery('recipient');
+    <?php endif; ?>
     (function () {
         const d = new Date();
         d.setDate(d.getDate() + 3);

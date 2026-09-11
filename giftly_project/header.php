@@ -2,6 +2,19 @@
 // Buffer output so pages that call header()/redirects after including this
 // file (e.g. an auth check placed below the include) still work.
 if (ob_get_level() === 0) { ob_start(); }
+
+// Occasion reminders: opportunistic sweep (like pay_sweep_stale()), throttled
+// so it only actually runs the DB scan once an hour per visitor session.
+if (isset($conn)) {
+    include_once __DIR__ . '/recipients_lib.php';
+    include_once __DIR__ . '/mail_lib.php';
+    recip_ensure_schema($conn);
+    $__recip_last_sweep = $_SESSION['recip_swept_at'] ?? 0;
+    if (time() - $__recip_last_sweep > 3600) {
+        $_SESSION['recip_swept_at'] = time();
+        recip_send_due_reminders($conn);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -269,7 +282,19 @@ if (isset($_SESSION['user_id'])) {
             <?php endif; ?>
         </div>
     </nav>
-    
+
+    <?php if (!empty($_SESSION['gift_context'])): $__gc = $_SESSION['gift_context'];
+        $__gc_back = basename($_SERVER['PHP_SELF']) . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
+    ?>
+    <div style="position: fixed; top: 90px; right: 18px; z-index: 998; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; padding: 10px 18px; border-radius: 50px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 20px rgba(255,139,167,0.35); display: flex; align-items: center; gap: 10px; max-width: 90vw;">
+        <i class="fas fa-gift"></i>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            Shopping for <?php echo htmlspecialchars($__gc['name']); ?><?php echo !empty($__gc['occasion_label']) ? '&rsquo;s ' . htmlspecialchars($__gc['occasion_label']) : ''; ?>
+        </span>
+        <a href="gift_clear.php?back=<?php echo urlencode($__gc_back); ?>" style="color: #fff; text-decoration: underline; flex-shrink: 0;">Clear</a>
+    </div>
+    <?php endif; ?>
+
     <!-- LOGIN MODAL -->
     <?php include 'modal_login.php'; ?>
     
