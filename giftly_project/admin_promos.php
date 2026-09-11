@@ -289,7 +289,7 @@ function promo_conditions_text($p) {
                        . '<td>' . $used . $cap . '</td>'
                        . '<td><span class="status-pill" style="color:' . $st_fg . '; background:' . $st_bg . ';">' . $st_txt . '</span></td>'
                        . '<td style="text-align:right;" class="row-act">'
-                       . '<a href="javascript:void(0)" class="ed" onclick=\'openPromoEdit(' . $attr . ')\'><i class="fas fa-pen"></i> Edit</a>'
+                       . '<a href="javascript:void(0)" class="ed" onclick=\'openPromoEdit(' . $attr . ')\'>Edit</a>'
                        . '<a href="admin_promos.php?toggle=' . (int) $p['id'] . '" class="tg">' . (promo_bool($p['active']) ? 'Disable' : 'Enable') . '</a>'
                        . '</td></tr>';
                 }
