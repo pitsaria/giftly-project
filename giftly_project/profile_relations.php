@@ -188,7 +188,12 @@ $occasion_types = recip_occasion_types();
     .rl-section-label { font-size: 13px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
     /* --- upcoming reminders: horizontal scroll strip --- */
-    .rl-upcoming { display: flex; gap: 14px; overflow-x: auto; padding: 4px 4px 14px; margin-bottom: 10px; scroll-snap-type: x proximity; }
+    /* .profile-main is a flex item (defined in profile.php); without min-width:0 its
+       default min-width:auto lets the upcoming strip's un-shrinking cards (up to 8 at
+       260px each) force the whole page wider than the navbar. */
+    .profile-main { min-width: 0; }
+    .rl-upcoming { display: flex; gap: 14px; overflow-x: auto; min-width: 0; max-width: 100%; padding: 4px 4px 14px; margin-bottom: 10px; scroll-snap-type: x proximity; }
+    .rl-grid { min-width: 0; max-width: 100%; }
     .rl-upcoming::-webkit-scrollbar { height: 6px; }
     .rl-upcoming::-webkit-scrollbar-thumb { background: #ffd6e0; border-radius: 10px; }
     .rl-up-card {
