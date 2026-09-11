@@ -226,8 +226,7 @@ if (isset($conn)) {
             <li><a href="build-a-box.php" class="<?php echo ($current_page == 'build-a-box.php') ? 'active' : ''; ?>">Build-a-Box</a></li>
             <li><a href="occasion-boxes.php" class="<?php echo ($current_page == 'occasion-boxes.php') ? 'active' : ''; ?>">Occasion Boxes</a></li>
             <li><a href="baskets.php" class="<?php echo ($current_page == 'baskets.php') ? 'active' : ''; ?>">Baskets</a></li>
-            <li><a href="about.php" class="<?php echo ($current_page == 'about.php') ? 'active' : ''; ?>">About</a></li>
-            <li><a href="contact.php" class="<?php echo ($current_page == 'contact.php') ? 'active' : ''; ?>">Contact</a></li>
+            <li><a href="profile.php?tab=relations" class="<?php echo ($current_page == 'profile.php' && ($_GET['tab'] ?? '') === 'relations') ? 'active' : ''; ?>"><i class="fas fa-address-book" style="margin-right:4px;"></i> My Relations</a></li>
         </ul>
 
         <div class="nav-actions">
