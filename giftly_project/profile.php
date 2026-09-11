@@ -44,16 +44,11 @@ include 'header.php';
         <div class="sidebar-title">Account Settings</div>
         <ul class="sidebar-menu">
             <li><a href="?tab=profile" class="<?php echo ($active_tab == 'profile') ? 'active' : ''; ?>"><i class="fas fa-user"></i> Profile Settings</a></li>
-            <li><a href="?tab=relations" class="<?php echo ($active_tab == 'relations') ? 'active' : ''; ?>"><i class="fas fa-address-book"></i> My Relations</a></li>
+            <li><a href="?tab=relations" class="<?php echo ($active_tab == 'relations') ? 'active' : ''; ?>"><i class="fas fa-heart"></i> My Relations</a></li>
             <li><a href="?tab=addresses" class="<?php echo ($active_tab == 'addresses') ? 'active' : ''; ?>"><i class="fas fa-map-pin"></i> My Addresses</a></li>
             <li><a href="?tab=orders" class="<?php echo ($active_tab == 'orders') ? 'active' : ''; ?>"><i class="fas fa-shopping-bag"></i> Order History</a></li>
             <li><a href="?tab=boxes" class="<?php echo ($active_tab == 'boxes') ? 'active' : ''; ?>"><i class="fas fa-gift"></i> My Boxes</a></li>
             <li><a href="?tab=wishlist" class="<?php echo ($active_tab == 'wishlist') ? 'active' : ''; ?>"><i class="fas fa-heart"></i> Wishlist</a></li>
-        </ul>
-        <div class="sidebar-title" style="margin-top:24px;">Site Info</div>
-        <ul class="sidebar-menu">
-            <li><a href="about.php"><i class="fas fa-circle-info"></i> About</a></li>
-            <li><a href="contact.php"><i class="fas fa-envelope"></i> Contact</a></li>
         </ul>
     </div>
 
