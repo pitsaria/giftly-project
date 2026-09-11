@@ -426,7 +426,7 @@ $occasion_types = recip_occasion_types();
                                 <span class="lbl"><?php echo htmlspecialchars(recip_occasion_label($o)); ?></span>
                                 <span class="date"><?php echo $od ? $od->format('M j') : ''; ?></span>
                                 <span class="cd <?php echo $o['days_until'] <= 3 ? 'soon' : ''; ?>"><?php echo (int) $o['days_until']; ?>d</span>
-                                <button class="rl-occ-del" onclick="if(confirm('Remove this occasion?')) window.location='profile_relations.php?delete_occasion=<?php echo (int) $o['id']; ?>'"><i class="fas fa-xmark"></i></button>
+                                <button class="rl-occ-del" onclick="if(confirm('Remove this occasion?')) window.location='profile.php?tab=relations&delete_occasion=<?php echo (int) $o['id']; ?>'"><i class="fas fa-xmark"></i></button>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -727,7 +727,7 @@ $occasion_types = recip_occasion_types();
         document.getElementById('rlDeleteModal').style.display = 'flex';
     }
     document.getElementById('rlDeleteConfirmBtn').addEventListener('click', function () {
-        if (rlDeleteTarget > 0) window.location = 'profile_relations.php?delete_recipient=' + rlDeleteTarget;
+        if (rlDeleteTarget > 0) window.location = 'profile.php?tab=relations&delete_recipient=' + rlDeleteTarget;
     });
     document.getElementById('rlDeleteModal').addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
 </script>
