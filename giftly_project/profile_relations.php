@@ -293,8 +293,9 @@ $occasion_types = recip_occasion_types();
 
     /* photo picker */
     .rl-photo-picker { display: flex; justify-content: center; margin-bottom: 20px; }
+    .rl-photo-circle-wrap { position: relative; width: 92px; height: 92px; cursor: pointer; }
     .rl-photo-circle {
-        position: relative; width: 92px; height: 92px; border-radius: 50%; cursor: pointer;
+        width: 100%; height: 100%; border-radius: 50%;
         background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); display: flex; align-items: center; justify-content: center;
         color: #fff; font-size: 30px; font-weight: 700; overflow: hidden; border: 3px solid #fff; box-shadow: 0 4px 16px rgba(255,139,167,0.3);
     }
@@ -302,8 +303,9 @@ $occasion_types = recip_occasion_types();
     .rl-photo-circle.has-photo img { display: block; }
     .rl-photo-circle.has-photo .rl-photo-initial { display: none; }
     .rl-photo-badge {
-        position: absolute; bottom: -2px; right: -2px; width: 30px; height: 30px; border-radius: 50%; background: #fff;
+        position: absolute; bottom: 0; right: 0; width: 30px; height: 30px; border-radius: 50%; background: #fff;
         color: #ff8ba7; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 2px solid #ffe1e8;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .rl-photo-remove { display: block; margin: 8px auto 0; font-size: 12px; color: #d32f2f; background: none; border: none; cursor: pointer; text-decoration: underline; }
 
@@ -477,9 +479,11 @@ $occasion_types = recip_occasion_types();
             <input type="hidden" name="remove_photo" id="rlRemovePhoto" value="">
 
             <div class="rl-photo-picker">
-                <div class="rl-photo-circle" id="rlPhotoCircle" onclick="document.getElementById('rlPhotoInput').click()">
-                    <span class="rl-photo-initial" id="rlPhotoInitial">?</span>
-                    <img id="rlPhotoPreview" src="" alt="">
+                <div class="rl-photo-circle-wrap" onclick="document.getElementById('rlPhotoInput').click()">
+                    <div class="rl-photo-circle" id="rlPhotoCircle">
+                        <span class="rl-photo-initial" id="rlPhotoInitial">?</span>
+                        <img id="rlPhotoPreview" src="" alt="">
+                    </div>
                     <span class="rl-photo-badge"><i class="fas fa-camera"></i></span>
                 </div>
             </div>
