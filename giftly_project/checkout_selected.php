@@ -32,6 +32,9 @@ if($user_data->num_rows > 0) {
 // --- "Send a gift to X" / "Send again" pre-fill, set by gift_start.php / gift_send_again.php ---
 $gift_ctx = $_SESSION['gift_context'] ?? null;
 
+// --- Saved people (My Relations), for the "Saved Person" quick-fill dropdown ---
+$saved_recipients = recip_list_for_user($conn, $user_id);
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     
     $selected_ids = explode(',', $_POST['selected_ids_hidden']);
@@ -1094,6 +1097,35 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 </div>
 
                 <div id="recipientField" class="<?php echo $gift_ctx ? 'show' : ''; ?>">
+    <?php if (!empty($saved_recipients)): ?>
+    <div class="form-row" style="margin-bottom: 10px;">
+        <div class="form-group">
+            <label>Saved Person <span style="color:#bbb;font-weight:400;">(optional)</span></label>
+            <div class="custom-select-wrapper">
+                <select id="savedRecipientSelect" class="custom-select" onchange="fillRecipientFields()">
+                    <option value="">🎁 Choose a saved person</option>
+                    <?php foreach ($saved_recipients as $sr): ?>
+                        <option value="<?php echo (int) $sr['id']; ?>"
+                                <?php echo (!empty($gift_ctx['recipient_id']) && (int) $gift_ctx['recipient_id'] === (int) $sr['id']) ? 'selected' : ''; ?>
+                                data-name="<?php echo htmlspecialchars($sr['name']); ?>"
+                                data-phone="<?php echo htmlspecialchars($sr['phone']); ?>"
+                                data-house="<?php echo htmlspecialchars($sr['house_no']); ?>"
+                                data-street="<?php echo htmlspecialchars($sr['street']); ?>"
+                                data-city="<?php echo htmlspecialchars($sr['city_line']); ?>">
+                            <?php echo htmlspecialchars($sr['name']); ?><?php echo $sr['relationship'] ? ' — ' . htmlspecialchars($sr['relationship']) : ''; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="custom-select-arrow">
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">
+                <i class="fas fa-address-book" style="margin-right: 4px;"></i> Pick someone from My Relations to fill in the fields below
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="form-row" style="margin-bottom: 10px;">
         <div class="form-group">
             <label>Recipient's Name</label>
@@ -2062,6 +2094,22 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
     document.getElementById('unsavedModal').addEventListener('click', function(e) {
         if (e.target === this) cancelLeave();
     });
+
+    /* --- SAVED PERSON FILL FUNCTION --- */
+    function fillRecipientFields() {
+        var select = document.getElementById('savedRecipientSelect');
+        if (!select) return;
+        var opt = select.options[select.selectedIndex];
+        if (!opt || opt.value === '') return;
+
+        document.querySelector('input[name="recipient_name"]').value = opt.getAttribute('data-name') || '';
+        var phone = document.getElementById('recipientPhone');
+        phone.value = opt.getAttribute('data-phone') || '';
+        validatePhoneNumber('recipientPhone');
+        document.getElementById('checkoutHouse').value = opt.getAttribute('data-house') || '';
+        document.getElementById('checkoutAddress').value = opt.getAttribute('data-street') || '';
+        document.getElementById('checkoutCity').value = opt.getAttribute('data-city') || '';
+    }
 
     /* --- ADDRESS FILL FUNCTION --- */
     function fillAddressFields() {
