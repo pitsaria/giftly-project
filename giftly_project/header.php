@@ -273,8 +273,8 @@ if (isset($_SESSION['user_id'])) {
                     $pic_row = $pic_query->fetch_assoc();
                     $profile_pic = $pic_row['profile_pic'] ?? '';
 
-                    if($profile_pic && file_exists("uploads/profile_pics/" . $profile_pic)): ?>
-                        <img src="uploads/profile_pics/<?php echo $profile_pic; ?>" 
+                    if($profile_pic): ?>
+                        <img src="<?php echo htmlspecialchars(img_url($profile_pic)); ?>"
                              style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #ffc1cc; box-shadow: 0 2px 8px rgba(255, 139, 167, 0.2);">
                     <?php else: ?>
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; border: 2px solid #ffc1cc;">

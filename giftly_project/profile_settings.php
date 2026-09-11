@@ -41,29 +41,33 @@ $profile_pic = $_SESSION['user_profile_pic'] ?? $user['profile_pic'] ?? '';
 $user['profile_pic'] = $profile_pic; 
 
     // 🖼️ HANDLE PROFILE PICTURE UPLOAD
+    // Uploaded to Supabase Storage (same as product images) — Render's container
+    // filesystem is ephemeral, so a plain local upload would vanish on the next
+    // deploy/restart, which is exactly why this used to "not save."
     if(isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
-        $target_dir = "uploads/profile_pics/";
-        if (!file_exists($target_dir)) { mkdir($target_dir, 0777, true); }
-        
-        $file_extension = pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION);
-        $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
-        $target_file = $target_dir . $new_filename;
-        
-        if(move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_file)) {
-            $profile_pic = $new_filename;
+        $uploaded_url = supabase_upload_image($_FILES['profile_pic']);
+        if ($uploaded_url !== null) {
+            if (!empty($user['profile_pic'])) {
+                supabase_delete_image($user['profile_pic']);
+            }
+            $profile_pic = $uploaded_url;
+        } else {
+            $message = "Couldn't upload the photo (try a JPG or PNG). Your other changes were still saved.";
+            $msg_type = "error";
         }
-
-            // 🚨 ADD THIS LINE RIGHT HERE, BEFORE THE FINAL CLOSING BRACE:
-    $user['profile_pic'] = $profile_pic; 
+        $user['profile_pic'] = $profile_pic;
     }
 
-        // 🚨 NEW: HANDLE REMOVING PROFILE PICTURE
+    // 🚨 NEW: HANDLE REMOVING PROFILE PICTURE
     if(isset($_POST['remove_profile_pic'])) {
-        $profile_pic = ''; // Set to empty string
-        // Optionally, delete the physical file from the server to save space
-        if(!empty($user['profile_pic']) && file_exists("uploads/profile_pics/" . $user['profile_pic'])) {
-            unlink("uploads/profile_pics/" . $user['profile_pic']);
+        if (!empty($user['profile_pic'])) {
+            supabase_delete_image($user['profile_pic']);
+            // legacy local uploads from before the Supabase migration
+            if (file_exists("uploads/profile_pics/" . $user['profile_pic'])) {
+                unlink("uploads/profile_pics/" . $user['profile_pic']);
+            }
         }
+        $profile_pic = ''; // Set to empty string
     }
 
     
@@ -209,8 +213,8 @@ $user['profile_pic'] = $profile_pic;
         <div class="profile-avatar-container" id="profileAvatarDisplay">
             <?php 
             $pic = $user['profile_pic'] ?? '';
-            if($pic && file_exists("uploads/profile_pics/" . $pic)): ?>
-                <img src="uploads/profile_pics/<?php echo $pic; ?>" class="profile-img" id="profileImg">
+            if($pic): ?>
+                <img src="<?php echo htmlspecialchars(img_url($pic)); ?>" class="profile-img" id="profileImg">
             <?php else: ?>
                 <div class="profile-avatar" id="profileAvatarLetter">
                     <?php echo strtoupper(substr($firstname, 0, 1)); ?>
