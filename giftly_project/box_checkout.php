@@ -7,12 +7,14 @@ include_once 'address_lib.php';
 include_once 'mail_lib.php';
 include_once 'catalog_lib.php';
 include_once 'promo_lib.php';
+include_once 'addons_lib.php';
 bab_ensure_schema($conn);
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
 catalog_ensure_schema($conn);
 promo_ensure_schema($conn);
+addons_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
 
 if (!isset($_SESSION['user_id'])) {
@@ -127,6 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $box_item_qty = 0;
         foreach ($items as $it) { $total_amount += $it['price'] * $it['quantity']; $box_item_qty += (int) $it['quantity']; }
 
+        // --- gift wrapping & add-ons (price always re-checked server-side, never trusted from POST) ---
+        [$addon_rows, $addon_total] = addons_resolve($conn, $_POST['addon_ids'] ?? []);
+
         // --- promos / discounts (re-evaluated server-side) ---
         $promo_eval = promo_evaluate($conn, $user_id, [
             'scope'        => 'box',
@@ -137,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         ]);
         $discount_amount = $promo_eval['discount'];
         $shipping_fee    = $promo_eval['shipping_fee'];
-        $grand_total     = $promo_eval['final_total'] + floatval($box['box_price']);
+        $grand_total     = $promo_eval['final_total'] + floatval($box['box_price']) + $addon_total;
         $promo_code_sql  = $promo_eval['code'] !== '' ? "'" . $conn->real_escape_string($promo_eval['code']) . "'" : 'NULL';
         $promo_id_sql    = $promo_eval['code_id'] !== null ? (int) $promo_eval['code_id'] : 'NULL';
 
@@ -158,6 +163,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             $pid = intval($it['product_id']); $q = intval($it['quantity']); $pr = floatval($it['price']);
             $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $pid, $q, $pr)");
             $conn->query("UPDATE products SET quantity = quantity - $q WHERE id = $pid");
+        }
+
+        foreach ($addon_rows as $arow) {
+            $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, {$arow['id']}, 1, {$arow['price']})");
+            $conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = {$arow['id']}");
         }
 
         // free gift (buy N + 1 free) — only if the freebie is still in stock
@@ -342,6 +352,9 @@ $discount_amount = $promo_eval['discount'];
 $shipping_fee    = $promo_eval['shipping_fee'];
 $grand           = $promo_eval['final_total'] + $box_price;
 
+// 🎁 GIFT WRAPPING & ADD-ONS
+$addons = addons_list($conn);
+
 $stock_errors = $_SESSION['box_stock_errors'] ?? [];
 unset($_SESSION['box_stock_errors']);
 $checkout_error = $_SESSION['box_checkout_error'] ?? '';
@@ -360,6 +373,21 @@ unset($_SESSION['box_checkout_error']);
     .co-input { width: 100%; padding: 12px 15px; border: 1.5px solid #eee; border-radius: 12px; font-family: 'Poppins'; font-size: 14px; outline: none; background: #fff; }
     .co-input:focus { border-color: #ffc1cc; box-shadow: 0 0 0 4px rgba(255,193,204,0.12); }
     .co-delivery { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+
+    /* --- GIFT WRAPPING & ADD-ONS --- */
+    .addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .addon-card {
+        display: flex; align-items: center; gap: 12px; border: 1.5px solid #eee; border-radius: 16px;
+        padding: 12px 14px; cursor: pointer; transition: 0.2s; background: #fff;
+    }
+    .addon-card:hover { border-color: #ffc1cc; box-shadow: 0 4px 14px rgba(255,139,167,0.08); }
+    .addon-card:has(input:checked) { border-color: #ff8ba7; background: #fff8fa; box-shadow: 0 4px 14px rgba(255,139,167,0.12); }
+    .addon-card input[type="checkbox"] { accent-color: #ff8ba7; width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+    .addon-card img { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+    .addon-info { flex: 1; min-width: 0; }
+    .addon-name { font-size: 13.5px; font-weight: 600; color: #222; }
+    .addon-desc { font-size: 11.5px; color: #999; margin-top: 1px; line-height: 1.3; }
+    .addon-price { font-size: 13px; font-weight: 700; color: #ff8ba7; white-space: nowrap; flex-shrink: 0; }
     .co-opt { flex: 1; min-width: 130px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 14px; color: #555; transition: 0.2s; }
     .co-opt.sel { border-color: #ff8ba7; background: #fff0f5; color: #d32f2f; }
     .co-opt.disabled { opacity: 0.4; background: #eee; border-color: #ddd; color: #999; cursor: not-allowed; pointer-events: none; }
@@ -555,8 +583,27 @@ unset($_SESSION['box_checkout_error']);
                 </div>
             </div>
 
+            <?php if (!empty($addons)): ?>
             <div class="co-sec">
-                <h3>3. Payment</h3>
+                <h3>3. Gift Wrapping &amp; Add-ons <span style="color:#bbb;font-weight:400;font-size:13px;">(optional)</span></h3>
+                <div class="addon-grid">
+                    <?php foreach ($addons as $a): ?>
+                        <label class="addon-card">
+                            <input type="checkbox" name="addon_ids[]" value="<?php echo (int) $a['id']; ?>" class="addon-checkbox" data-price="<?php echo (float) $a['price']; ?>" onchange="updateAddonsTotal()">
+                            <img src="<?php echo htmlspecialchars(img_url($a['image'])); ?>" alt="">
+                            <div class="addon-info">
+                                <div class="addon-name"><?php echo htmlspecialchars($a['name']); ?></div>
+                                <div class="addon-desc"><?php echo htmlspecialchars($a['description']); ?></div>
+                            </div>
+                            <div class="addon-price">+PHP <?php echo number_format($a['price'], 2); ?></div>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="co-sec">
+                <h3>4. Payment</h3>
                 <input type="hidden" name="payment_method" id="payInput" value="cod">
                 <div id="codLockNote" style="display:none; margin-bottom:12px; font-size:12px; color:#d81b60; background:#fff0f5; border:1px dashed #ffc1cc; border-radius:12px; padding:10px 12px;">
                     <i class="fas fa-info-circle"></i> Gifts delivered straight to a recipient must be paid online.
@@ -662,6 +709,10 @@ unset($_SESSION['box_checkout_error']);
                 <div class="r"><span>Box</span><span>PHP <?php echo number_format($box_price, 2); ?></span></div>
                 <?php endif; ?>
                 <div class="r"><span>Shipping</span><span id="poShipping"><?php echo $shipping_fee == 0 ? 'FREE' : 'PHP ' . number_format($shipping_fee, 2); ?></span></div>
+                <div class="r" id="addonsTotalRow" style="color:#ff8ba7; display:none;">
+                    <span><i class="fas fa-gift" style="margin-right:4px;"></i> Gift Wrapping &amp; Add-ons</span>
+                    <span id="addonsTotalAmount">PHP 0.00</span>
+                </div>
                 <div class="r g"><span>Total</span><span id="poTotal">PHP <?php echo number_format($grand, 2); ?></span></div>
             </div>
 
@@ -863,7 +914,7 @@ unset($_SESSION['box_checkout_error']);
             if (!d || !d.ok) return;
             document.getElementById('poSubtotal').innerText = peso(d.subtotal);
             document.getElementById('poShipping').innerText = (d.shipping_fee === 0) ? 'FREE' : peso(d.shipping_fee);
-            document.getElementById('poTotal').innerText = peso(d.total);
+            document.getElementById('poTotal').innerText = peso(d.total + (window.__addonsTotal || 0));
 
             var lines = document.getElementById('poLines');
             lines.innerHTML = '';
@@ -922,7 +973,24 @@ unset($_SESSION['box_checkout_error']);
             if (c) req('apply', c);
         };
         window.removePromo = function () { req('remove'); };
+        window.__refreshBoxTotal = function () { req('refresh'); };
     })();
+
+    /* --- GIFT WRAPPING & ADD-ONS --- */
+    window.__addonsTotal = 0;
+    function updateAddonsTotal() {
+        var sum = 0;
+        document.querySelectorAll('.addon-checkbox:checked').forEach(function (cb) {
+            sum += parseFloat(cb.dataset.price) || 0;
+        });
+        window.__addonsTotal = sum;
+        var row = document.getElementById('addonsTotalRow');
+        if (row) {
+            row.style.display = sum > 0 ? 'flex' : 'none';
+            document.getElementById('addonsTotalAmount').innerText = 'PHP ' + sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        if (window.__refreshBoxTotal) window.__refreshBoxTotal();
+    }
 </script>
 
 <?php include 'footer.php'; ?>

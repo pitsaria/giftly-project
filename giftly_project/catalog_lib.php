@@ -96,6 +96,7 @@ if (!function_exists('catalog_ensure_schema')) {
             'catalog'      => 'Shop product',
             'occasion_box' => 'Occasion Box',
             'basket'       => 'Basket',
+            'addon'        => 'Add-on (checkout upsell)',
         ];
     }
 

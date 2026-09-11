@@ -35,7 +35,13 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 // Shared WHERE fragment for the product list + count
 $prod_filter = "";
 if ($filter_category > 0) { $prod_filter .= " AND category_id = $filter_category"; }
-if ($filter_type !== '') { $prod_filter .= " AND product_type = '" . $conn->real_escape_string($filter_type) . "'"; }
+if ($filter_type !== '') {
+    $prod_filter .= " AND product_type = '" . $conn->real_escape_string($filter_type) . "'";
+} else {
+    // Checkout add-ons (gift wrap, balloon, etc.) are hidden from the default mixed
+    // view — they're managed via the "Add-on" type filter, not day-to-day catalog work.
+    $prod_filter .= " AND product_type != 'addon'";
+}
 if (!empty($search)) { $prod_filter .= " AND name ILIKE '%$search%'"; }
 
 // --- PAGINATION LOGIC ---
