@@ -18,14 +18,44 @@ function shop_stars($rating) {
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $category_id = isset($_GET['category']) ? $_GET['category'] : '';
 
+// --- FILTERS & SORT ---
+$min_price  = isset($_GET['min_price']) ? trim($_GET['min_price']) : '';
+$max_price  = isset($_GET['max_price']) ? trim($_GET['max_price']) : '';
+$min_rating = isset($_GET['min_rating']) ? trim($_GET['min_rating']) : '';
+$on_sale    = isset($_GET['on_sale']) ? '1' : '';
+$sort       = isset($_GET['sort']) ? $_GET['sort'] : '';
+$sort_options = [
+    ''           => 'Featured',
+    'newest'     => 'Newest',
+    'popular'    => 'Most Popular',
+    'price_asc'  => 'Price: Low to High',
+    'price_desc' => 'Price: High to Low',
+];
+
+/** Build a shop.php query string from the current filters, with overrides (null = drop the key). */
+function shop_qs($overrides = []) {
+    global $search, $category_id, $min_price, $max_price, $min_rating, $on_sale, $sort;
+    $base = [
+        'search' => $search, 'category' => $category_id, 'min_price' => $min_price,
+        'max_price' => $max_price, 'min_rating' => $min_rating, 'on_sale' => $on_sale, 'sort' => $sort,
+    ];
+    $merged = array_merge($base, $overrides);
+    $merged = array_filter($merged, function ($v) { return $v !== '' && $v !== null; });
+    return http_build_query($merged);
+}
+
 // --- PAGINATION LOGIC ---
-$limit = 20; 
+$limit = 20;
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
 $count_sql = "SELECT COUNT(*) as total FROM products WHERE product_type = 'catalog'" . catalog_visible_filter();
 if (!empty($search)) { $count_sql .= " AND name ILIKE '%$search%'"; }
 if (!empty($category_id)) { $count_sql .= " AND category_id = '$category_id'"; }
+if ($min_price !== '') { $count_sql .= " AND " . catalog_price_sql('') . " >= " . (float) $min_price; }
+if ($max_price !== '') { $count_sql .= " AND " . catalog_price_sql('') . " <= " . (float) $max_price; }
+if ($on_sale !== '') { $count_sql .= " AND sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price AND (sale_ends IS NULL OR sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))"; }
+if ($min_rating !== '') { $count_sql .= " AND (SELECT COALESCE(AVG(rating),0) FROM product_reviews pr WHERE pr.product_id = products.id AND pr.status = 'published') >= " . (float) $min_rating; }
 $count_res = $conn->query($count_sql);
 $total_rows = $count_res->fetch_assoc()['total'];
 $total_pages = ceil($total_rows / $limit);
@@ -186,6 +216,19 @@ function isInWishlist($product_id, $wishlist_ids) {
     .search-box input:focus { border-color: #ffc1cc; }
     .search-box button { padding: 10px 22px; border-radius: 30px; border: none; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: white; cursor: pointer; transition: 0.2s; margin-left: 8px; font-family: 'Poppins'; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.2); }
     .search-box button:hover { background: linear-gradient(135deg, #ff8ba7 0%, #FEA5B6 100%); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254, 165, 182, 0.4); }
+
+    /* --- SHOP FILTER BAR --- */
+    .filter-bar-shop { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; justify-content: center; background: #fff; border: 1px solid #f0f0f0; border-radius: 20px; padding: 16px 22px; margin-bottom: 25px; box-shadow: 0 3px 12px rgba(0,0,0,0.02); }
+    .fb-group { display: flex; flex-direction: column; gap: 6px; }
+    .fb-group label { font-size: 11.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+    .fb-group select, .fb-group input[type="number"] { padding: 8px 12px; border: 1.5px solid #eee; border-radius: 30px; font-size: 13px; font-family: 'Poppins'; outline: none; background: #fafafa; }
+    .fb-group select:focus, .fb-group input:focus { border-color: #ffc1cc; background: #fff; }
+    .fb-price-row { display: flex; align-items: center; gap: 6px; }
+    .fb-price-row input { width: 72px; }
+    .fb-checkbox { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #555; padding: 8px 4px; cursor: pointer; white-space: nowrap; }
+    .fb-checkbox input { accent-color: #ff8ba7; width: 16px; height: 16px; cursor: pointer; }
+    .fb-apply { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; padding: 9px 22px; border-radius: 30px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: 'Poppins'; align-self: flex-end; }
+    .fb-clear { align-self: center; color: #999; font-size: 12.5px; text-decoration: underline; }
 
     /* --- PREMIUM NIKE-STYLE PRODUCT CARD --- */
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; padding: 10px 0 40px 0; }
@@ -679,7 +722,7 @@ function isInWishlist($product_id, $wishlist_ids) {
                 <i class="fas fa-chevron-left"></i>
             </div>
             <div class="cat-scroll-track" id="catScrollTrack">
-                <a href="shop.php" class="cat-btn <?php echo empty($category_id) ? 'active' : ''; ?>">All Items</a>
+                <a href="shop.php?<?php echo shop_qs(['category' => null, 'page' => null]); ?>" class="cat-btn <?php echo empty($category_id) ? 'active' : ''; ?>">All Items</a>
                 <?php
                 $cat_sql = "SELECT * FROM categories WHERE is_active = TRUE ORDER BY name ASC";
                 $cat_result = $conn->query($cat_sql);
@@ -687,7 +730,8 @@ function isInWishlist($product_id, $wishlist_ids) {
                     while($cat_row = $cat_result->fetch_assoc()) {
                         $cat_name = $cat_row['name'];
                         $active_class = ($category_id == $cat_row['id']) ? 'active' : '';
-                        echo '<a href="shop.php?category='.$cat_row['id'].'" class="cat-btn '.$active_class.'">'.$cat_name.'</a>';
+                        $cat_href = 'shop.php?' . shop_qs(['category' => $cat_row['id'], 'page' => null]);
+                        echo '<a href="'.htmlspecialchars($cat_href).'" class="cat-btn '.$active_class.'">'.$cat_name.'</a>';
                     }
                 }
                 ?>
@@ -700,15 +744,66 @@ function isInWishlist($product_id, $wishlist_ids) {
 
     <div class="search-box">
         <form action="shop.php" method="GET">
-            <input type="hidden" name="category" value="<?php echo $category_id; ?>">
-            <input type="text" name="search" placeholder="Search..." value="<?php echo $search; ?>">
+            <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_id); ?>">
+            <input type="hidden" name="min_price" value="<?php echo htmlspecialchars($min_price); ?>">
+            <input type="hidden" name="max_price" value="<?php echo htmlspecialchars($max_price); ?>">
+            <input type="hidden" name="min_rating" value="<?php echo htmlspecialchars($min_rating); ?>">
+            <?php if ($on_sale !== ''): ?><input type="hidden" name="on_sale" value="1"><?php endif; ?>
+            <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sort); ?>">
+            <input type="text" name="search" placeholder="Search..." value="<?php echo htmlspecialchars($search); ?>">
             <button type="submit">Search</button>
         </form>
     </div>
 
+    <form action="shop.php" method="GET" class="filter-bar-shop">
+        <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_id); ?>">
+        <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+
+        <div class="fb-group">
+            <label>Price</label>
+            <div class="fb-price-row">
+                <input type="number" name="min_price" placeholder="Min" min="0" step="1" value="<?php echo htmlspecialchars($min_price); ?>">
+                <span>–</span>
+                <input type="number" name="max_price" placeholder="Max" min="0" step="1" value="<?php echo htmlspecialchars($max_price); ?>">
+            </div>
+        </div>
+
+        <div class="fb-group">
+            <label>Rating</label>
+            <select name="min_rating" onchange="this.form.submit()">
+                <option value="">Any rating</option>
+                <?php foreach ([4, 3, 2, 1] as $r): ?>
+                    <option value="<?php echo $r; ?>" <?php echo ($min_rating == $r) ? 'selected' : ''; ?>><?php echo $r; ?>+ stars</option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="fb-group">
+            <label>&nbsp;</label>
+            <label class="fb-checkbox">
+                <input type="checkbox" name="on_sale" value="1" <?php echo $on_sale !== '' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                On sale only
+            </label>
+        </div>
+
+        <div class="fb-group">
+            <label>Sort by</label>
+            <select name="sort" onchange="this.form.submit()">
+                <?php foreach ($sort_options as $key => $label): ?>
+                    <option value="<?php echo $key; ?>" <?php echo ($sort === $key) ? 'selected' : ''; ?>><?php echo $label; ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <button type="submit" class="fb-apply">Apply</button>
+        <?php if ($min_price !== '' || $max_price !== '' || $min_rating !== '' || $on_sale !== '' || $sort !== ''): ?>
+            <a href="shop.php?<?php echo shop_qs(['min_price' => null, 'max_price' => null, 'min_rating' => null, 'on_sale' => null, 'sort' => null, 'page' => null]); ?>" class="fb-clear">Clear filters</a>
+        <?php endif; ?>
+    </form>
+
    <div class="product-grid">
        <?php
-   // ✅ FETCH PRODUCTS FROM API (Oldest first)
+   // ✅ FETCH PRODUCTS FROM API
 $api_url = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api/index.php?route=products&order=asc&type=catalog';
 if (!empty($search)) {
     $api_url .= '&search=' . urlencode($search);
@@ -716,6 +811,11 @@ if (!empty($search)) {
 if (!empty($category_id)) {
     $api_url .= '&category=' . $category_id;
 }
+if ($min_price !== '') { $api_url .= '&min_price=' . urlencode($min_price); }
+if ($max_price !== '') { $api_url .= '&max_price=' . urlencode($max_price); }
+if ($min_rating !== '') { $api_url .= '&min_rating=' . urlencode($min_rating); }
+if ($on_sale !== '') { $api_url .= '&on_sale=1'; }
+if ($sort !== '') { $api_url .= '&sort=' . urlencode($sort); }
 $api_url .= '&page=' . $page . '&limit=' . $limit;
     
     $response = file_get_contents($api_url);
@@ -802,15 +902,15 @@ $heartClass = $isInWishlist ? 'active' : '';
 
     <?php if ($total_pages > 1): ?>
     <div class="pagination-wrapper">
-        <a href="shop.php?page=<?php echo ($page > 1) ? $page - 1 : 1; ?>&category=<?php echo $category_id; ?>&search=<?php echo $search; ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+        <a href="shop.php?<?php echo shop_qs(['page' => ($page > 1) ? $page - 1 : 1]); ?>" class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
             &larr; Previous
         </a>
         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-            <a href="shop.php?page=<?php echo $i; ?>&category=<?php echo $category_id; ?>&search=<?php echo $search; ?>" class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
+            <a href="shop.php?<?php echo shop_qs(['page' => $i]); ?>" class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
                 <?php echo $i; ?>
             </a>
         <?php endfor; ?>
-        <a href="shop.php?page=<?php echo ($page < $total_pages) ? $page + 1 : $total_pages; ?>&category=<?php echo $category_id; ?>&search=<?php echo $search; ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+        <a href="shop.php?<?php echo shop_qs(['page' => ($page < $total_pages) ? $page + 1 : $total_pages]); ?>" class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
             Next &rarr;
         </a>
     </div>

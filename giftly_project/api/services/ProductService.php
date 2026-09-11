@@ -36,8 +36,22 @@ public function getAll($params) {
     // only 'catalog' items unless a caller asks for another type explicitly.
     $type = isset($params['type']) ? $params['type'] : 'catalog';
 
-    // Set ORDER BY based on parameter
+    // --- Filters: price range, minimum rating, on-sale-only ---
+    $min_price    = (isset($params['min_price']) && $params['min_price'] !== '') ? (float) $params['min_price'] : null;
+    $max_price    = (isset($params['max_price']) && $params['max_price'] !== '') ? (float) $params['max_price'] : null;
+    $min_rating   = (isset($params['min_rating']) && $params['min_rating'] !== '') ? (float) $params['min_rating'] : null;
+    $on_sale_only = !empty($params['on_sale']);
+    $sort         = isset($params['sort']) ? $params['sort'] : '';
+
+    // Set ORDER BY based on the legacy 'order' parameter (still the default when no 'sort' is given)
     $order_by = ($order == 'asc') ? 'ASC' : 'DESC';
+
+    // Sale-aware effective price, matching what's actually shown/charged (catalog_price_sql('p.') twin).
+    $price_expr = "(CASE WHEN sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price"
+                . " AND (sale_ends IS NULL OR sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))"
+                . " THEN sale_price ELSE price END)";
+    $sale_live = "(sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price"
+               . " AND (sale_ends IS NULL OR sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')))";
 
     // Customers only see active products in active categories.
     $sql = "SELECT * FROM products WHERE is_active = TRUE"
@@ -51,7 +65,20 @@ public function getAll($params) {
     if (!empty($type)) {
         $sql .= " AND product_type = '" . $this->conn->real_escape_string($type) . "'";
     }
-    
+    if ($min_price !== null) {
+        $sql .= " AND $price_expr >= $min_price";
+    }
+    if ($max_price !== null) {
+        $sql .= " AND $price_expr <= $max_price";
+    }
+    if ($on_sale_only) {
+        $sql .= " AND $sale_live";
+    }
+    if ($min_rating !== null) {
+        $sql .= " AND (SELECT COALESCE(AVG(rating), 0) FROM product_reviews pr"
+              . " WHERE pr.product_id = products.id AND pr.status = 'published') >= $min_rating";
+    }
+
     // Get total count
     $count_sql = str_replace("SELECT *", "SELECT COUNT(*) as total", $sql);
     $count_result = $this->conn->query($count_sql);
@@ -66,11 +93,20 @@ public function getAll($params) {
         $sql
     );
 
-    // 🚀 ORDER BY: in stock first, then items on sale, then by ID
-    $sale_live = "(sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price"
-               . " AND (sale_ends IS NULL OR sale_ends > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')))";
-    $sql .= " ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END,"
-          . " CASE WHEN $sale_live THEN 0 ELSE 1 END, id $order_by";
+    // 🚀 ORDER BY: an explicit 'sort' wins; otherwise the original default
+    // (in stock first, then items on sale, then by ID/direction).
+    if ($sort === 'price_asc') {
+        $sql .= " ORDER BY $price_expr ASC, id DESC";
+    } elseif ($sort === 'price_desc') {
+        $sql .= " ORDER BY $price_expr DESC, id DESC";
+    } elseif ($sort === 'newest') {
+        $sql .= " ORDER BY id DESC";
+    } elseif ($sort === 'popular') {
+        $sql .= " ORDER BY (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = products.id) DESC, id DESC";
+    } else {
+        $sql .= " ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END,"
+              . " CASE WHEN $sale_live THEN 0 ELSE 1 END, id $order_by";
+    }
     $sql .= " LIMIT $limit OFFSET $offset";
     $result = $this->conn->query($sql);
     
