@@ -1,7 +1,7 @@
 <?php
 /**
- * Gift wrapping & checkout add-ons (premium wrap, balloon, chocolate bar,
- * handwritten card). Add-ons are ordinary `products` rows with
+ * Gift wrapping & checkout add-ons (premium wrap, balloon, scented candle,
+ * mini photo frame). Add-ons are ordinary `products` rows with
  * product_type = 'addon', so they reuse the existing order_items / stock /
  * thumbnail / confirmation-email machinery unchanged — no new tables.
  *
@@ -19,10 +19,10 @@ if (!function_exists('addons_ensure_schema')) {
     /** name => [description, price, image-filename-in-uploads/] seeded once. */
     function addons_catalog_seed() {
         return [
-            'Premium Gift Wrap' => ['Extra-special wrapping paper, ribbon and a bow.', 50.00, 'addon_wrap.svg'],
-            'Balloon Add-on'    => ['A cheerful balloon bundled with your order.', 80.00, 'addon_balloon.svg'],
-            'Chocolate Bar'     => ['A sweet chocolate bar to go with the gift.', 60.00, 'addon_chocolate.svg'],
-            'Handwritten Card'  => ['A real handwritten card from our team, in your words.', 30.00, 'addon_card.svg'],
+            'Premium Gift Wrap'  => ['Extra-special wrapping paper, ribbon and a bow.', 50.00, 'addon_wrap.svg'],
+            'Balloon Add-on'     => ['A cheerful balloon bundled with your order.', 80.00, 'addon_balloon.svg'],
+            'Scented Candle'     => ['A softly-scented candle to go with the gift.', 70.00, 'addon_candle.svg'],
+            'Mini Photo Frame'   => ['A small keepsake frame for a favorite photo.', 90.00, 'addon_frame.svg'],
         ];
     }
 
@@ -33,11 +33,12 @@ if (!function_exists('addons_ensure_schema')) {
 
         catalog_ensure_schema($conn); // needs products.product_type / is_active
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['addons_schema_ok_v1'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['addons_schema_ok_v2'])) {
             return;
         }
 
-        foreach (addons_catalog_seed() as $name => $d) {
+        $seed = addons_catalog_seed();
+        foreach ($seed as $name => $d) {
             $name_esc = $conn->real_escape_string($name);
             $exists = $conn->query("SELECT id FROM products WHERE name = '$name_esc' AND product_type = 'addon'");
             if ($exists && $exists->num_rows > 0) continue;
@@ -49,8 +50,15 @@ if (!function_exists('addons_ensure_schema')) {
                           VALUES ('$name_esc', '$desc_esc', $price, '$image_esc', 999, 1, 'addon', TRUE)");
         }
 
+        // Retired add-ons (no longer in the seed list above) stop showing at checkout,
+        // but the row stays — past orders still join to it for their line-item display.
+        $names_sql = implode(',', array_map(function ($n) use ($conn) {
+            return "'" . $conn->real_escape_string($n) . "'";
+        }, array_keys($seed)));
+        $conn->query("UPDATE products SET is_active = FALSE WHERE product_type = 'addon' AND name NOT IN ($names_sql)");
+
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['addons_schema_ok_v1'] = true;
+            $_SESSION['addons_schema_ok_v2'] = true;
         }
     }
 

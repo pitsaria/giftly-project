@@ -62,17 +62,42 @@ if ($jump_date !== '') {
     $where .= " AND orders.delivery_date = '" . $conn->real_escape_string($jump_date) . "'";
 }
 
-$sql = "SELECT orders.*, users.name AS customer_name
-        FROM orders JOIN users ON orders.user_id = users.id
-        $where
-        ORDER BY orders.delivery_date ASC, orders.delivery_time ASC, orders.created_at ASC
-        LIMIT 300";
-$result = $conn->query($sql);
+// --- PAGINATION BY DAY (not by row) — a delivery date's orders always stay
+// together on one page, even as the backlog grows into hundreds of orders. ---
+$days_per_page = 10;
+$dpage = max(1, (int) ($_GET['page'] ?? 1));
+
+$total_dates = (int) ($conn->query("SELECT COUNT(*) c FROM (SELECT DISTINCT delivery_date FROM orders $where) t")->fetch_assoc()['c'] ?? 0);
+$total_date_pages = max(1, (int) ceil($total_dates / $days_per_page));
+if ($dpage > $total_date_pages) $dpage = $total_date_pages;
+$doffset = ($dpage - 1) * $days_per_page;
+
+$dates_res = $conn->query("SELECT DISTINCT delivery_date FROM orders $where ORDER BY delivery_date ASC NULLS LAST LIMIT $days_per_page OFFSET $doffset");
+$page_dates = [];
+$has_unscheduled = false;
+while ($dates_res && $dr = $dates_res->fetch_assoc()) {
+    if ($dr['delivery_date'] === null) $has_unscheduled = true;
+    else $page_dates[] = $dr['delivery_date'];
+}
 
 $groups = []; // delivery_date => [rows]
-while ($result && $row = $result->fetch_assoc()) {
-    $d = $row['delivery_date'] ?: 'unscheduled';
-    $groups[$d][] = $row;
+if (!empty($page_dates) || $has_unscheduled) {
+    $date_conds = [];
+    if (!empty($page_dates)) {
+        $dates_sql = implode(',', array_map(function ($d) use ($conn) { return "'" . $conn->real_escape_string($d) . "'"; }, $page_dates));
+        $date_conds[] = "orders.delivery_date IN ($dates_sql)";
+    }
+    if ($has_unscheduled) $date_conds[] = "orders.delivery_date IS NULL";
+
+    $sql = "SELECT orders.*, users.name AS customer_name
+            FROM orders JOIN users ON orders.user_id = users.id
+            $where AND (" . implode(' OR ', $date_conds) . ")
+            ORDER BY orders.delivery_date ASC, orders.delivery_time ASC, orders.created_at ASC";
+    $result = $conn->query($sql);
+    while ($result && $row = $result->fetch_assoc()) {
+        $d = $row['delivery_date'] ?: 'unscheduled';
+        $groups[$d][] = $row;
+    }
 }
 
 $today    = date('Y-m-d');
@@ -132,6 +157,12 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
 
     .ds-empty { text-align: center; padding: 60px 20px; color: #999; }
     .ds-empty i { font-size: 40px; color: #ffc1cc; margin-bottom: 14px; display: block; }
+
+    .pagination-wrapper { display: flex; justify-content: center; gap: 8px; margin-top: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .page-btn { padding: 8px 16px; border: 1.5px solid #eee; border-radius: 30px; background: #fff; color: #555; text-decoration: none; font-size: 14px; font-weight: 500; transition: 0.2s; font-family: 'Poppins'; }
+    .page-btn:hover { background: #ffc1cc; color: #fff; border-color: #ffc1cc; }
+    .page-btn.active { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border-color: #FEA5B6; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.3); }
+    .page-btn.disabled { opacity: 0.5; pointer-events: none; }
 
     .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; padding: 15px 20px; border-radius: 16px; margin-bottom: 25px; text-align: center; font-weight: 500; }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 9999; }
@@ -251,7 +282,14 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
                 <?php elseif ($locked_awaiting_payment): ?>
                     <span class="ds-status-badge" style="background:#fff8e1;color:#a5710d;"><i class="fas fa-lock" style="margin-right:4px;"></i>Unpaid</span>
                 <?php else: ?>
-                    <form action="admin_delivery_schedule.php<?php echo $jump_date !== '' ? '?date=' . $jump_date : ''; ?><?php echo $show_all ? ($jump_date !== '' ? '&' : '?') . 'show_all=1' : ''; ?>" method="POST" style="margin:0;">
+                    <?php
+                        $__act_params = [];
+                        if ($jump_date !== '') $__act_params[] = 'date=' . $jump_date;
+                        if ($show_all) $__act_params[] = 'show_all=1';
+                        if ($dpage > 1) $__act_params[] = 'page=' . $dpage;
+                        $__act_qs = $__act_params ? '?' . implode('&', $__act_params) : '';
+                    ?>
+                    <form action="admin_delivery_schedule.php<?php echo $__act_qs; ?>" method="POST" style="margin:0;">
                         <input type="hidden" name="order_id" value="<?php echo (int) $row['id']; ?>">
                         <input type="hidden" name="update_status_here" value="1">
                         <select name="status" class="ds-status-select" onchange="this.form.submit()">
@@ -267,6 +305,19 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
             <?php endforeach; ?>
         </div>
         <?php endforeach; ?>
+    <?php endif; ?>
+
+    <?php if ($jump_date === '' && $total_date_pages > 1): ?>
+    <div class="pagination-wrapper">
+        <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . max(1, $dpage - 1); ?>" class="page-btn <?php echo ($dpage <= 1) ? 'disabled' : ''; ?>">&larr; Prev</a>
+        <?php for ($i = 1; $i <= $total_date_pages; $i++): ?>
+            <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . $i; ?>" class="page-btn <?php echo ($i === $dpage) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+        <?php endfor; ?>
+        <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . min($total_date_pages, $dpage + 1); ?>" class="page-btn <?php echo ($dpage >= $total_date_pages) ? 'disabled' : ''; ?>">Next &rarr;</a>
+    </div>
+    <div style="text-align:center; color:#999; font-size:12.5px; margin-top:-10px; margin-bottom:20px;">
+        <?php echo $days_per_page; ?> delivery dates per page &middot; <?php echo $total_dates; ?> total
+    </div>
     <?php endif; ?>
 </div>
 
