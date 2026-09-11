@@ -211,14 +211,15 @@ function isInWishlist($product_id, $wishlist_ids) {
     }
     
     /* --- SEARCH BOX --- */
-    .search-box { text-align: center; margin-bottom: 30px; }
+    .search-box { display: flex; align-items: center; margin: 0; }
     .search-box input { padding: 10px 18px; width: 300px; border-radius: 30px; border: 1.5px solid #eee; outline: none; background: #fff; font-family: 'Poppins'; }
     .search-box input:focus { border-color: #ffc1cc; }
     .search-box button { padding: 10px 22px; border-radius: 30px; border: none; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: white; cursor: pointer; transition: 0.2s; margin-left: 8px; font-family: 'Poppins'; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.2); }
     .search-box button:hover { background: linear-gradient(135deg, #ff8ba7 0%, #FEA5B6 100%); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254, 165, 182, 0.4); }
 
     /* --- SHOP FILTER BUTTON + DROPDOWN PANEL --- */
-    .shop-toolbar { display: flex; justify-content: center; margin-bottom: 25px; position: relative; }
+    .shop-toolbar { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 25px; }
+    .filter-wrap { position: relative; }
     .filter-toggle-btn {
         display: inline-flex; align-items: center; gap: 9px; background: #fff; border: 1.5px solid #eee;
         border-radius: 30px; padding: 10px 20px; font-size: 13.5px; font-weight: 600; color: #555;
@@ -759,8 +760,9 @@ function isInWishlist($product_id, $wishlist_ids) {
         </div>
     </div>
 
-    <div class="search-box">
-        <form action="shop.php" method="GET">
+    <?php $active_filter_count = ($min_price !== '') + ($max_price !== '') + ($min_rating !== '') + ($on_sale !== '') + ($sort !== ''); ?>
+    <div class="shop-toolbar">
+        <form action="shop.php" method="GET" class="search-box">
             <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_id); ?>">
             <input type="hidden" name="min_price" value="<?php echo htmlspecialchars($min_price); ?>">
             <input type="hidden" name="max_price" value="<?php echo htmlspecialchars($max_price); ?>">
@@ -770,10 +772,8 @@ function isInWishlist($product_id, $wishlist_ids) {
             <input type="text" name="search" placeholder="Search..." value="<?php echo htmlspecialchars($search); ?>">
             <button type="submit">Search</button>
         </form>
-    </div>
 
-    <?php $active_filter_count = ($min_price !== '') + ($max_price !== '') + ($min_rating !== '') + ($on_sale !== '') + ($sort !== ''); ?>
-    <div class="shop-toolbar">
+        <div class="filter-wrap">
         <button type="button" class="filter-toggle-btn" onclick="toggleFilterPanel(event)">
             <i class="fas fa-sliders"></i> Filters
             <?php if ($active_filter_count > 0): ?><span class="filter-count-badge"><?php echo $active_filter_count; ?></span><?php endif; ?>
@@ -826,6 +826,7 @@ function isInWishlist($product_id, $wishlist_ids) {
                 <?php endif; ?>
             </div>
         </form>
+        </div>
     </div>
 
    <div class="product-grid">
