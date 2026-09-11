@@ -62,42 +62,27 @@ if ($jump_date !== '') {
     $where .= " AND orders.delivery_date = '" . $conn->real_escape_string($jump_date) . "'";
 }
 
-// --- PAGINATION BY DAY (not by row) — a delivery date's orders always stay
-// together on one page, even as the backlog grows into hundreds of orders. ---
-$days_per_page = 10;
+// --- PAGINATION across all upcoming orders (flat, by row) — a date's group
+// can span a page break; the date header just reprints if it continues. ---
+$rows_per_page = 25;
 $dpage = max(1, (int) ($_GET['page'] ?? 1));
 
-$total_dates = (int) ($conn->query("SELECT COUNT(*) c FROM (SELECT DISTINCT delivery_date FROM orders $where) t")->fetch_assoc()['c'] ?? 0);
-$total_date_pages = max(1, (int) ceil($total_dates / $days_per_page));
-if ($dpage > $total_date_pages) $dpage = $total_date_pages;
-$doffset = ($dpage - 1) * $days_per_page;
+$total_rows_count = (int) ($conn->query("SELECT COUNT(*) c FROM orders $where")->fetch_assoc()['c'] ?? 0);
+$total_row_pages = max(1, (int) ceil($total_rows_count / $rows_per_page));
+if ($dpage > $total_row_pages) $dpage = $total_row_pages;
+$doffset = ($dpage - 1) * $rows_per_page;
 
-$dates_res = $conn->query("SELECT DISTINCT delivery_date FROM orders $where ORDER BY delivery_date ASC NULLS LAST LIMIT $days_per_page OFFSET $doffset");
-$page_dates = [];
-$has_unscheduled = false;
-while ($dates_res && $dr = $dates_res->fetch_assoc()) {
-    if ($dr['delivery_date'] === null) $has_unscheduled = true;
-    else $page_dates[] = $dr['delivery_date'];
-}
+$sql = "SELECT orders.*, users.name AS customer_name
+        FROM orders JOIN users ON orders.user_id = users.id
+        $where
+        ORDER BY orders.delivery_date ASC NULLS LAST, orders.delivery_time ASC, orders.created_at ASC
+        LIMIT $rows_per_page OFFSET $doffset";
+$result = $conn->query($sql);
 
-$groups = []; // delivery_date => [rows]
-if (!empty($page_dates) || $has_unscheduled) {
-    $date_conds = [];
-    if (!empty($page_dates)) {
-        $dates_sql = implode(',', array_map(function ($d) use ($conn) { return "'" . $conn->real_escape_string($d) . "'"; }, $page_dates));
-        $date_conds[] = "orders.delivery_date IN ($dates_sql)";
-    }
-    if ($has_unscheduled) $date_conds[] = "orders.delivery_date IS NULL";
-
-    $sql = "SELECT orders.*, users.name AS customer_name
-            FROM orders JOIN users ON orders.user_id = users.id
-            $where AND (" . implode(' OR ', $date_conds) . ")
-            ORDER BY orders.delivery_date ASC, orders.delivery_time ASC, orders.created_at ASC";
-    $result = $conn->query($sql);
-    while ($result && $row = $result->fetch_assoc()) {
-        $d = $row['delivery_date'] ?: 'unscheduled';
-        $groups[$d][] = $row;
-    }
+$groups = []; // delivery_date => [rows], in fetch order (already sorted)
+while ($result && $row = $result->fetch_assoc()) {
+    $d = $row['delivery_date'] ?: 'unscheduled';
+    $groups[$d][] = $row;
 }
 
 $today    = date('Y-m-d');
@@ -307,16 +292,16 @@ $stat_total    = (int) ($conn->query("SELECT COUNT(*) c FROM orders $stat_where"
         <?php endforeach; ?>
     <?php endif; ?>
 
-    <?php if ($jump_date === '' && $total_date_pages > 1): ?>
+    <?php if ($jump_date === '' && $total_row_pages > 1): ?>
     <div class="pagination-wrapper">
         <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . max(1, $dpage - 1); ?>" class="page-btn <?php echo ($dpage <= 1) ? 'disabled' : ''; ?>">&larr; Prev</a>
-        <?php for ($i = 1; $i <= $total_date_pages; $i++): ?>
+        <?php for ($i = 1; $i <= $total_row_pages; $i++): ?>
             <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . $i; ?>" class="page-btn <?php echo ($i === $dpage) ? 'active' : ''; ?>"><?php echo $i; ?></a>
         <?php endfor; ?>
-        <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . min($total_date_pages, $dpage + 1); ?>" class="page-btn <?php echo ($dpage >= $total_date_pages) ? 'disabled' : ''; ?>">Next &rarr;</a>
+        <a href="admin_delivery_schedule.php?<?php echo ($show_all ? 'show_all=1&' : '') . 'page=' . min($total_row_pages, $dpage + 1); ?>" class="page-btn <?php echo ($dpage >= $total_row_pages) ? 'disabled' : ''; ?>">Next &rarr;</a>
     </div>
     <div style="text-align:center; color:#999; font-size:12.5px; margin-top:-10px; margin-bottom:20px;">
-        <?php echo $days_per_page; ?> delivery dates per page &middot; <?php echo $total_dates; ?> total
+        <?php echo $rows_per_page; ?> orders per page &middot; <?php echo $total_rows_count; ?> total
     </div>
     <?php endif; ?>
 </div>
