@@ -109,7 +109,53 @@ $items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN pro
         margin-left: 20px;
         word-wrap: break-word;
     }
+
+    /* --- DELIVERY TIMELINE TRACKER --- */
+    .ot-tracker { display: flex; align-items: flex-start; margin-bottom: 18px; padding: 6px 4px 0; }
+    .ot-step { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; width: 84px; }
+    .ot-dot {
+        width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; background: #f0f0f0; color: #aaa; transition: 0.2s; flex-shrink: 0;
+    }
+    .ot-step.done .ot-dot { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; }
+    .ot-step.active .ot-dot { background: #fff; color: #ff8ba7; border: 2.5px solid #ff8ba7; box-shadow: 0 0 0 4px #fff0f5; }
+    .ot-label { font-size: 11px; color: #999; margin-top: 6px; text-align: center; line-height: 1.3; }
+    .ot-step.done .ot-label, .ot-step.active .ot-label { color: #444; font-weight: 600; }
+    .ot-line { flex: 1; height: 3px; background: #f0f0f0; margin-top: 15px; border-radius: 2px; }
+    .ot-line.done { background: linear-gradient(90deg, #FEA5B6 0%, #ff8ba7 100%); }
+    .ot-note { font-size: 11.5px; color: #a5710d; background: #fff8e1; border-radius: 10px; padding: 8px 12px; margin-bottom: 18px; }
+    .ot-cancelled-banner { font-size: 13px; color: #999; background: #f5f5f5; border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; text-align: center; }
 </style>
+
+<?php
+$order_status_key = $order['status'];
+$is_cancelled = $order_status_key === 'cancelled';
+$tracker_steps = ['pending' => 'Preparing', 'shipped' => 'Out for Delivery', 'delivered' => 'Delivered'];
+$tracker_keys = array_keys($tracker_steps);
+$current_step_idx = array_search($order_status_key, $tracker_keys, true);
+$awaiting_payment = ($order['payment_method'] ?? 'cod') !== 'cod' && ($order['payment_status'] ?? 'unpaid') !== 'paid';
+?>
+
+<?php if ($is_cancelled): ?>
+    <div class="ot-cancelled-banner"><i class="fas fa-ban" style="margin-right:6px;"></i> This order was cancelled.</div>
+<?php elseif ($current_step_idx !== false): ?>
+    <div class="ot-tracker">
+        <?php foreach ($tracker_keys as $i => $key):
+            $state = $i < $current_step_idx ? 'done' : ($i === $current_step_idx ? 'active' : '');
+        ?>
+            <div class="ot-step <?php echo $state; ?>">
+                <div class="ot-dot"><?php echo $state === 'done' ? '<i class="fas fa-check"></i>' : ($i + 1); ?></div>
+                <div class="ot-label"><?php echo htmlspecialchars($tracker_steps[$key]); ?></div>
+            </div>
+            <?php if ($i < count($tracker_keys) - 1): ?>
+                <div class="ot-line <?php echo $i < $current_step_idx ? 'done' : ''; ?>"></div>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </div>
+    <?php if ($awaiting_payment): ?>
+        <div class="ot-note"><i class="fas fa-lock" style="margin-right:5px;"></i> Preparation starts once your payment is confirmed.</div>
+    <?php endif; ?>
+<?php endif; ?>
 
 <div style="margin-bottom: 20px;">
     <div class="order-detail-row"><span class="order-detail-label">Order ID</span><span class="order-detail-value">#<?php echo $order['id']; ?></span></div>
