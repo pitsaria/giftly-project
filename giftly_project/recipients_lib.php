@@ -14,7 +14,7 @@ if (!function_exists('recip_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['recip_schema_ok_v1'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['recip_schema_ok_v2'])) {
             return;
         }
 
@@ -33,6 +33,7 @@ if (!function_exists('recip_ensure_schema')) {
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )");
         $conn->query("CREATE INDEX IF NOT EXISTS idx_recipients_user_id ON recipients(user_id)");
+        $conn->query("ALTER TABLE recipients ADD COLUMN IF NOT EXISTS photo VARCHAR(500)");
 
         $conn->query("CREATE TABLE IF NOT EXISTS recipient_occasions (
             id SERIAL PRIMARY KEY,
@@ -46,7 +47,7 @@ if (!function_exists('recip_ensure_schema')) {
         $conn->query("CREATE INDEX IF NOT EXISTS idx_recipient_occasions_recipient_id ON recipient_occasions(recipient_id)");
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['recip_schema_ok_v1'] = true;
+            $_SESSION['recip_schema_ok_v2'] = true;
         }
     }
 
@@ -76,6 +77,25 @@ if (!function_exists('recip_ensure_schema')) {
             'linear-gradient(135deg, #c3aed6 0%, #f5c6de 100%)',
         ];
         return $palette[((int) $id) % count($palette)];
+    }
+
+    /** Stable {bg, fg} pill color for a relationship label — known ones get a fixed color, anything custom is hashed onto the palette so it's still consistent. */
+    function recip_relationship_color($relationship) {
+        $known = [
+            'Mom'         => ['#ffe1ec', '#d6336c'],
+            'Dad'         => ['#dbeafe', '#1d4ed8'],
+            'Spouse'      => ['#ffe8cc', '#c2410c'],
+            'Partner'     => ['#ffe8cc', '#c2410c'],
+            'Sibling'     => ['#e0f2fe', '#0369a1'],
+            'Child'       => ['#fef9c3', '#a16207'],
+            'Grandparent' => ['#ede9fe', '#6d28d9'],
+            'Friend'      => ['#dcfce7', '#15803d'],
+            'Colleague'   => ['#f1f5f9', '#475569'],
+        ];
+        if (isset($known[$relationship])) return $known[$relationship];
+        $palette = array_values($known);
+        $idx = crc32((string) $relationship) % count($palette);
+        return $palette[$idx];
     }
 
     /** Display label for one occasion row (custom label if type=other). */
@@ -160,7 +180,7 @@ if (!function_exists('recip_ensure_schema')) {
     function recip_upcoming_for_user($conn, $user_id, $limit = 20) {
         $user_id = (int) $user_id;
         $rows = [];
-        $res = $conn->query("SELECT ro.*, r.name AS recipient_name, r.relationship, r.id AS recipient_id
+        $res = $conn->query("SELECT ro.*, r.name AS recipient_name, r.relationship, r.photo, r.id AS recipient_id
                              FROM recipient_occasions ro
                              JOIN recipients r ON r.id = ro.recipient_id
                              WHERE r.user_id = $user_id");
@@ -186,9 +206,11 @@ if (!function_exists('recip_ensure_schema')) {
         $city_line    = $conn->real_escape_string(mb_substr(trim($data['city_line'] ?? ''), 0, 255));
         $zip          = $conn->real_escape_string(mb_substr(trim($data['zip'] ?? ''), 0, 20));
         $notes        = $conn->real_escape_string(mb_substr(trim($data['notes'] ?? ''), 0, 500));
+        $photo        = trim($data['photo'] ?? '');
+        $photo_sql    = $photo !== '' ? "'" . $conn->real_escape_string(mb_substr($photo, 0, 500)) . "'" : 'NULL';
 
-        $conn->query("INSERT INTO recipients (user_id, name, relationship, phone, email, house_no, street, city_line, zip, notes)
-                      VALUES ($user_id, '$name', '$relationship', '$phone', '$email', '$house_no', '$street', '$city_line', '$zip', '$notes')");
+        $conn->query("INSERT INTO recipients (user_id, name, relationship, phone, email, house_no, street, city_line, zip, notes, photo)
+                      VALUES ($user_id, '$name', '$relationship', '$phone', '$email', '$house_no', '$street', '$city_line', '$zip', '$notes', $photo_sql)");
         return (int) $conn->insert_id;
     }
 
@@ -205,10 +227,13 @@ if (!function_exists('recip_ensure_schema')) {
         $city_line    = $conn->real_escape_string(mb_substr(trim($data['city_line'] ?? ''), 0, 255));
         $zip          = $conn->real_escape_string(mb_substr(trim($data['zip'] ?? ''), 0, 20));
         $notes        = $conn->real_escape_string(mb_substr(trim($data['notes'] ?? ''), 0, 500));
+        $photo        = trim($data['photo'] ?? '');
+        $photo_sql    = $photo !== '' ? "'" . $conn->real_escape_string(mb_substr($photo, 0, 500)) . "'" : 'NULL';
 
         $conn->query("UPDATE recipients SET
                         name = '$name', relationship = '$relationship', phone = '$phone', email = '$email',
-                        house_no = '$house_no', street = '$street', city_line = '$city_line', zip = '$zip', notes = '$notes'
+                        house_no = '$house_no', street = '$street', city_line = '$city_line', zip = '$zip', notes = '$notes',
+                        photo = $photo_sql
                       WHERE id = $recipient_id AND user_id = $user_id");
         return $conn->affected_rows > 0;
     }
@@ -217,6 +242,10 @@ if (!function_exists('recip_ensure_schema')) {
     function recip_delete($conn, $recipient_id, $user_id) {
         $recipient_id = (int) $recipient_id;
         $user_id = (int) $user_id;
+        $r = recip_get($conn, $recipient_id, $user_id);
+        if ($r && !empty($r['photo']) && function_exists('supabase_delete_image')) {
+            supabase_delete_image($r['photo']);
+        }
         $conn->query("DELETE FROM recipients WHERE id = $recipient_id AND user_id = $user_id");
         return $conn->affected_rows > 0;
     }
