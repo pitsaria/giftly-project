@@ -232,7 +232,7 @@ $occasion_types = recip_occasion_types();
     @keyframes rlPop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .rl-card:hover { box-shadow: 0 14px 34px rgba(0,0,0,0.07); border-color: #ffe1e8; transform: translateY(-3px); }
     .rl-card-cover { position: absolute; top: 0; left: 0; right: 0; height: 46px; opacity: 0.14; }
-    .rl-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; position: relative; z-index: 1; }
+    .rl-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; position: relative; z-index: 5; }
     .rl-card-name { font-size: 16px; font-weight: 700; color: #222; }
     .rl-rel-pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 10px; border-radius: 50px; margin-top: 3px; }
 
@@ -426,7 +426,7 @@ $occasion_types = recip_occasion_types();
                                 <span class="lbl"><?php echo htmlspecialchars(recip_occasion_label($o)); ?></span>
                                 <span class="date"><?php echo $od ? $od->format('M j') : ''; ?></span>
                                 <span class="cd <?php echo $o['days_until'] <= 3 ? 'soon' : ''; ?>"><?php echo (int) $o['days_until']; ?>d</span>
-                                <button class="rl-occ-del" onclick="if(confirm('Remove this occasion?')) window.location='profile.php?tab=relations&delete_occasion=<?php echo (int) $o['id']; ?>'"><i class="fas fa-xmark"></i></button>
+                                <button class="rl-occ-del" onclick="rlOpenOccDelete(<?php echo (int) $o['id']; ?>)"><i class="fas fa-xmark"></i></button>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -614,6 +614,19 @@ $occasion_types = recip_occasion_types();
     </div>
 </div>
 
+<!-- DELETE OCCASION CONFIRM MODAL -->
+<div class="rl-delete-overlay" id="rlOccDeleteModal">
+    <div class="rl-delete-box">
+        <div style="font-size:50px; color:#d32f2f; margin-bottom:15px;"><i class="fas fa-calendar-xmark"></i></div>
+        <div style="font-size:22px; font-weight:700; color:#222; margin-bottom:5px;">Remove this occasion?</div>
+        <div style="font-size:14px; color:#888; margin-bottom:25px; line-height:1.5;">You'll stop getting reminders for it. This can't be undone.</div>
+        <div style="display:flex; gap:15px; justify-content:center;">
+            <button class="btn-delete-cancel" onclick="document.getElementById('rlOccDeleteModal').style.display='none';" style="flex:1; padding:14px; border:none; border-radius:50px; background:#eaeaea; color:#555; font-weight:600; cursor:pointer;">Cancel</button>
+            <button class="btn-delete-confirm" id="rlOccDeleteConfirmBtn" style="flex:1; padding:14px; border:none; border-radius:50px; background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%); color:#fff; font-weight:600; cursor:pointer;">Yes, Remove</button>
+        </div>
+    </div>
+</div>
+
 <script>
     function rlResetPhoto() {
         document.getElementById('rlPhotoInput').value = '';
@@ -730,4 +743,14 @@ $occasion_types = recip_occasion_types();
         if (rlDeleteTarget > 0) window.location = 'profile.php?tab=relations&delete_recipient=' + rlDeleteTarget;
     });
     document.getElementById('rlDeleteModal').addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
+
+    var rlOccDeleteTarget = 0;
+    function rlOpenOccDelete(id) {
+        rlOccDeleteTarget = id;
+        document.getElementById('rlOccDeleteModal').style.display = 'flex';
+    }
+    document.getElementById('rlOccDeleteConfirmBtn').addEventListener('click', function () {
+        if (rlOccDeleteTarget > 0) window.location = 'profile.php?tab=relations&delete_occasion=' + rlOccDeleteTarget;
+    });
+    document.getElementById('rlOccDeleteModal').addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
 </script>
