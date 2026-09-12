@@ -89,7 +89,7 @@ while ($res && $r = $res->fetch_assoc()) {
         $pb_skey = bab_card_style_key($box['card_style'] ?? 'simple');
         $pb_has_letter = trim($box['letter']) !== '';
         if ($pb_has_letter || $pb_skey !== 'simple'): ?>
-            <div style="font-size:13px;color:#777;font-style:italic;border-left:3px solid #ffc1cc;padding-left:10px;margin-bottom:10px;">
+            <div style="font-size:13px;color:#777;font-style:italic;border-left:3px solid #ffc1cc;padding-left:10px;margin-bottom:10px;overflow-wrap:break-word;word-break:break-word;">
                 <span style="font-style:normal;font-weight:600;color:#ff8ba7;">
                     <?php echo $pb_styles[$pb_skey]['emoji'] . ' ' . htmlspecialchars($pb_styles[$pb_skey]['label']); ?> card
                 </span>

@@ -359,10 +359,10 @@ $user_id = $_SESSION['user_id'];
 .gb-thumbs { display: grid; grid-template-columns: repeat(3, 46px); grid-auto-rows: 46px; gap: 6px; flex-shrink: 0; }
 .gb-thumbs img { width: 46px; height: 46px; object-fit: contain; background: #fafafa; border-radius: 10px; padding: 4px; border: 1px solid #f0f0f0; }
 .gb-thumbs .more { width: 46px; height: 46px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; font-weight: 700; }
-.gb-info { flex: 1; min-width: 180px; }
+.gb-info { flex: 1; min-width: 180px; overflow: hidden; }
 .gb-info .nm { font-size: 17px; font-weight: 700; color: #222; }
 .gb-info .meta { font-size: 13px; color: #888; margin-top: 3px; }
-.gb-letter { font-size: 12px; color: #999; font-style: italic; margin-top: 10px; border-left: 3px solid #ffc1cc; padding-left: 10px; line-height: 1.5; }
+.gb-letter { font-size: 12px; color: #999; font-style: italic; margin-top: 10px; border-left: 3px solid #ffc1cc; padding-left: 10px; line-height: 1.5; overflow-wrap: break-word; word-break: break-word; }
 .gb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .gb-total { font-size: 19px; font-weight: 800; color: #222; }
 .gb-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
