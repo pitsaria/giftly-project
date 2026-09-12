@@ -14,6 +14,13 @@
  * Idempotent schema bootstrap, same pattern as the other *_lib.php files.
  */
 
+// Free-item nudges resolve a product image via img_url() — the website loads
+// this through db_connect.php already, but the mobile API's services (which
+// require this file directly) never did, causing "Call to undefined function
+// img_url()" fatal errors whenever a cart sat 1-2 items short of an active
+// buy-N-get-1-free auto promo.
+require_once __DIR__ . '/supabase_storage.php';
+
 if (!function_exists('promo_ensure_schema')) {
 
     function promo_ensure_schema($conn) {
