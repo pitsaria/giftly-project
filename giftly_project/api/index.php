@@ -459,6 +459,54 @@ case 'cart/verify-stock':
         }
         break;
 
+    // === GIFT WRAPPING & ADD-ONS ===
+    case 'addons':
+        require_once 'services/AddonService.php';
+        $addonSvc = new AddonService($conn);
+        if ($method == 'GET') {
+            $addonSvc->getAll();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    // === MY RELATIONS (saved recipients + occasion reminders) ===
+    case 'recipients':
+        require_once 'services/RecipientService.php';
+        $recipSvc = new RecipientService($conn);
+        if ($method == 'GET') {
+            $recipSvc->getAll($headers);
+        } elseif ($method == 'POST') {
+            $recipSvc->create($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'recipients/single':
+        require_once 'services/RecipientService.php';
+        $recipSvc = new RecipientService($conn);
+        if ($method == 'PUT' && isset($_GET['id'])) {
+            $recipSvc->update($_GET['id'], $input, $headers);
+        } elseif ($method == 'DELETE' && isset($_GET['id'])) {
+            $recipSvc->delete($_GET['id'], $headers);
+        } else {
+            sendError('Missing recipient ID or method not allowed', 400);
+        }
+        break;
+
+    case 'recipients/occasions':
+        require_once 'services/RecipientService.php';
+        $recipSvc = new RecipientService($conn);
+        if ($method == 'POST') {
+            $recipSvc->addOccasion($input, $headers);
+        } elseif ($method == 'DELETE' && isset($_GET['id'])) {
+            $recipSvc->deleteOccasion($_GET['id'], $headers);
+        } else {
+            sendError('Missing occasion ID or method not allowed', 400);
+        }
+        break;
+
     default:
         sendError('Invalid API endpoint', 404);
         break;

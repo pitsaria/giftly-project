@@ -17,6 +17,31 @@
   <ng-container *ngIf="!loading() && detail() as d">
     <div class="status-badge" [class]="'status-' + d.status">{{ d.status }}</div>
 
+    <div class="ot-cancelled-banner" *ngIf="d.status === 'cancelled'">
+      <ion-icon name="ban-outline"></ion-icon> This order was cancelled.
+    </div>
+    <ng-container *ngIf="d.status !== 'cancelled' && trackerIndex(d.status) !== -1">
+      <div class="ot-tracker">
+        <ng-container *ngFor="let step of trackerSteps; let i = index; let last = last">
+          <div
+            class="ot-step"
+            [class.done]="stepState(i, trackerIndex(d.status)) === 'done'"
+            [class.active]="stepState(i, trackerIndex(d.status)) === 'active'"
+          >
+            <div class="ot-dot">
+              <ion-icon *ngIf="stepState(i, trackerIndex(d.status)) === 'done'" name="checkmark-outline"></ion-icon>
+              <span *ngIf="stepState(i, trackerIndex(d.status)) !== 'done'">{{ i + 1 }}</span>
+            </div>
+            <div class="ot-label">{{ step.label }}</div>
+          </div>
+          <div class="ot-line" *ngIf="!last" [class.done]="i < trackerIndex(d.status)"></div>
+        </ng-container>
+      </div>
+      <div class="ot-note" *ngIf="needsPayment(d)">
+        <ion-icon name="lock-closed-outline"></ion-icon> Preparation starts once your payment is confirmed.
+      </div>
+    </ng-container>
+
     <h3 class="section-title">Items</h3>
     <div class="item-row" *ngFor="let item of d.items">
       <img [src]="item.image | imgUrl" [alt]="item.name" />

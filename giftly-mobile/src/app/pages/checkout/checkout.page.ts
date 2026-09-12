@@ -20,7 +20,7 @@ import {
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline } from 'ionicons/icons';
-import { Address, CartItem, PromoEval } from '../../core/models';
+import { Address, CartItem, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
@@ -28,10 +28,14 @@ import { PaymentsService } from '../../core/payments.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { HapticsService } from '../../core/haptics.service';
+import { AddonService } from '../../core/addon.service';
+import { RecipientService } from '../../core/recipient.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
+import { phoneDigitsFromStored } from '../../core/phone-format';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
+import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // Mirrors giftly_project/checkout_selected.php.
 // Fetched state lives in signals — guaranteed to trigger a re-render on
@@ -58,6 +62,7 @@ import { AddressSearchComponent, AddressParts } from '../../shared/address-searc
     IonSpinner,
     PhPhoneInputComponent,
     AddressSearchComponent,
+    ImgUrlPipe,
   ],
 })
 export class CheckoutPage implements OnInit {
@@ -68,11 +73,17 @@ export class CheckoutPage implements OnInit {
   private promoSvc = inject(PromoService);
   private haptics = inject(HapticsService);
   private auth = inject(AuthService);
+  private addonSvc = inject(AddonService);
+  private recipientSvc = inject(RecipientService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
 
   readonly addresses = signal<Address[]>([]);
   readonly cartItems = signal<CartItem[]>([]);
+  readonly addons = signal<Addon[]>([]);
+  readonly selectedAddonIds = signal<number[]>([]);
+  readonly recipients = signal<Recipient[]>([]);
+  selectedRecipientId: number | null = null;
   readonly submitting = signal(false);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -128,12 +139,22 @@ export class CheckoutPage implements OnInit {
     }, 6000);
 
     try {
-      const [addresses, cart] = await Promise.all([this.addressSvc.getAll(), this.cart.getCart()]);
+      const [addresses, cart, addons, recipients] = await Promise.all([
+        this.addressSvc.getAll(),
+        this.cart.getCart(),
+        this.addonSvc.getAll().catch(() => []),
+        this.recipientSvc
+          .getAll()
+          .then((r) => r.recipients)
+          .catch(() => []),
+      ]);
       if (token !== this.loadToken) return;
 
       this.addresses.set(addresses);
       const selectedIds = new Set(this.cart.selectedCartIds());
       this.cartItems.set(cart.items.filter((i) => selectedIds.has(i.cart_id)));
+      this.addons.set(addons);
+      this.recipients.set(recipients);
 
       if (addresses.length) {
         const def = addresses.find((a) => a.is_default) ?? addresses[0];
@@ -242,13 +263,45 @@ export class CheckoutPage implements OnInit {
     return t > 0 && t < 300 ? 50 : 0;
   }
 
+  // Gift wrapping & add-ons — never discounted, added on top after promos/shipping
+  // (same treatment as checkout_selected.php).
+  isAddonSelected(id: number): boolean {
+    return this.selectedAddonIds().includes(id);
+  }
+
+  toggleAddon(id: number): void {
+    const current = this.selectedAddonIds();
+    this.selectedAddonIds.set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  }
+
+  addonsTotal(): number {
+    const ids = new Set(this.selectedAddonIds());
+    return this.addons()
+      .filter((a) => ids.has(a.id))
+      .reduce((sum, a) => sum + a.price, 0);
+  }
+
   grandTotal(): number {
     const eval_ = this.promoEval();
-    return eval_ ? eval_.total : this.total() + this.shippingFee();
+    const base = eval_ ? eval_.total : this.total() + this.shippingFee();
+    return base + this.addonsTotal();
   }
 
   absAmount(n: number): number {
     return Math.abs(n);
+  }
+
+  // "Saved Person" quick-fill — mirrors checkout_selected.php's My Relations
+  // dropdown: picking someone fills name/phone/address straight from it.
+  fillFromRecipient(id: number | null): void {
+    this.selectedRecipientId = id;
+    const r = this.recipients().find((x) => x.id === id);
+    if (!r) return;
+    this.recipientName = r.name;
+    this.recipientPhoneDigits = phoneDigitsFromStored(r.phone);
+    this.recipientPhoneTouched = true;
+    this.address = r.street || this.address;
+    this.city = r.city_line || this.city;
   }
 
   async placeOrder(): Promise<void> {
@@ -314,6 +367,7 @@ export class CheckoutPage implements OnInit {
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipient_phone: recipientPhone,
         promo_code: this.promoEval()?.code || undefined,
+        addon_ids: this.selectedAddonIds().length ? this.selectedAddonIds() : undefined,
         ...(this.paymentMethod === 'card'
           ? {
               card_number: this.cardNumber,

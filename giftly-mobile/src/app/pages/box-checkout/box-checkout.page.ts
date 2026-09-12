@@ -19,7 +19,7 @@ import {
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline } from 'ionicons/icons';
-import { Address, Box, PromoEval } from '../../core/models';
+import { Address, Box, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { BoxService } from '../../core/box.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
@@ -27,8 +27,11 @@ import { PaymentsService } from '../../core/payments.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { HapticsService } from '../../core/haptics.service';
+import { AddonService } from '../../core/addon.service';
+import { RecipientService } from '../../core/recipient.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
+import { phoneDigitsFromStored } from '../../core/phone-format';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
@@ -67,12 +70,18 @@ export class BoxCheckoutPage implements OnInit {
   private promoSvc = inject(PromoService);
   private haptics = inject(HapticsService);
   private auth = inject(AuthService);
+  private addonSvc = inject(AddonService);
+  private recipientSvc = inject(RecipientService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastCtrl = inject(ToastController);
 
   readonly box = signal<Box | null>(null);
   readonly addresses = signal<Address[]>([]);
+  readonly addons = signal<Addon[]>([]);
+  readonly selectedAddonIds = signal<number[]>([]);
+  readonly recipients = signal<Recipient[]>([]);
+  selectedRecipientId: number | null = null;
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly submitting = signal(false);
@@ -104,10 +113,16 @@ export class BoxCheckoutPage implements OnInit {
     const sub = this.box()?.subtotal ?? 0;
     return sub > 0 && sub < 300 ? 50 : 0;
   });
+  readonly addonsTotal = computed(() => {
+    const ids = new Set(this.selectedAddonIds());
+    return this.addons()
+      .filter((a) => ids.has(a.id))
+      .reduce((sum, a) => sum + a.price, 0);
+  });
   readonly grandTotal = computed(() => {
     const ev = this.promoEval();
-    if (ev) return ev.total;
-    return (this.box()?.subtotal ?? 0) + this.shippingFee() + (this.box()?.box_price ?? 0);
+    const base = ev ? ev.total : (this.box()?.subtotal ?? 0) + this.shippingFee() + (this.box()?.box_price ?? 0);
+    return base + this.addonsTotal();
   });
 
   // Promo code (mirrors box_checkout.php's promo box).
@@ -130,12 +145,19 @@ export class BoxCheckoutPage implements OnInit {
     this.error.set(null);
     try {
       if (!this.boxId) throw new Error('No box selected.');
-      const [box, addresses] = await Promise.all([
+      const [box, addresses, addons, recipients] = await Promise.all([
         this.boxSvc.getBox(this.boxId),
         this.addressSvc.getAll().catch(() => []),
+        this.addonSvc.getAll().catch(() => []),
+        this.recipientSvc
+          .getAll()
+          .then((r) => r.recipients)
+          .catch(() => []),
       ]);
       this.box.set(box);
       this.addresses.set(addresses);
+      this.addons.set(addons);
+      this.recipients.set(recipients);
       if (addresses.length) {
         const def = addresses.find((a) => a.is_default) ?? addresses[0];
         this.selectAddress(def.id);
@@ -223,6 +245,27 @@ export class BoxCheckoutPage implements OnInit {
     this.cardCvc = formatCvc(this.cardCvc);
   }
 
+  isAddonSelected(id: number): boolean {
+    return this.selectedAddonIds().includes(id);
+  }
+
+  toggleAddon(id: number): void {
+    const current = this.selectedAddonIds();
+    this.selectedAddonIds.set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  }
+
+  // "Saved Person" quick-fill — mirrors box_checkout.php's My Relations dropdown.
+  fillFromRecipient(id: number | null): void {
+    this.selectedRecipientId = id;
+    const r = this.recipients().find((x) => x.id === id);
+    if (!r) return;
+    this.recipientName = r.name;
+    this.recipientPhoneDigits = phoneDigitsFromStored(r.phone);
+    this.recipientPhoneTouched = true;
+    this.address = r.street || this.address;
+    this.city = r.city_line || this.city;
+  }
+
   cardStyleLine(): string {
     const b = this.box();
     if (!b) return '';
@@ -285,6 +328,7 @@ export class BoxCheckoutPage implements OnInit {
         recipient_name: this.deliveryType === 'recipient' ? this.recipientName : undefined,
         recipient_phone: recipientPhone,
         promo_code: this.promoEval()?.code || undefined,
+        addon_ids: this.selectedAddonIds().length ? this.selectedAddonIds() : undefined,
         ...(this.paymentMethod === 'card'
           ? {
               card_number: this.cardNumber,

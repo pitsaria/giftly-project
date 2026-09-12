@@ -12,6 +12,95 @@
   padding-top: 4px;
 }
 
+.shop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 0;
+
+  .search-toolbar {
+    flex: 1;
+    padding-top: 0;
+    --padding-start: 0;
+    --padding-end: 0;
+  }
+}
+
+.filters-btn {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid #eee;
+  background: #fafafa;
+  color: #555;
+  border-radius: 50px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+
+  ion-icon {
+    font-size: 15px;
+  }
+
+  &.active {
+    border-color: var(--ion-color-primary);
+    background: #fff0f5;
+    color: #d32f2f;
+  }
+
+  .filters-badge {
+    background: var(--giftly-gradient);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+  }
+}
+
+.filter-panel {
+  margin: 10px 16px 0;
+  background: #fafafa;
+  border-radius: 16px;
+  padding: 14px;
+
+  .filter-field {
+    margin-bottom: 10px;
+  }
+
+  .filter-field-row {
+    display: flex;
+    gap: 10px;
+
+    .filter-field {
+      flex: 1;
+    }
+  }
+
+  .filter-onsale {
+    display: block;
+    margin: 2px 0 12px;
+    font-size: 13px;
+    --size: 18px;
+  }
+
+  .filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    ion-button {
+      margin: 0;
+    }
+  }
+}
+
 .recent-searches {
   padding: 0 16px 8px;
 

@@ -18,15 +18,47 @@
     <ion-segment-button value="basket"><ion-label>Baskets</ion-label></ion-segment-button>
   </ion-segment>
 
-  <ion-toolbar class="search-toolbar" *ngIf="searchVisible">
-    <ion-searchbar
-      [(ngModel)]="search"
-      (ionInput)="onSearch()"
-      (ionChange)="commitSearchToRecent()"
-      placeholder="Search products..."
-      debounce="400"
-    ></ion-searchbar>
-  </ion-toolbar>
+  <div class="shop-toolbar">
+    <ion-toolbar class="search-toolbar" *ngIf="searchVisible">
+      <ion-searchbar
+        [(ngModel)]="search"
+        (ionInput)="onSearch()"
+        (ionChange)="commitSearchToRecent()"
+        placeholder="Search products..."
+        debounce="400"
+      ></ion-searchbar>
+    </ion-toolbar>
+    <button class="filters-btn" [class.active]="filtersVisible" (click)="toggleFilters()">
+      <ion-icon name="options-outline"></ion-icon>
+      Filters
+      <span class="filters-badge" *ngIf="activeFilterCount">{{ activeFilterCount }}</span>
+    </button>
+  </div>
+
+  <div class="filter-panel" *ngIf="filtersVisible">
+    <div class="filter-field-row">
+      <ion-input type="number" label="Min ₱" labelPlacement="stacked" fill="outline" [(ngModel)]="filterMinPrice" class="filter-field"></ion-input>
+      <ion-input type="number" label="Max ₱" labelPlacement="stacked" fill="outline" [(ngModel)]="filterMaxPrice" class="filter-field"></ion-input>
+    </div>
+    <ion-select label="Minimum Rating" labelPlacement="stacked" fill="outline" interface="popover" [(ngModel)]="filterMinRating" class="filter-field">
+      <ion-select-option [value]="null">Any rating</ion-select-option>
+      <ion-select-option [value]="4.5">4.5 &amp; up</ion-select-option>
+      <ion-select-option [value]="4">4 &amp; up</ion-select-option>
+      <ion-select-option [value]="3">3 &amp; up</ion-select-option>
+    </ion-select>
+    <ion-select label="Sort By" labelPlacement="stacked" fill="outline" interface="popover" [(ngModel)]="filterSort" class="filter-field">
+      <ion-select-option value="">Default</ion-select-option>
+      <ion-select-option value="newest">Newest</ion-select-option>
+      <ion-select-option value="popular">Most Popular</ion-select-option>
+      <ion-select-option value="price_asc">Price: Low to High</ion-select-option>
+      <ion-select-option value="price_desc">Price: High to Low</ion-select-option>
+    </ion-select>
+    <ion-checkbox labelPlacement="end" [(ngModel)]="filterOnSale" class="filter-onsale">On sale only</ion-checkbox>
+    <div class="filter-actions">
+      <ion-button fill="outline" size="small" (click)="resetFilters()">Reset</ion-button>
+      <ion-button size="small" class="giftly-btn-primary" (click)="applyFilters()">Apply</ion-button>
+    </div>
+  </div>
 
   <div class="recent-searches" *ngIf="searchVisible && !search && recentSearches().length">
     <div class="recent-header">

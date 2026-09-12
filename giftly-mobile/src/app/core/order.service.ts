@@ -41,6 +41,8 @@ export interface CreateOrderPayload {
   card_cvc?: string;
   // A typed promo code to apply (re-validated server-side either way).
   promo_code?: string;
+  // Gift wrapping & checkout add-ons — ids only, price is re-checked server-side.
+  addon_ids?: number[];
 }
 
 export interface OrderPlaced {

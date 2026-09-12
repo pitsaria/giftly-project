@@ -18,13 +18,18 @@ import {
   IonInfiniteScrollContent,
   IonSpinner,
   IonSkeletonText,
+  IonInput,
+  IonSelect,
+  IonSelectOption,
+  IonCheckbox,
+  IonButton,
   ModalController,
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline } from 'ionicons/icons';
+import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline } from 'ionicons/icons';
 import { Category, Product, ProductType } from '../../core/models';
-import { ProductService } from '../../core/product.service';
+import { ProductService, ProductSort } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { AuthService } from '../../core/auth.service';
@@ -54,6 +59,11 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
     IonInfiniteScrollContent,
     IonSpinner,
     IonSkeletonText,
+    IonInput,
+    IonSelect,
+    IonSelectOption,
+    IonCheckbox,
+    IonButton,
     TopBarComponent,
     ImgUrlPipe,
   ],
@@ -92,8 +102,48 @@ export class ShopPage implements OnInit {
   private static readonly MAX_RECENT_SEARCHES = 6;
   readonly recentSearches = signal<string[]>([]);
 
+  // Shop filters & sort (price range, rating, on-sale, sort order) — mirrors
+  // shop.php's collapsible filter panel; params are passed straight to
+  // ProductService::getAll() on the API.
+  filtersVisible = false;
+  filterMinPrice: number | null = null;
+  filterMaxPrice: number | null = null;
+  filterMinRating: number | null = null;
+  filterOnSale = false;
+  filterSort: ProductSort | '' = '';
+
+  get activeFilterCount(): number {
+    let n = 0;
+    if (this.filterMinPrice != null || this.filterMaxPrice != null) n++;
+    if (this.filterMinRating != null) n++;
+    if (this.filterOnSale) n++;
+    if (this.filterSort) n++;
+    return n;
+  }
+
   constructor() {
-    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline });
+    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline });
+  }
+
+  toggleFilters(): void {
+    this.filtersVisible = !this.filtersVisible;
+  }
+
+  async applyFilters(): Promise<void> {
+    this.filtersVisible = false;
+    this.page = 1;
+    await this.loadProducts();
+  }
+
+  async resetFilters(): Promise<void> {
+    this.filterMinPrice = null;
+    this.filterMaxPrice = null;
+    this.filterMinRating = null;
+    this.filterOnSale = false;
+    this.filterSort = '';
+    this.filtersVisible = false;
+    this.page = 1;
+    await this.loadProducts();
   }
 
   readonly segmentTitles: Record<ProductType, string> = {
@@ -218,6 +268,11 @@ export class ShopPage implements OnInit {
         search: this.search || undefined,
         category: this.selectedCategory ?? undefined,
         type: this.productType(),
+        minPrice: this.filterMinPrice ?? undefined,
+        maxPrice: this.filterMaxPrice ?? undefined,
+        minRating: this.filterMinRating ?? undefined,
+        onSale: this.filterOnSale || undefined,
+        sort: this.filterSort || undefined,
       });
       if (token !== this.loadToken) return;
       this.products.set(this.page === 1 ? result.products : [...this.products(), ...result.products]);

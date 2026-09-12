@@ -15,7 +15,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, starOutline, pricetagOutline } from 'ionicons/icons';
+import { closeOutline, starOutline, pricetagOutline, lockClosedOutline, banOutline, checkmarkOutline } from 'ionicons/icons';
 import { Order, OrderItem } from '../../core/models';
 import { OrderService } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -87,7 +87,25 @@ export class OrderDetailComponent implements OnInit {
   }
 
   constructor() {
-    addIcons({ closeOutline, starOutline, pricetagOutline });
+    addIcons({ closeOutline, starOutline, pricetagOutline, lockClosedOutline, banOutline, checkmarkOutline });
+  }
+
+  // Preparing -> Out for Delivery -> Delivered tracker, built from the
+  // existing order status (no new fields — mirrors get_order_details.php).
+  readonly trackerSteps: { key: string; label: string }[] = [
+    { key: 'pending', label: 'Preparing' },
+    { key: 'shipped', label: 'Out for Delivery' },
+    { key: 'delivered', label: 'Delivered' },
+  ];
+
+  trackerIndex(status: string): number {
+    return this.trackerSteps.findIndex((s) => s.key === status);
+  }
+
+  stepState(idx: number, current: number): 'done' | 'active' | '' {
+    if (idx < current) return 'done';
+    if (idx === current) return 'active';
+    return '';
   }
 
   canConfirmReceived(): boolean {

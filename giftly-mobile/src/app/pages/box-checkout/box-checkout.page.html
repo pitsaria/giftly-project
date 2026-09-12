@@ -61,6 +61,20 @@
     </div>
 
     <ng-container *ngIf="deliveryType === 'recipient'">
+      <ion-select
+        *ngIf="recipients().length"
+        label="Saved Person (optional)"
+        labelPlacement="stacked"
+        fill="outline"
+        interface="popover"
+        [(ngModel)]="selectedRecipientId"
+        (ionChange)="fillFromRecipient($event.detail.value)"
+        class="field"
+      >
+        <ion-select-option *ngFor="let r of recipients()" [value]="r.id">
+          {{ r.name }}{{ r.relationship ? ' — ' + r.relationship : '' }}
+        </ion-select-option>
+      </ion-select>
       <ion-input label="Recipient Name *" labelPlacement="stacked" fill="outline" [(ngModel)]="recipientName" class="field"></ion-input>
       <app-ph-phone-input
         label="Recipient Phone *"
@@ -74,6 +88,21 @@
       <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
       <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
     </div>
+
+    <ng-container *ngIf="addons().length">
+      <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons <span class="optional-tag">(optional)</span></h2>
+      <div class="addon-grid">
+        <label class="addon-card" *ngFor="let a of addons()" [class.selected]="isAddonSelected(a.id)">
+          <input type="checkbox" [checked]="isAddonSelected(a.id)" (change)="toggleAddon(a.id)" />
+          <img [src]="a.image | imgUrl" alt="" />
+          <div class="addon-info">
+            <div class="addon-name">{{ a.name }}</div>
+            <div class="addon-desc">{{ a.description }}</div>
+          </div>
+          <div class="addon-price">+₱{{ a.price | number: '1.2-2' }}</div>
+        </label>
+      </div>
+    </ng-container>
 
     <h2 class="section-title"><ion-icon name="card-outline"></ion-icon> Payment Method</h2>
     <div class="payment-row">
@@ -198,6 +227,10 @@
       </div>
       <div class="row" *ngIf="b.box_price > 0"><span>Box</span><span>₱{{ b.box_price | number: '1.2-2' }}</span></div>
       <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
+      <div class="row addons" *ngIf="addonsTotal() > 0">
+        <span><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons</span>
+        <span>₱{{ addonsTotal() | number: '1.2-2' }}</span>
+      </div>
       <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
     </div>
 

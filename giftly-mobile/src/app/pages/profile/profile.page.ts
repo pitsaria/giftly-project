@@ -39,8 +39,10 @@ import {
   mailOutline,
   chevronForwardOutline,
   starOutline,
+  peopleOutline,
+  closeCircleOutline,
 } from 'ionicons/icons';
-import { Address, Box, Profile, WishlistData } from '../../core/models';
+import { Address, Box, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
 import { AuthService } from '../../core/auth.service';
 import { ProfileService } from '../../core/profile.service';
@@ -48,12 +50,19 @@ import { AddressService, NewAddress } from '../../core/address.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { CartService } from '../../core/cart.service';
 import { BoxService } from '../../core/box.service';
+import { RecipientService, NewRecipient } from '../../core/recipient.service';
 import { HapticsService } from '../../core/haptics.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 
-type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes';
+type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes' | 'relations';
+
+const RECIPIENT_RELATIONSHIPS = [
+  'Mom', 'Dad', 'Spouse', 'Partner', 'Sibling', 'Child', 'Grandparent', 'Friend', 'Colleague', 'Other',
+];
+
+const RECIPIENT_AVATAR_COLORS = ['#FEA5B6', '#8ec5fc', '#fcb69f', '#96e6a1', '#f6d365', '#c3aed6'];
 
 // Mirrors giftly_project/profile.php's sidebar-tab structure (Settings /
 // Addresses / Wishlist), condensed into one segmented page. Order history
@@ -97,6 +106,7 @@ export class ProfilePage implements OnInit {
   private wishlistSvc = inject(WishlistService);
   private cart = inject(CartService);
   private boxSvc = inject(BoxService);
+  private recipientSvc = inject(RecipientService);
   private haptics = inject(HapticsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -115,6 +125,38 @@ export class ProfilePage implements OnInit {
   readonly addresses = signal<Address[]>([]);
   readonly wishlist = signal<WishlistData | null>(null);
   readonly boxes = signal<Box[]>([]);
+  readonly recipients = signal<Recipient[]>([]);
+  readonly upcomingOccasions = signal<UpcomingOccasion[]>([]);
+
+  readonly relationshipOptions = RECIPIENT_RELATIONSHIPS;
+  showAddRecipient = false;
+  editingRecipientId: number | null = null;
+  newRecipient: NewRecipient = this.blankRecipient();
+  recipientRelationshipChoice = 'Mom';
+  recipientRelationshipOther = '';
+  openOccasionFormFor: number | null = null;
+  newOccasion: { occasion_type: 'birthday' | 'anniversary' | 'other'; label: string; occasion_date: string } = {
+    occasion_type: 'birthday',
+    label: '',
+    occasion_date: '',
+  };
+
+  private blankRecipient(): NewRecipient {
+    return {
+      name: '',
+      relationship: 'Mom',
+      phone: '',
+      email: '',
+      house_no: '',
+      street: '',
+      city_line: '',
+      zip: '',
+      notes: '',
+      occasion_type: 'birthday',
+      occasion_label: '',
+      occasion_date: '',
+    };
+  }
 
   showAddAddress = false;
   newAddress: NewAddress = this.blankAddress();
@@ -155,6 +197,8 @@ export class ProfilePage implements OnInit {
       mailOutline,
       chevronForwardOutline,
       starOutline,
+      peopleOutline,
+      closeCircleOutline,
     });
   }
 
@@ -168,7 +212,13 @@ export class ProfilePage implements OnInit {
   // Honour ?tab= (e.g. Build-a-Box navigates here with tab=boxes after saving).
   private applyTabQueryParam(): void {
     const requested = this.route.snapshot.queryParamMap.get('tab') as Tab | null;
-    if (requested === 'boxes' || requested === 'addresses' || requested === 'wishlist' || requested === 'settings') {
+    if (
+      requested === 'boxes' ||
+      requested === 'addresses' ||
+      requested === 'wishlist' ||
+      requested === 'settings' ||
+      requested === 'relations'
+    ) {
       this.tab.set(requested);
     }
   }
@@ -227,6 +277,10 @@ export class ProfilePage implements OnInit {
         this.wishlist.set(await this.wishlistSvc.getWishlist());
       } else if (tab === 'boxes') {
         this.boxes.set(await this.boxSvc.listBoxes());
+      } else if (tab === 'relations') {
+        const { recipients, upcoming } = await this.recipientSvc.getAll();
+        this.recipients.set(recipients);
+        this.upcomingOccasions.set(upcoming);
       }
       // The profile header (avatar/name/email) is shown regardless of which
       // tab is active, so make sure it's loaded even when starting on a
@@ -353,6 +407,136 @@ export class ProfilePage implements OnInit {
       ],
     });
     await alert.present();
+  }
+
+  // === MY RELATIONS ===
+
+  avatarColor(id: number): string {
+    return RECIPIENT_AVATAR_COLORS[id % RECIPIENT_AVATAR_COLORS.length];
+  }
+
+  openAddRecipient(): void {
+    this.editingRecipientId = null;
+    this.newRecipient = this.blankRecipient();
+    this.recipientRelationshipChoice = 'Mom';
+    this.recipientRelationshipOther = '';
+    this.showAddRecipient = true;
+  }
+
+  openEditRecipient(r: Recipient): void {
+    this.editingRecipientId = r.id;
+    this.newRecipient = {
+      name: r.name,
+      relationship: r.relationship,
+      phone: r.phone,
+      email: r.email,
+      house_no: r.house_no,
+      street: r.street,
+      city_line: r.city_line,
+      zip: r.zip,
+      notes: r.notes,
+    };
+    if (this.relationshipOptions.includes(r.relationship)) {
+      this.recipientRelationshipChoice = r.relationship;
+      this.recipientRelationshipOther = '';
+    } else {
+      this.recipientRelationshipChoice = 'Other';
+      this.recipientRelationshipOther = r.relationship;
+    }
+    this.showAddRecipient = true;
+  }
+
+  cancelRecipientForm(): void {
+    this.showAddRecipient = false;
+    this.editingRecipientId = null;
+  }
+
+  private async reloadRecipients(): Promise<void> {
+    const { recipients, upcoming } = await this.recipientSvc.getAll();
+    this.recipients.set(recipients);
+    this.upcomingOccasions.set(upcoming);
+  }
+
+  async saveRecipient(): Promise<void> {
+    if (!this.newRecipient.name?.trim()) {
+      await this.toast('Please enter their name.');
+      return;
+    }
+    const payload: NewRecipient = {
+      ...this.newRecipient,
+      relationship: this.recipientRelationshipChoice === 'Other'
+        ? this.recipientRelationshipOther.trim() || 'Other'
+        : this.recipientRelationshipChoice,
+    };
+    try {
+      if (this.editingRecipientId) {
+        await this.recipientSvc.update(this.editingRecipientId, payload);
+      } else {
+        await this.recipientSvc.create(payload);
+      }
+      this.showAddRecipient = false;
+      this.editingRecipientId = null;
+      await this.reloadRecipients();
+    } catch (err) {
+      await this.toast(describeError(err));
+    }
+  }
+
+  async deleteRecipient(id: number): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: 'Remove this person?',
+      message: "Their saved occasions and reminders will be removed too. This can't be undone.",
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Remove',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              await this.recipientSvc.remove(id);
+              this.haptics.medium();
+              await this.reloadRecipients();
+            } catch {
+              await this.toast('Could not remove this person. Please try again.');
+            }
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  toggleAddOccasion(recipientId: number): void {
+    this.openOccasionFormFor = this.openOccasionFormFor === recipientId ? null : recipientId;
+    this.newOccasion = { occasion_type: 'birthday', label: '', occasion_date: '' };
+  }
+
+  async addOccasion(recipientId: number): Promise<void> {
+    if (!this.newOccasion.occasion_date) {
+      await this.toast('Please pick a date.');
+      return;
+    }
+    try {
+      await this.recipientSvc.addOccasion({
+        recipient_id: recipientId,
+        occasion_type: this.newOccasion.occasion_type,
+        label: this.newOccasion.label,
+        occasion_date: this.newOccasion.occasion_date,
+      });
+      this.openOccasionFormFor = null;
+      await this.reloadRecipients();
+    } catch (err) {
+      await this.toast(describeError(err));
+    }
+  }
+
+  async deleteOccasion(id: number): Promise<void> {
+    try {
+      await this.recipientSvc.removeOccasion(id);
+      await this.reloadRecipients();
+    } catch {
+      await this.toast('Could not remove that occasion. Please try again.');
+    }
   }
 
   async toggleWishlist(productId: number): Promise<void> {

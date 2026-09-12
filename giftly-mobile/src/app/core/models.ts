@@ -272,3 +272,50 @@ export interface HomePromo {
   cond: string;
   code: string;
 }
+
+// === Gift wrapping & checkout add-ons ===
+
+export interface Addon {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+}
+
+// === My Relations (saved recipients + occasion reminders) ===
+
+export interface RecipientOccasion {
+  id: number;
+  occasion_type: 'birthday' | 'anniversary' | 'other';
+  label: string;
+  occasion_date: string;
+  days_until: number | null;
+}
+
+export interface Recipient {
+  id: number;
+  name: string;
+  relationship: string;
+  phone: string;
+  email: string;
+  house_no: string;
+  street: string;
+  city_line: string;
+  zip: string;
+  notes: string;
+  photo: string | null;
+  occasions: RecipientOccasion[];
+}
+
+export interface UpcomingOccasion {
+  occasion_id: number;
+  recipient_id: number;
+  recipient_name: string;
+  relationship: string;
+  photo: string | null;
+  occasion_type: 'birthday' | 'anniversary' | 'other';
+  label: string;
+  occasion_date: string;
+  days_until: number;
+}

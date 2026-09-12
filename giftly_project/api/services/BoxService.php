@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../reviews_lib.php';
 require_once __DIR__ . '/../../paymongo_lib.php';
 require_once __DIR__ . '/../../orders_lib.php';
 require_once __DIR__ . '/../../promo_lib.php';
+require_once __DIR__ . '/../../addons_lib.php';
 
 class BoxService {
     private $conn;
@@ -25,6 +26,7 @@ class BoxService {
         pay_ensure_schema($conn);
         orders_ensure_schema($conn);
         promo_ensure_schema($conn);
+        addons_ensure_schema($conn);
     }
 
     private function getUserId($headers) {
@@ -380,6 +382,9 @@ class BoxService {
             }
             $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
 
+            // --- gift wrapping & add-ons (price always re-checked server-side, never trusted from input) ---
+            [$addon_rows, $addon_total] = addons_resolve($this->conn, $input['addon_ids'] ?? []);
+
             // --- promos / discounts (re-evaluated server-side) ---
             $promo_code_input = isset($input['promo_code']) ? trim((string) $input['promo_code']) : null;
             $promo_eval = promo_evaluate($this->conn, $user_id, [
@@ -390,7 +395,7 @@ class BoxService {
                 'code'         => $promo_code_input,
             ]);
             $discount_amount = $promo_eval['discount'];
-            $grand_total = $promo_eval['final_total'] + floatval($box['box_price']);
+            $grand_total = $promo_eval['final_total'] + floatval($box['box_price']) + $addon_total;
             $promo_code_sql = $promo_eval['code'] !== '' ? "'" . $this->conn->real_escape_string($promo_eval['code']) . "'" : 'NULL';
             $promo_id_sql = $promo_eval['code_id'] !== null ? (int) $promo_eval['code_id'] : 'NULL';
 
@@ -411,6 +416,11 @@ class BoxService {
                 $pid = intval($it['product_id']); $q = intval($it['quantity']); $pr = floatval($it['price']);
                 $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, $pid, $q, $pr)");
                 $this->conn->query("UPDATE products SET quantity = quantity - $q WHERE id = $pid");
+            }
+
+            foreach ($addon_rows as $arow) {
+                $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, {$arow['id']}, 1, {$arow['price']})");
+                $this->conn->query("UPDATE products SET quantity = quantity - 1 WHERE id = {$arow['id']}");
             }
 
             // Free gift (buy N + 1 free) — only if the freebie is still in stock

@@ -41,6 +41,8 @@ export interface BoxCheckoutPayload {
   card_expiry?: string;
   card_cvc?: string;
   promo_code?: string;
+  // Gift wrapping & checkout add-ons — ids only, price is re-checked server-side.
+  addon_ids?: number[];
 }
 
 export interface BoxOrderResult {

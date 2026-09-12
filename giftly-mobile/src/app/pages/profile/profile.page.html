@@ -42,6 +42,10 @@
         <ion-icon name="gift-outline"></ion-icon>
         <ion-label>Boxes</ion-label>
       </ion-segment-button>
+      <ion-segment-button value="relations">
+        <ion-icon name="people-outline"></ion-icon>
+        <ion-label>Relations</ion-label>
+      </ion-segment-button>
     </ion-segment>
 
     <div class="ion-text-center loading-spinner" *ngIf="loading()">
@@ -244,6 +248,124 @@
       </div>
 
       <p class="empty-msg" *ngIf="!boxes().length">You haven't built any boxes yet.</p>
+    </div>
+
+    <!-- MY RELATIONS -->
+    <div class="tab-panel" *ngIf="tab() === 'relations' && !loading() && !error()">
+      <ion-button expand="block" fill="outline" (click)="showAddRecipient ? cancelRecipientForm() : openAddRecipient()">
+        {{ showAddRecipient ? 'Cancel' : '+ Add Person' }}
+      </ion-button>
+
+      <div class="add-recipient-form" *ngIf="showAddRecipient">
+        <ion-input label="Name" labelPlacement="stacked" fill="outline" placeholder="e.g. Mom" [(ngModel)]="newRecipient.name" class="field"></ion-input>
+        <ion-select label="Relationship" labelPlacement="stacked" fill="outline" interface="popover" [(ngModel)]="recipientRelationshipChoice" class="field">
+          <ion-select-option *ngFor="let rel of relationshipOptions" [value]="rel">{{ rel }}</ion-select-option>
+        </ion-select>
+        <ion-input
+          *ngIf="recipientRelationshipChoice === 'Other'"
+          label="Custom relationship"
+          labelPlacement="stacked"
+          fill="outline"
+          placeholder="e.g. Bestfriend"
+          [(ngModel)]="recipientRelationshipOther"
+          class="field"
+        ></ion-input>
+        <div class="field-row">
+          <ion-input label="Phone (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.phone" class="field"></ion-input>
+          <ion-input type="email" label="Email (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.email" class="field"></ion-input>
+        </div>
+        <ion-input label="House / Unit / Block (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.house_no" class="field"></ion-input>
+        <ion-input label="Street Address" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.street" class="field"></ion-input>
+        <ion-input label="Barangay, City, Province" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.city_line" class="field"></ion-input>
+        <ion-input label="ZIP Code (optional)" labelPlacement="stacked" fill="outline" inputmode="numeric" maxlength="4" [(ngModel)]="newRecipient.zip" class="field"></ion-input>
+        <ion-input label="Notes (optional)" labelPlacement="stacked" fill="outline" placeholder="Favorite color, sizes, allergies…" [(ngModel)]="newRecipient.notes" class="field"></ion-input>
+
+        <ng-container *ngIf="!editingRecipientId">
+          <h3>First Occasion (optional)</h3>
+          <div class="field-row">
+            <ion-select label="Type" labelPlacement="stacked" fill="outline" interface="popover" [(ngModel)]="newRecipient.occasion_type" class="field">
+              <ion-select-option value="birthday">🎂 Birthday</ion-select-option>
+              <ion-select-option value="anniversary">💍 Anniversary</ion-select-option>
+              <ion-select-option value="other">🎉 Occasion</ion-select-option>
+            </ion-select>
+            <ion-input type="date" label="Date" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.occasion_date" class="field"></ion-input>
+          </div>
+          <ion-input
+            *ngIf="newRecipient.occasion_type === 'other'"
+            label="Occasion name"
+            labelPlacement="stacked"
+            fill="outline"
+            placeholder="e.g. Dala Ceremony"
+            [(ngModel)]="newRecipient.occasion_label"
+            class="field"
+          ></ion-input>
+        </ng-container>
+
+        <ion-button expand="block" class="giftly-btn-primary" (click)="saveRecipient()">Save</ion-button>
+      </div>
+
+      <div class="rl-upcoming" *ngIf="upcomingOccasions().length">
+        <div class="rl-section-label">Upcoming Reminders</div>
+        <div class="rl-upcoming-row">
+          <div class="rl-up-card" *ngFor="let u of upcomingOccasions()" [class.urgent]="u.days_until <= 3">
+            <div class="rl-up-avatar" [style.background]="avatarColor(u.recipient_id)">{{ u.recipient_name.charAt(0) | uppercase }}</div>
+            <div class="rl-up-info">
+              <div class="who">{{ u.recipient_name }}</div>
+              <div class="occ">{{ u.label }}</div>
+              <div class="rl-up-days" [class.soon]="u.days_until <= 3">
+                {{ u.days_until === 0 ? 'Today!' : (u.days_until === 1 ? 'Tomorrow' : u.days_until + ' days') }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rl-card" *ngFor="let r of recipients()">
+        <div class="rl-card-head">
+          <div class="rl-avatar" [style.background]="avatarColor(r.id)">{{ r.name.charAt(0) | uppercase }}</div>
+          <div class="rl-card-name-wrap">
+            <div class="rl-card-name">{{ r.name }}</div>
+            <span class="rl-rel-pill" *ngIf="r.relationship">{{ r.relationship }}</span>
+          </div>
+          <div class="rl-card-actions">
+            <button (click)="openEditRecipient(r)"><ion-icon name="create-outline"></ion-icon></button>
+            <button class="danger" (click)="deleteRecipient(r.id)"><ion-icon name="trash-outline"></ion-icon></button>
+          </div>
+        </div>
+
+        <div class="rl-occ-list" *ngIf="r.occasions.length">
+          <div class="rl-occ-chip" *ngFor="let o of r.occasions">
+            <span class="lbl">{{ o.label }}</span>
+            <span class="cd" [class.soon]="o.days_until <= 3" *ngIf="o.days_until !== null">{{ o.days_until }}d</span>
+            <button class="rl-occ-del" (click)="deleteOccasion(o.id)"><ion-icon name="close-circle-outline"></ion-icon></button>
+          </div>
+        </div>
+        <p class="empty-msg small" *ngIf="!r.occasions.length">No occasions saved yet.</p>
+
+        <span class="rl-add-occ-toggle" (click)="toggleAddOccasion(r.id)">+ Add occasion</span>
+        <div class="rl-add-occ-form" *ngIf="openOccasionFormFor === r.id">
+          <ion-select label="Type" labelPlacement="stacked" fill="outline" interface="popover" [(ngModel)]="newOccasion.occasion_type" class="field">
+            <ion-select-option value="birthday">🎂 Birthday</ion-select-option>
+            <ion-select-option value="anniversary">💍 Anniversary</ion-select-option>
+            <ion-select-option value="other">🎉 Occasion</ion-select-option>
+          </ion-select>
+          <ion-input
+            *ngIf="newOccasion.occasion_type === 'other'"
+            label="Occasion name"
+            labelPlacement="stacked"
+            fill="outline"
+            placeholder="e.g. Dala Ceremony"
+            [(ngModel)]="newOccasion.label"
+            class="field"
+          ></ion-input>
+          <ion-input type="date" label="Date" labelPlacement="stacked" fill="outline" [(ngModel)]="newOccasion.occasion_date" class="field"></ion-input>
+          <ion-button expand="block" size="small" class="giftly-btn-primary" (click)="addOccasion(r.id)">Save occasion</ion-button>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="!recipients().length">
+        No one saved yet. Add the people you love to gift and we'll remind you before their special days.
+      </p>
     </div>
 
     <!-- MORE -->
