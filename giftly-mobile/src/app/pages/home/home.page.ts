@@ -31,6 +31,7 @@ import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { OrderDetailComponent } from '../../components/order-detail/order-detail.component';
+import { ProductDetailComponent } from '../../components/product-detail/product-detail.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -139,7 +140,7 @@ export class HomePage implements OnInit {
       lead: 'Ready-made for',
       highlight: 'every moment',
       subtitle: 'Curated boxes for birthdays, weddings and thank-yous.',
-      image: 'assets/giftly/occasion_box.png',
+      image: 'assets/giftly/bunny-in-box.png',
       gradient: 'linear-gradient(135deg, #D8E9F7 0%, #eef1fb 55%, #F4ECF7 100%)',
       ctaLabel: 'Shop Occasion Boxes',
       link: '/tabs/shop',
@@ -150,7 +151,7 @@ export class HomePage implements OnInit {
       lead: 'Giftly basket',
       highlight: 'delights',
       subtitle: 'Beautifully arranged baskets of premium goodies.',
-      image: 'assets/giftly/giftly_basket.png',
+      image: 'assets/giftly/kitty-in-basket.png',
       gradient: 'linear-gradient(135deg, #FCE7CE 0%, #f3f0e4 55%, #EBDEF0 100%)',
       ctaLabel: 'Browse Baskets',
       link: '/tabs/shop',
@@ -318,12 +319,23 @@ export class HomePage implements OnInit {
     event.target.complete();
   }
 
+  // Always send `type: 'catalog'` — Shop's page instance stays alive across
+  // tab switches (Ionic tabs), so without this a prior Occasion Boxes/Baskets
+  // visit would leave Shop stuck on that segment instead of landing on Shop.
   goToShop(categoryId?: number): void {
-    if (categoryId) {
-      this.router.navigate(['/tabs/shop'], { queryParams: { category: categoryId } });
-    } else {
-      this.router.navigateByUrl('/tabs/shop');
-    }
+    const queryParams: Record<string, string | number> = { type: 'catalog' };
+    if (categoryId) queryParams['category'] = categoryId;
+    this.router.navigate(['/tabs/shop'], { queryParams });
+  }
+
+  async openProduct(product: Product): Promise<void> {
+    const modal = await this.modalCtrl.create({
+      component: ProductDetailComponent,
+      componentProps: { product },
+      breakpoints: [0, 0.75, 0.95],
+      initialBreakpoint: 0.75,
+    });
+    await modal.present();
   }
 
   async trackRecentOrder(): Promise<void> {

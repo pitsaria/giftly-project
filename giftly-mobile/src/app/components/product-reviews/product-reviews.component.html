@@ -59,9 +59,24 @@
         You can review this once you've received an order that includes it.
       </div>
 
+      <!-- Star filter -->
+      <div class="rv-filter" *ngIf="d.reviews.length">
+        <ion-chip [outline]="starFilter() !== 0" [color]="starFilter() === 0 ? 'primary' : undefined" (click)="setStarFilter(0)">
+          <ion-label>All</ion-label>
+        </ion-chip>
+        <ion-chip
+          *ngFor="let s of fullStars"
+          [outline]="starFilter() !== s"
+          [color]="starFilter() === s ? 'primary' : undefined"
+          (click)="setStarFilter(s)"
+        >
+          <ion-label>{{ s }}★</ion-label>
+        </ion-chip>
+      </div>
+
       <!-- Review list -->
       <div class="rv-list" *ngIf="d.reviews.length">
-        <div class="rv-item" *ngFor="let r of d.reviews">
+        <div class="rv-item" *ngFor="let r of filteredReviews(d.reviews)">
           <div class="rv-item-top">
             <span class="rv-who">{{ r.user_name }}</span>
             <span class="rv-when">{{ r.created_at | date: 'MMM d, y' }}</span>
@@ -71,6 +86,7 @@
           </span>
           <p *ngIf="r.comment">{{ r.comment }}</p>
         </div>
+        <p class="rv-empty" *ngIf="!filteredReviews(d.reviews).length">No reviews at that rating.</p>
       </div>
     </ng-container>
   </div>
@@ -90,6 +106,10 @@
     </ion-toolbar>
   </ion-header>
   <ion-content class="ion-padding">
+    <div class="rv-product" *ngIf="productName">
+      <img *ngIf="productImage" [src]="productImage | imgUrl" [alt]="productName" />
+      <span>{{ productName }}</span>
+    </div>
     <ng-container *ngTemplateOutlet="body"></ng-container>
   </ion-content>
 </ng-container>

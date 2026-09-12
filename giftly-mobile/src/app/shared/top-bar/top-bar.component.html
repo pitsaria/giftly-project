@@ -20,4 +20,9 @@
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
+  <div class="gift-context-pill" *ngIf="giftContext.context() as gift">
+    <ion-icon name="gift-outline"></ion-icon>
+    <span>Shopping for {{ gift.name }}</span>
+    <button (click)="clearGift()">Clear</button>
+  </div>
 </ion-header>

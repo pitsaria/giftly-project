@@ -30,6 +30,20 @@ export interface Product {
   // meaningful for the strikethrough when on_sale is true.
   on_sale?: boolean;
   list_price?: string;
+  // Occasion Box color/size options — only ever present when
+  // product_type === 'occasion_box' (see ProductService::attachVariants).
+  colors?: ProductColor[];
+  sizes?: ProductSize[];
+}
+
+export interface ProductColor {
+  color_name: string;
+  image: string;
+}
+
+export interface ProductSize {
+  size_name: string;
+  price: string;
 }
 
 export type ProductType = 'catalog' | 'occasion_box' | 'basket';
@@ -56,6 +70,9 @@ export interface CartItem {
   // Sale pricing — see Product.on_sale / Product.list_price.
   on_sale?: boolean;
   list_price?: string;
+  // Occasion Box variant chosen when this line was added — '' means none.
+  selected_color?: string;
+  selected_size?: string;
 }
 
 export interface Cart {

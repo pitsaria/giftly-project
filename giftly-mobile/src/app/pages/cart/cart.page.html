@@ -54,6 +54,11 @@
           <img [src]="item.image | imgUrl" [alt]="item.name" />
           <div class="item-info">
             <div class="item-name">{{ item.name }}</div>
+            <div class="item-variant" *ngIf="item.selected_color || item.selected_size">
+              <span *ngIf="item.selected_color">Color: {{ item.selected_color }}</span>
+              <span *ngIf="item.selected_color && item.selected_size"> · </span>
+              <span *ngIf="item.selected_size">Size: {{ item.selected_size }}</span>
+            </div>
             <div class="item-price">
               ₱{{ item.price }}
               <span class="item-was" *ngIf="item.on_sale">₱{{ item.list_price }}</span>

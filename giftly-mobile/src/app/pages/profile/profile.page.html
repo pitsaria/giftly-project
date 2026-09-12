@@ -204,7 +204,7 @@
     <!-- WISHLIST -->
     <div class="tab-panel" *ngIf="tab() === 'wishlist' && wishlist() && !loading() && !error()">
       <div class="wishlist-grid">
-        <div class="wishlist-item" *ngFor="let p of [...wishlist()!.in_stock, ...wishlist()!.out_of_stock]">
+        <div class="wishlist-item" *ngFor="let p of [...wishlist()!.in_stock, ...wishlist()!.out_of_stock]" (click)="openProduct(p)">
           <div class="w-image-wrap">
             <img [src]="p.image | imgUrl" [alt]="p.name" />
             <div class="sale-ribbon" *ngIf="p.on_sale">SALE</div>
@@ -216,8 +216,8 @@
           </div>
           <div class="w-flag" *ngIf="p.unavailable">No longer available</div>
           <div class="w-actions">
-            <button [class.pop]="isJustToggled(p.id)" (click)="toggleWishlist(p.id)"><ion-icon name="heart"></ion-icon></button>
-            <button [disabled]="p.quantity <= 0 || p.unavailable" (click)="addWishlistItemToCart(p.id)">Add to Cart</button>
+            <button [class.pop]="isJustToggled(p.id)" (click)="toggleWishlist(p.id); $event.stopPropagation()"><ion-icon name="heart"></ion-icon></button>
+            <button [disabled]="p.quantity <= 0 || p.unavailable" (click)="addWishlistItemToCart(p.id); $event.stopPropagation()">Add to Cart</button>
           </div>
         </div>
       </div>
@@ -284,9 +284,21 @@
           class="field"
         ></ion-input>
         <div class="field-row">
-          <ion-input label="Phone (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.phone" class="field"></ion-input>
+          <ion-input
+            label="Phone (optional)"
+            labelPlacement="stacked"
+            fill="outline"
+            type="tel"
+            inputmode="numeric"
+            maxlength="11"
+            placeholder="09XXXXXXXXX"
+            [ngModel]="newRecipient.phone"
+            (ionInput)="onRecipientPhoneInput($any($event).target.value)"
+            class="field"
+          ></ion-input>
           <ion-input type="email" label="Email (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.email" class="field"></ion-input>
         </div>
+        <app-address-search (picked)="onRecipientAddressPicked($event)"></app-address-search>
         <ion-input label="House / Unit / Block (optional)" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.house_no" class="field"></ion-input>
         <ion-input label="Street Address" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.street" class="field"></ion-input>
         <ion-input label="Barangay, City, Province" labelPlacement="stacked" fill="outline" [(ngModel)]="newRecipient.city_line" class="field"></ion-input>
@@ -329,6 +341,9 @@
                 {{ u.days_until === 0 ? 'Today!' : (u.days_until === 1 ? 'Tomorrow' : u.days_until + ' days') }}
               </div>
             </div>
+            <button class="rl-gift-btn" title="Send a gift" (click)="sendGiftToUpcoming(u)">
+              <ion-icon name="gift-outline"></ion-icon>
+            </button>
           </div>
         </div>
       </div>
@@ -354,6 +369,10 @@
           </div>
         </div>
         <p class="empty-msg small" *ngIf="!r.occasions.length">No occasions saved yet.</p>
+
+        <button class="rl-gift-btn-wide" (click)="sendGift(r, r.occasions[0]?.label)">
+          <ion-icon name="gift-outline"></ion-icon> Send a Gift
+        </button>
 
         <span class="rl-add-occ-toggle" (click)="toggleAddOccasion(r.id)">+ Add occasion</span>
         <div class="rl-add-occ-form" *ngIf="openOccasionFormFor === r.id">

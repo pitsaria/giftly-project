@@ -22,6 +22,7 @@ import {
   IonItemOption,
   AlertController,
   ToastController,
+  ModalController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
@@ -43,7 +44,7 @@ import {
   closeCircleOutline,
   cameraOutline,
 } from 'ionicons/icons';
-import { Address, Box, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
+import { Address, Box, Product, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
 import { AuthService } from '../../core/auth.service';
 import { ProfileService } from '../../core/profile.service';
@@ -52,10 +53,12 @@ import { WishlistService } from '../../core/wishlist.service';
 import { CartService } from '../../core/cart.service';
 import { BoxService } from '../../core/box.service';
 import { RecipientService, NewRecipient } from '../../core/recipient.service';
+import { GiftContextService } from '../../core/gift-context.service';
 import { HapticsService } from '../../core/haptics.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
+import { ProductDetailComponent } from '../../components/product-detail/product-detail.component';
 
 type Tab = 'settings' | 'addresses' | 'wishlist' | 'boxes' | 'relations';
 
@@ -108,11 +111,13 @@ export class ProfilePage implements OnInit {
   private cart = inject(CartService);
   private boxSvc = inject(BoxService);
   private recipientSvc = inject(RecipientService);
+  private giftContext = inject(GiftContextService);
   private haptics = inject(HapticsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
+  private modalCtrl = inject(ModalController);
 
   readonly tab = signal<Tab>('settings');
   readonly loading = signal(false);
@@ -459,6 +464,26 @@ export class ProfilePage implements OnInit {
     return RECIPIENT_AVATAR_COLORS[id % RECIPIENT_AVATAR_COLORS.length];
   }
 
+  // Mirrors desktop's gift_start.php: remember who we're shopping for, then
+  // send the user to Shop to pick a product (not straight to Checkout).
+  sendGift(r: Recipient, occasionLabel?: string): void {
+    this.giftContext.set({
+      recipientId: r.id,
+      name: r.name,
+      phone: r.phone,
+      street: r.street,
+      cityLine: r.city_line,
+      occasionLabel,
+    });
+    this.router.navigateByUrl('/tabs/shop');
+  }
+
+  sendGiftToUpcoming(u: UpcomingOccasion): void {
+    const r = this.recipients().find((x) => x.id === u.recipient_id);
+    if (!r) return;
+    this.sendGift(r, u.label);
+  }
+
   openAddRecipient(): void {
     this.editingRecipientId = null;
     this.newRecipient = this.blankRecipient();
@@ -501,9 +526,38 @@ export class ProfilePage implements OnInit {
     this.upcomingOccasions.set(upcoming);
   }
 
+  // Scrubs to digits only, capped at 11 — mirrors profile_relations.php's
+  // desktop oninput scrub for the 09XXXXXXXXX local phone format.
+  onRecipientPhoneInput(value: string): void {
+    this.newRecipient.phone = (value ?? '').replace(/\D/g, '').slice(0, 11);
+  }
+
+  // Recipient addresses use one combined city_line (no separate barangay/
+  // city/province fields like the Addresses tab), so compose it the same way
+  // desktop's rl_compose_city_line() does.
+  onRecipientAddressPicked(d: AddressParts): void {
+    if (d.street) this.newRecipient.street = d.street;
+    const parts: string[] = [];
+    if (d.barangay) parts.push(/^(brgy|barangay|bgy)\b/i.test(d.barangay) ? d.barangay : `Brgy. ${d.barangay}`);
+    if (d.city) parts.push(d.city);
+    if (d.province || d.region) parts.push(d.province || d.region);
+    if (parts.length) this.newRecipient.city_line = parts.join(', ');
+    if (d.zip) this.newRecipient.zip = d.zip;
+  }
+
   async saveRecipient(): Promise<void> {
     if (!this.newRecipient.name?.trim()) {
       await this.toast('Please enter their name.');
+      return;
+    }
+    const phone = (this.newRecipient.phone ?? '').trim();
+    if (phone !== '' && !/^09\d{9}$/.test(phone)) {
+      await this.toast('Phone number must start with 09 and have 11 digits total.');
+      return;
+    }
+    const email = (this.newRecipient.email ?? '').trim();
+    if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      await this.toast('Please enter a valid email address.');
       return;
     }
     const payload: NewRecipient = {
@@ -584,6 +638,30 @@ export class ProfilePage implements OnInit {
   }
 
   async toggleWishlist(productId: number): Promise<void> {
+    // Only confirm when this tap would REMOVE the item — adding shouldn't prompt.
+    if (this.wishlistSvc.productIds().has(productId)) {
+      const alert = await this.alertCtrl.create({
+        header: 'Remove from wishlist?',
+        message: "You'll need to add it again later if you change your mind.",
+        buttons: [
+          { text: 'Cancel', role: 'cancel' },
+          {
+            text: 'Remove',
+            role: 'destructive',
+            handler: async () => {
+              try {
+                await this.wishlistSvc.toggle(productId);
+                this.wishlist.set(await this.wishlistSvc.getWishlist());
+              } catch {
+                await this.toast('Could not update your wishlist. Please try again.');
+              }
+            },
+          },
+        ],
+      });
+      await alert.present();
+      return;
+    }
     try {
       await this.wishlistSvc.toggle(productId);
       this.wishlist.set(await this.wishlistSvc.getWishlist());
@@ -603,6 +681,16 @@ export class ProfilePage implements OnInit {
     } catch {
       await this.toast('Could not add to cart. Please try again.');
     }
+  }
+
+  async openProduct(product: Product): Promise<void> {
+    const modal = await this.modalCtrl.create({
+      component: ProductDetailComponent,
+      componentProps: { product },
+      breakpoints: [0, 0.75, 0.95],
+      initialBreakpoint: 0.75,
+    });
+    await modal.present();
   }
 
   editBox(id: number): void {

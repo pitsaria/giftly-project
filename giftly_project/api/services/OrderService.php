@@ -17,6 +17,7 @@ class OrderService {
         $this->conn = $conn;
         pay_ensure_schema($conn);
         catalog_ensure_schema($conn);
+        cart_ensure_schema($conn);
         orders_ensure_schema($conn);
         promo_ensure_schema($conn);
         addons_ensure_schema($conn);
@@ -63,7 +64,8 @@ class OrderService {
         }
         
         $ids_string = implode(',', array_map('intval', $selected_ids));
-        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, " . catalog_price_sql('p.') . " AS price, p.name, p.is_active
+        $cart_result = $this->conn->query("SELECT c.product_id, c.quantity, c.selected_color, c.selected_size,
+                                                   COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price, p.name, p.is_active
                                            FROM carts c
                                            JOIN products p ON c.product_id = p.id
                                            WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
@@ -161,8 +163,10 @@ class OrderService {
 
             // Insert order items
             foreach ($items as $item) {
-                $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price)
-                                    VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']})");
+                $item_color_esc = $this->conn->real_escape_string($item['selected_color'] ?? '');
+                $item_size_esc  = $this->conn->real_escape_string($item['selected_size'] ?? '');
+                $this->conn->query("INSERT INTO order_items (order_id, product_id, quantity, price, selected_color, selected_size)
+                                    VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']}, '$item_color_esc', '$item_size_esc')");
                 // Update stock
                 $this->conn->query("UPDATE products SET quantity = quantity - {$item['quantity']} WHERE id = {$item['product_id']}");
             }

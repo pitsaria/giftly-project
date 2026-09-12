@@ -136,7 +136,13 @@ export class OrderDetailComponent implements OnInit {
   async openReview(item: OrderItem): Promise<void> {
     const modal = await this.modalCtrl.create({
       component: ProductReviewsComponent,
-      componentProps: { productId: item.product_id, writeMode: true, modal: true },
+      componentProps: {
+        productId: item.product_id,
+        productName: item.name,
+        productImage: item.image,
+        writeMode: true,
+        modal: true,
+      },
     });
     await modal.present();
   }

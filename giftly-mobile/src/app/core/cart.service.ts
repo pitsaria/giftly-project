@@ -27,8 +27,11 @@ export class CartService {
     return res.data;
   }
 
-  async addToCart(productId: number, quantity = 1): Promise<void> {
-    await firstValueFrom(this.api.post('cart', { product_id: productId, quantity }));
+  async addToCart(productId: number, quantity = 1, color?: string, size?: string): Promise<void> {
+    const body: Record<string, unknown> = { product_id: productId, quantity };
+    if (color) body['color'] = color;
+    if (size) body['size'] = size;
+    await firstValueFrom(this.api.post('cart', body));
     await this.getCart();
     this.haptics.light();
     this.justAddedId.set(productId);

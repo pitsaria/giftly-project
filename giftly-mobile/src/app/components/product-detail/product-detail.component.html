@@ -22,17 +22,54 @@
     <ion-icon name="star" *ngFor="let s of ratingStars()"></ion-icon>
     <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
   </div>
-  <div class="price" [class.on-sale]="product.on_sale">
-    <span class="now">₱{{ product.price }}</span>
-    <span class="was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
+  <div class="price" [class.on-sale]="product.on_sale && !product.sizes?.length">
+    <span class="now">₱{{ displayPrice() }}</span>
+    <span class="was" *ngIf="product.on_sale && !product.sizes?.length">₱{{ product.list_price }}</span>
   </div>
+  <p class="stock-line" *ngIf="inStock()">{{ product.quantity }} in stock</p>
   <p class="description">{{ product.description }}</p>
+
+  <div class="variant-row" *ngIf="product.colors?.length">
+    <span>Color</span>
+    <div class="swatches">
+      <button
+        *ngFor="let c of product.colors"
+        class="swatch"
+        [class.active]="selectedColor() === c.color_name"
+        (click)="selectColor(c.color_name)"
+        [attr.aria-label]="c.color_name"
+      >
+        <img [src]="c.image | imgUrl" [alt]="c.color_name" />
+      </button>
+    </div>
+  </div>
+
+  <div class="variant-row" *ngIf="product.sizes?.length">
+    <span>Size</span>
+    <div class="size-pills">
+      <button
+        *ngFor="let s of product.sizes"
+        class="size-pill"
+        [class.active]="selectedSize() === s.size_name"
+        (click)="selectSize(s.size_name)"
+      >
+        {{ s.size_name }}
+      </button>
+    </div>
+  </div>
 
   <div class="quantity-row" *ngIf="mode === 'cart' && inStock()">
     <span>Quantity</span>
     <div class="stepper">
       <button (click)="decrease()"><ion-icon name="remove-outline"></ion-icon></button>
-      <span>{{ quantity() }}</span>
+      <input
+        type="number"
+        class="qty-input"
+        [ngModel]="quantity()"
+        (ngModelChange)="setQuantity($event)"
+        min="1"
+        [max]="product.quantity"
+      />
       <button (click)="increase()"><ion-icon name="add-outline"></ion-icon></button>
     </div>
   </div>

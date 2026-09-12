@@ -21,6 +21,15 @@ class ProductService {
         $row['list_price'] = $row['price'];
         $row['price'] = (string) catalog_effective_price($row);
     }
+
+    // Occasion Boxes carry color/size options (mirrors catalog_grid.php's
+    // desktop product modal); other product types never have any.
+    private function attachVariants(array &$row): void {
+        if (($row['product_type'] ?? 'catalog') === 'occasion_box') {
+            $row['colors'] = catalog_get_colors($this->conn, $row['id']);
+            $row['sizes'] = catalog_get_sizes($this->conn, $row['id']);
+        }
+    }
     
     // 📦 GET ALL PRODUCTS
 public function getAll($params) {
@@ -113,6 +122,7 @@ public function getAll($params) {
     $products = [];
     while ($row = $result->fetch_assoc()) {
         $this->applySalePricing($row);
+        $this->attachVariants($row);
         $products[] = $row;
     }
 
@@ -138,6 +148,7 @@ public function getAll($params) {
 
         $row = $result->fetch_assoc();
         $this->applySalePricing($row);
+        $this->attachVariants($row);
         sendSuccess($row);
     }
     

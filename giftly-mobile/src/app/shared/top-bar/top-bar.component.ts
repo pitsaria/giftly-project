@@ -4,9 +4,10 @@ import { RouterLink } from '@angular/router';
 import { Router } from '@angular/router';
 import { IonHeader, IonToolbar, IonButtons, IonButton, IonIcon, IonBadge } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { searchOutline, cartOutline, personCircleOutline } from 'ionicons/icons';
+import { searchOutline, cartOutline, personCircleOutline, giftOutline } from 'ionicons/icons';
 import { AuthService } from '../../core/auth.service';
 import { CartService } from '../../core/cart.service';
+import { GiftContextService } from '../../core/gift-context.service';
 
 // Shared header reused across every tab page (Home/Shop/Orders/Profile) so the
 // brand, search, cart and login/profile entry points stay identical and in sync.
@@ -19,6 +20,7 @@ import { CartService } from '../../core/cart.service';
 export class TopBarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
+  giftContext = inject(GiftContextService);
   private router = inject(Router);
 
   // Pages other than Shop just want the icon to take them to Shop's search
@@ -36,7 +38,7 @@ export class TopBarComponent {
   private bumpTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    addIcons({ searchOutline, cartOutline, personCircleOutline });
+    addIcons({ searchOutline, cartOutline, personCircleOutline, giftOutline });
 
     let prevCount = this.cart.itemCount();
     effect(() => {
@@ -56,5 +58,9 @@ export class TopBarComponent {
   onSearch(): void {
     this.search.emit();
     this.router.navigateByUrl('/tabs/shop');
+  }
+
+  clearGift(): void {
+    this.giftContext.clear();
   }
 }

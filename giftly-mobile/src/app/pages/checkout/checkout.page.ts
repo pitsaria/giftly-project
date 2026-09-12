@@ -30,6 +30,7 @@ import { AuthService } from '../../core/auth.service';
 import { HapticsService } from '../../core/haptics.service';
 import { AddonService } from '../../core/addon.service';
 import { RecipientService } from '../../core/recipient.service';
+import { GiftContextService } from '../../core/gift-context.service';
 import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { phoneDigitsFromStored } from '../../core/phone-format';
@@ -75,6 +76,7 @@ export class CheckoutPage implements OnInit {
   private auth = inject(AuthService);
   private addonSvc = inject(AddonService);
   private recipientSvc = inject(RecipientService);
+  private giftContext = inject(GiftContextService);
   private router = inject(Router);
   private toastCtrl = inject(ToastController);
 
@@ -160,6 +162,20 @@ export class CheckoutPage implements OnInit {
         const def = addresses.find((a) => a.is_default) ?? addresses[0];
         this.selectAddress(def.id);
       }
+
+      // "Send a Gift" from Profile > Relations — mirrors the website's
+      // $_SESSION['gift_context']: pre-select "Deliver to Recipient" and
+      // prefill their saved details.
+      const gift = this.giftContext.context();
+      if (gift) {
+        this.setDeliveryType('recipient');
+        this.recipientName = gift.name;
+        this.recipientPhoneDigits = phoneDigitsFromStored(gift.phone);
+        this.recipientPhoneTouched = true;
+        if (gift.street) this.address = gift.street;
+        if (gift.cityLine) this.city = gift.cityLine;
+      }
+
       await this.evaluatePromo('');
     } catch (err) {
       if (token !== this.loadToken) return;
@@ -380,6 +396,7 @@ export class CheckoutPage implements OnInit {
 
       this.cart.selectedCartIds.set([]);
       await this.cart.getCart();
+      this.giftContext.clear();
 
       if (this.paymentMethod === 'online') {
         if (placed.checkoutUrl) {

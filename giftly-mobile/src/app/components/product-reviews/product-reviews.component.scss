@@ -4,6 +4,41 @@
   border-top: 1px solid #f0f0f0;
 }
 
+.rv-product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    background: #fafafa;
+    border-radius: 10px;
+  }
+
+  span {
+    font-size: 15px;
+    font-weight: 700;
+    color: #222;
+  }
+}
+
+.rv-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rv-empty {
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+  padding: 12px 0;
+}
+
 .rv-head {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -27,7 +27,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline } from 'ionicons/icons';
+import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline } from 'ionicons/icons';
 import { Category, Product, ProductType } from '../../core/models';
 import { ProductService, ProductSort } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
@@ -69,6 +69,9 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
   ],
 })
 export class ShopPage implements OnInit {
+  @ViewChild(IonContent) private content?: IonContent;
+  readonly showBackToTop = signal(false);
+
   private productSvc = inject(ProductService);
   private cart = inject(CartService);
   wishlist = inject(WishlistService);
@@ -122,7 +125,7 @@ export class ShopPage implements OnInit {
   }
 
   constructor() {
-    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline });
+    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline });
   }
 
   toggleFilters(): void {
@@ -199,11 +202,13 @@ export class ShopPage implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const raw = params.get('category');
       this.selectedCategory = raw ? Number(raw) : null;
-      // ?type= lets Home's hero deep-link into Occasion Boxes / Baskets.
+      // ?type= lets Home's hero/category links deep-link into a specific
+      // segment. Always set it (defaulting to 'catalog') rather than only
+      // when present — Ionic keeps this page instance alive across tab
+      // switches, so leaving it unset here would let a prior Occasion
+      // Boxes/Baskets visit stick even when the caller meant plain Shop.
       const type = params.get('type');
-      if (type === 'occasion_box' || type === 'basket' || type === 'catalog') {
-        this.productType.set(type);
-      }
+      this.productType.set(type === 'occasion_box' || type === 'basket' ? type : 'catalog');
       this.page = 1;
       this.loadProducts();
     });
@@ -312,7 +317,8 @@ export class ShopPage implements OnInit {
       return;
     }
     try {
-      await this.wishlist.toggle(product.id);
+      const action = await this.wishlist.toggle(product.id);
+      await this.toast(action === 'added' ? 'Added to wishlist' : 'Removed from wishlist');
     } catch {
       await this.toast('Could not update your wishlist. Please try again.');
     }
@@ -339,6 +345,14 @@ export class ShopPage implements OnInit {
   private async toast(message: string): Promise<void> {
     const t = await this.toastCtrl.create({ message, duration: 1800, position: 'bottom' });
     await t.present();
+  }
+
+  onContentScroll(ev: CustomEvent<{ scrollTop: number }>): void {
+    this.showBackToTop.set((ev.detail?.scrollTop ?? 0) > 400);
+  }
+
+  scrollToTop(): void {
+    this.content?.scrollToTop(300);
   }
 
   async openProduct(product: Product): Promise<void> {

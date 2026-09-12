@@ -54,6 +54,34 @@
   }
 }
 
+.gift-context-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #fff0f4;
+  color: var(--ion-color-primary);
+  font-size: 12px;
+  font-weight: 600;
+
+  span {
+    flex: 1;
+  }
+
+  ion-icon {
+    font-size: 14px;
+  }
+
+  button {
+    background: none;
+    border: none;
+    color: var(--ion-color-primary);
+    font-weight: 700;
+    text-decoration: underline;
+    font-size: 12px;
+  }
+}
+
 .brand-link {
   display: flex;
   align-items: center;
