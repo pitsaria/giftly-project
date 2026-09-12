@@ -5,6 +5,7 @@
 require_once 'config/database.php';
 require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../pwd_otp_lib.php';
+require_once __DIR__ . '/../../supabase_storage.php';
 
 class ProfileService {
     private $conn;
@@ -126,6 +127,9 @@ class ProfileService {
     }
 
     // POST profile/picture (multipart, field name "profile_pic")
+    // Uploaded to Supabase Storage (same as product images / recipient photos) —
+    // Render's container filesystem is ephemeral, so a plain local upload
+    // vanishes on the next deploy/restart. Mirrors profile_settings.php's fix.
     public function uploadPicture($headers) {
         $user_id = $this->getUserId($headers);
         if (!$user_id) {
@@ -138,22 +142,38 @@ class ProfileService {
             return;
         }
 
-        $target_dir = __DIR__ . '/../../uploads/profile_pics/';
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-
-        $file_extension = pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION);
-        $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
-        $target_file = $target_dir . $new_filename;
-
-        if (!move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_file)) {
-            sendError('Failed to upload image');
+        $uploaded_url = supabase_upload_image($_FILES['profile_pic']);
+        if ($uploaded_url === null) {
+            sendError("Couldn't upload the photo. Try a JPG or PNG under a few MB.");
             return;
         }
 
-        $this->conn->query("UPDATE users SET profile_pic = '$new_filename' WHERE id = $user_id");
-        sendSuccess(['profile_pic' => $new_filename], 'Profile picture updated');
+        $old = $this->conn->query("SELECT profile_pic FROM users WHERE id = $user_id")->fetch_assoc()['profile_pic'] ?? '';
+
+        $escaped = $this->conn->real_escape_string($uploaded_url);
+        $this->conn->query("UPDATE users SET profile_pic = '$escaped' WHERE id = $user_id");
+
+        if (!empty($old)) {
+            supabase_delete_image($old);
+        }
+
+        sendSuccess(['profile_pic' => $uploaded_url], 'Profile picture updated');
+    }
+
+    // DELETE profile/picture — remove the current profile picture.
+    public function removePicture($headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+            return;
+        }
+
+        $old = $this->conn->query("SELECT profile_pic FROM users WHERE id = $user_id")->fetch_assoc()['profile_pic'] ?? '';
+        if (!empty($old)) {
+            supabase_delete_image($old);
+        }
+        $this->conn->query("UPDATE users SET profile_pic = NULL WHERE id = $user_id");
+        sendSuccess(null, 'Profile picture removed');
     }
 
     private function getUserId($headers) {

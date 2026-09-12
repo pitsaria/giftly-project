@@ -38,4 +38,8 @@ export class ProfileService {
     const res = await firstValueFrom(this.api.postFormData<{ profile_pic: string }>('profile/picture', formData));
     return res.data.profile_pic;
   }
+
+  async removePicture(): Promise<void> {
+    await firstValueFrom(this.api.delete('profile/picture'));
+  }
 }

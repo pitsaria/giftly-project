@@ -454,6 +454,8 @@ case 'cart/verify-stock':
         $profileSvc = new ProfileService($conn);
         if ($method == 'POST') {
             $profileSvc->uploadPicture($headers);
+        } elseif ($method == 'DELETE') {
+            $profileSvc->removePicture($headers);
         } else {
             sendError('Method not allowed', 405);
         }

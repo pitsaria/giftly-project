@@ -17,11 +17,24 @@
 
   <ng-container *ngIf="auth.isLoggedIn()">
     <div class="profile-summary" *ngIf="profile() as p">
-      <img *ngIf="p.profile_pic" [src]="p.profile_pic | imgUrl" alt="" class="avatar" />
-      <ion-icon *ngIf="!p.profile_pic" name="person-circle-outline" class="avatar-placeholder"></ion-icon>
+      <div class="avatar-wrap" (click)="pictureInput.click()">
+        <img *ngIf="p.profile_pic" [src]="p.profile_pic | imgUrl" alt="" class="avatar" />
+        <ion-icon *ngIf="!p.profile_pic" name="person-circle-outline" class="avatar-placeholder"></ion-icon>
+        <div class="avatar-uploading" *ngIf="uploadingPicture()"><ion-spinner name="crescent"></ion-spinner></div>
+        <span class="avatar-camera-badge"><ion-icon name="camera-outline"></ion-icon></span>
+      </div>
+      <input
+        #pictureInput
+        type="file"
+        accept="image/*"
+        hidden
+        [disabled]="uploadingPicture()"
+        (change)="onPictureSelected($event)"
+      />
       <div class="summary-text">
         <h2>{{ p.firstname }} {{ p.lastname }}</h2>
         <p>{{ p.email }}</p>
+        <button class="remove-pic-link" *ngIf="p.profile_pic" (click)="removePicture()">Remove photo</button>
       </div>
     </div>
 

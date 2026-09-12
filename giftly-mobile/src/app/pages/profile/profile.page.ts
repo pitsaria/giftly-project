@@ -41,6 +41,7 @@ import {
   starOutline,
   peopleOutline,
   closeCircleOutline,
+  cameraOutline,
 } from 'ionicons/icons';
 import { Address, Box, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
@@ -122,6 +123,7 @@ export class ProfilePage implements OnInit {
   private loadToken = 0;
 
   readonly profile = signal<Profile | null>(null);
+  readonly uploadingPicture = signal(false);
   readonly addresses = signal<Address[]>([]);
   readonly wishlist = signal<WishlistData | null>(null);
   readonly boxes = signal<Box[]>([]);
@@ -199,6 +201,7 @@ export class ProfilePage implements OnInit {
       starOutline,
       peopleOutline,
       closeCircleOutline,
+      cameraOutline,
     });
   }
 
@@ -350,6 +353,47 @@ export class ProfilePage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  async onPictureSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // let picking the same file again still fire (change)
+    if (!file) return;
+
+    this.uploadingPicture.set(true);
+    try {
+      const url = await this.profileSvc.uploadPicture(file);
+      this.profile.update((p) => (p ? { ...p, profile_pic: url } : p));
+      await this.toast('Profile picture updated!');
+    } catch (err) {
+      await this.toast(describeError(err));
+    } finally {
+      this.uploadingPicture.set(false);
+    }
+  }
+
+  async removePicture(): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: 'Remove profile picture?',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Remove',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              await this.profileSvc.removePicture();
+              this.profile.update((p) => (p ? { ...p, profile_pic: null } : p));
+              this.haptics.medium();
+            } catch {
+              await this.toast('Could not remove your profile picture. Please try again.');
+            }
+          },
+        },
+      ],
+    });
+    await alert.present();
   }
 
   async addAddress(): Promise<void> {
