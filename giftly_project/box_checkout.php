@@ -423,7 +423,7 @@ unset($_SESSION['box_checkout_error']);
     #cardFields { display: none; margin-top: 14px; padding: 16px; border: 1.5px dashed #ffc1cc; border-radius: 14px; background: #fff8fa; }
     #cardFields.show { display: block; }
     #cardFields .hint { font-size: 12px; color: #999; margin-top: 4px; }
-    .co-letter { background: #fff5f7; border-left: 3px solid #ff8ba7; border-radius: 12px; padding: 12px 16px; font-style: italic; color: #555; font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+    .co-letter { background: #fff5f7; border-left: 3px solid #ff8ba7; border-radius: 12px; padding: 12px 16px; font-style: italic; color: #555; font-size: 13px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; margin-top: 8px; max-height: 140px; overflow-y: auto; }
     .co-alert { background: #fdeded; border: 1px solid #ffc1cc; color: #d32f2f; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; }
     @media (max-width: 880px) { .co-right { width: 100%; } .co-card { position: static; } }
 </style>

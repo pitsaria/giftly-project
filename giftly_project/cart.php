@@ -473,9 +473,10 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
     // ✅ DIRECT DATABASE QUERY - NO API CALL
     $sql = "SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
                    p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
-                   p.image, p.quantity as stock_quantity, p.is_active
+                   p.image, pc.image AS color_image, p.quantity as stock_quantity, p.is_active
             FROM carts c
             JOIN products p ON c.product_id = p.id
+            LEFT JOIN product_colors pc ON pc.product_id = c.product_id AND pc.color_name = c.selected_color AND c.selected_color <> ''
             WHERE c.user_id = $user_id";
     $result = $conn->query($sql);
 
@@ -526,7 +527,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 </div>
 
                 <!-- Image -->
-                <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" class="ci-img" alt="Product">
+                <img src="<?php echo htmlspecialchars(img_url(!empty($row['color_image']) ? $row['color_image'] : $row['image'])); ?>" class="ci-img" alt="Product">
 
                 <!-- Name & Price -->
                 <div class="ci-details">
@@ -585,7 +586,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                     </div>
 
                     <!-- Image -->
-                    <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" class="ci-img" alt="Product" style="filter: grayscale(0.5);">
+                    <img src="<?php echo htmlspecialchars(img_url(!empty($row['color_image']) ? $row['color_image'] : $row['image'])); ?>" class="ci-img" alt="Product" style="filter: grayscale(0.5);">
                     
                     <!-- Name & Price -->
                     <div class="ci-details">
