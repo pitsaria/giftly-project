@@ -38,7 +38,7 @@ $user_id = $_SESSION['user_id'];
     gap: 10px; 
 }
 
-.cart-badge {
+.cart-title-count {
     font-size: 16px;
     font-weight: 500;
     color: #888;
@@ -423,7 +423,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
     <div class="cart-left">
         <h2 class="cart-title">
             Your Cart 
-            <span id="cartTitleCount" class="cart-badge">(0)</span>
+            <span id="cartTitleCount" class="cart-title-count">(0)</span>
         </h2>
 
         <!-- 🚀 STOCK WARNING - Place this right after the cart title -->
