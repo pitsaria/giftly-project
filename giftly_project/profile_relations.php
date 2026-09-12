@@ -21,6 +21,12 @@ function rl_redirect($flash = null) {
     exit();
 }
 
+/** PH mobile format: starts with 09, 11 digits total. Empty is allowed (phone is optional). */
+function rl_valid_phone($phone) {
+    $phone = trim($phone);
+    return $phone === '' || preg_match('/^09\d{9}$/', $phone);
+}
+
 /** Upload a new photo if one was chosen. Returns [url_or_null, error_or_null]. */
 function rl_handle_photo_upload() {
     if (empty($_FILES['photo']['name'])) return [null, null];
@@ -41,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_recipient'])) {
     $name = trim($_POST['name'] ?? '');
     if ($name === '') {
         rl_redirect(['type' => 'error', 'msg' => 'Please enter their name.']);
+    }
+    if (!rl_valid_phone($_POST['phone'] ?? '')) {
+        rl_redirect(['type' => 'error', 'msg' => 'Phone number must start with 09 and have 11 digits total.']);
     }
 
     $house_no = trim($_POST['house_no'] ?? '');
@@ -78,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_recipient'])) 
     $rid = (int) ($_POST['recipient_id'] ?? 0);
     $existing = recip_get($conn, $rid, $user_id);
     if (!$existing) rl_redirect(['type' => 'error', 'msg' => 'That person could not be found.']);
+    if (!rl_valid_phone($_POST['phone'] ?? '')) {
+        rl_redirect(['type' => 'error', 'msg' => 'Phone number must start with 09 and have 11 digits total.']);
+    }
 
     $rel_choice = $_POST['relationship_choice'] ?? 'Other';
     if ($rel_choice === 'Other') {
@@ -518,7 +530,7 @@ $occasion_types = recip_occasion_types();
             <div class="rl-form-row">
                 <div class="rl-form-group">
                     <label>Phone <span style="color:#bbb;font-weight:400;">(optional)</span></label>
-                    <input type="tel" name="phone" id="rlPhone" class="rl-form-input" placeholder="09XXXXXXXXX">
+                    <input type="tel" name="phone" id="rlPhone" class="rl-form-input" placeholder="09XXXXXXXXX" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" title="Phone number must start with 09 and have 11 digits total" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
                 </div>
                 <div class="rl-form-group">
                     <label>Email <span style="color:#bbb;font-weight:400;">(optional)</span></label>

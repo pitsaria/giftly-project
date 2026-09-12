@@ -461,10 +461,17 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         
         <div class="product-grid">
             <?php
-            // Showing actual products from your database!
-            $sql = "SELECT * FROM products WHERE product_type = 'catalog'" . catalog_visible_filter()
-                 . " ORDER BY CASE WHEN " . catalog_price_sql('') . " < price THEN 0 ELSE 1 END, id DESC LIMIT 4";
-            $result = $conn->query($sql);
+            // Admin-curated featured products take priority; fall back to the
+            // automatic "on sale first, then newest" pick when none are set.
+            $featured_sql = "SELECT * FROM products WHERE product_type = 'catalog' AND is_featured = TRUE"
+                          . catalog_visible_filter()
+                          . " ORDER BY featured_order ASC, id DESC LIMIT 4";
+            $result = $conn->query($featured_sql);
+            if (!$result || $result->num_rows === 0) {
+                $sql = "SELECT * FROM products WHERE product_type = 'catalog'" . catalog_visible_filter()
+                     . " ORDER BY CASE WHEN " . catalog_price_sql('') . " < price THEN 0 ELSE 1 END, id DESC LIMIT 4";
+                $result = $conn->query($sql);
+            }
             
             // Array of colors to cycle through for the bottom of the cards
             $card_colors = ['card-pink', 'card-purple', 'card-yellow', 'card-blue'];
@@ -482,25 +489,28 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                     $os  = catalog_on_sale($row);
                     $disc_pct = ($os && (float)$row['price'] > 0)
                         ? (int) round(((float)$row['price'] - $eff) / (float)$row['price'] * 100) : 0;
+                    $featOnClick = htmlspecialchars(
+                        "featOpen(" . (int) $row['id'] . ", " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $eff . ", " . (int) $row['quantity'] . ")",
+                        ENT_QUOTES);
                     ?>
                     <div class="product-card">
-                        <div class="p-image-container">
+                        <div class="p-image-container" onclick="<?php echo $featOnClick; ?>" style="cursor:pointer;">
                             <?php if ($os): ?><div class="p-sale-badge">Sale<?php if ($disc_pct > 0): ?> <small>-<?php echo $disc_pct; ?>%</small><?php endif; ?></div><?php endif; ?>
                             <img src="<?php echo htmlspecialchars(img_url($row['image'])); ?>" alt="Product" class="p-image">
                         </div>
 
                         <div class="<?php echo $current_color; ?>">
-                            <div class="p-name"><?php echo $row['name']; ?></div>
+                            <div class="p-name" onclick="<?php echo $featOnClick; ?>" style="cursor:pointer;"><?php echo $row['name']; ?></div>
 
                             <!-- NEW DESCRIPTION PREVIEW -->
-                            <div class="p-desc"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>
+                            <div class="p-desc" onclick="<?php echo $featOnClick; ?>" style="cursor:pointer;"><?php echo substr(htmlspecialchars($row['description']), 0, 40) . '...'; ?></div>
                             <div class="p-bottom-row">
-                                <div class="p-price" style="<?php echo $os ? 'color:#e6398f;' : ''; ?>white-space:nowrap;">PHP <?php echo number_format($eff, 2); ?><?php if ($os): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
-                                
+                                <div class="p-price" onclick="<?php echo $featOnClick; ?>" style="<?php echo $os ? 'color:#e6398f;' : ''; ?>white-space:nowrap;cursor:pointer;">PHP <?php echo number_format($eff, 2); ?><?php if ($os): ?> <span style="text-decoration:line-through;color:#bbb;font-weight:400;font-size:12px;">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
+
                                 <!-- 🚨 UPDATED: Check if user is logged in -->
                                 <?php if (isset($_SESSION['user_id'])): ?>
                                     <!-- User is logged in - use form -->
-                                    <form action="add_to_cart.php" method="POST" style="margin:0; display:inline;">
+                                    <form action="add_to_cart.php" method="POST" style="margin:0; display:inline;" onclick="event.stopPropagation();">
                                         <input type="hidden" name="product_id" value="<?php echo $row['id']; ?>">
                                         <button type="submit" style="background:none; border:none; cursor:pointer;">
                                             <i class="fas fa-shopping-cart cart-icon"></i>
@@ -508,11 +518,11 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
                                     </form>
                                 <?php else: ?>
                                     <!-- User is NOT logged in - show login modal -->
-                                    <button onclick="openLoginModal()" style="background:none; border:none; cursor:pointer;">
+                                    <button onclick="event.stopPropagation(); openLoginModal()" style="background:none; border:none; cursor:pointer;">
                                         <i class="fas fa-shopping-cart cart-icon"></i>
                                     </button>
                                 <?php endif; ?>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -526,6 +536,124 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         </div>
     </div>
 </div>
+
+<!-- FEATURED PRODUCT QUICK-VIEW MODAL -->
+<style>
+    .feat-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 99998; padding: 20px; }
+    .feat-modal-box { background: #fff; border-radius: 30px; max-width: 850px; width: 100%; box-shadow: 0 25px 60px rgba(0,0,0,0.2); position: relative; overflow: hidden; display: flex; flex-wrap: wrap; height: min(88vh, 600px); }
+    .feat-modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; transition: 0.2s; z-index: 2; }
+    .feat-modal-close:hover { color: #ff8ba7; transform: rotate(90deg); }
+    .feat-modal-left { flex: 0.9; min-width: 300px; background: #fafafa; padding: 40px; display: flex; justify-content: center; align-items: center; align-self: stretch; }
+    .feat-modal-left img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 16px; }
+    .feat-modal-right { flex: 1.1; min-width: 300px; padding: 45px 40px 35px; display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
+    .feat-modal-right h3 { font-size: 26px; font-weight: 700; color: #222; margin-bottom: 5px; }
+    .feat-modal-price { font-size: 23px; font-weight: 700; color: #111; margin-bottom: 15px; }
+    .feat-modal-desc { font-size: 15px; color: #666; line-height: 1.6; margin-bottom: 20px; word-wrap: break-word; }
+    #featModalStock { font-size: 14px; font-weight: 500; margin-bottom: 15px; }
+    .feat-modal-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: auto; width: 100%; }
+    .feat-qty { display: flex; align-items: center; border: 1px solid #eee; border-radius: 50px; padding: 4px 12px; background: #fff; width: fit-content; }
+    .feat-qty button { background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 0 8px; color: #555; font-family: 'Poppins'; }
+    .feat-qty button:hover { color: #ff8ba7; }
+    .feat-qty span { font-size: 18px; font-weight: 600; min-width: 30px; text-align: center; color: #222; }
+    .btn-fm-add { width: 100%; padding: 12px 0; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(254,165,182,0.2); }
+    .btn-fm-add:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
+    .btn-fm-buy { width: 100%; padding: 12px 0; border: none; border-radius: 50px; background: #eaeaea; color: #444; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .btn-fm-buy:hover { background: #d6d6d6; transform: translateY(-2px); }
+    .btn-fm-add.disabled, .btn-fm-buy.disabled { background: #ccc !important; color: #888 !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
+    #modalReviews { width: 100%; margin-top: 4px; }
+    @media (max-width: 640px) {
+        .feat-modal-box { height: auto; max-height: 90vh; overflow-y: auto; }
+        .feat-modal-left { align-self: auto; }
+        .feat-modal-right { height: auto; overflow: visible; }
+    }
+</style>
+<div class="feat-modal-overlay" id="featModal">
+    <div class="feat-modal-box">
+        <span class="feat-modal-close" onclick="featClose()">&times;</span>
+        <div class="feat-modal-left"><img id="featModalImg" src="" alt=""></div>
+        <div class="feat-modal-right">
+            <h3 id="featModalTitle"></h3>
+            <div class="feat-modal-price" id="featModalPrice"></div>
+            <div class="feat-modal-desc" id="featModalDesc"></div>
+            <div id="featModalStock"></div>
+            <div class="feat-modal-actions">
+                <div class="feat-qty">
+                    <button onclick="featQty(-1)">&minus;</button>
+                    <span id="featQtyDisplay">1</span>
+                    <button onclick="featQty(1)">+</button>
+                </div>
+                <button id="featModalAdd" class="btn-fm-add" onclick="featAddFromModal()"><i class="fas fa-shopping-cart"></i> Add to Cart</button>
+                <button id="featModalBuy" class="btn-fm-buy" onclick="featBuyNow()"><i class="fas fa-bolt"></i> Buy Now</button>
+            </div>
+            <div id="modalReviews"></div>
+        </div>
+    </div>
+</div>
+<script src="reviews_widget.js"></script>
+<script>
+let featId = 0, featQtyVal = 1, featStock = 0;
+
+function featOpen(id, name, desc, image, price, stock) {
+    featId = id; featStock = stock; featQtyVal = 1;
+    document.getElementById('featQtyDisplay').innerText = 1;
+    document.getElementById('featModalImg').src = image;
+    document.getElementById('featModalTitle').innerText = name;
+    document.getElementById('featModalDesc').innerText = desc || 'No description available.';
+    document.getElementById('featModalPrice').innerText = 'PHP ' + parseFloat(price).toFixed(2);
+    const stockEl = document.getElementById('featModalStock');
+    const addBtn = document.getElementById('featModalAdd');
+    const buyBtn = document.getElementById('featModalBuy');
+    if (stock > 0) {
+        stockEl.innerHTML = '<span style="color:#2e7d32;">In stock: ' + stock + ' available</span>';
+        addBtn.classList.remove('disabled'); buyBtn.classList.remove('disabled');
+    } else {
+        stockEl.innerHTML = '<span style="color:#d32f2f;">Out of stock</span>';
+        addBtn.classList.add('disabled'); buyBtn.classList.add('disabled');
+    }
+    document.getElementById('featModal').style.display = 'flex';
+    if (window.loadProductReviews) loadProductReviews(id);
+}
+function featClose() { document.getElementById('featModal').style.display = 'none'; }
+document.getElementById('featModal').addEventListener('click', function (e) { if (e.target === this) featClose(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') featClose(); });
+
+function featQty(delta) {
+    let n = featQtyVal + delta;
+    if (n >= 1 && n <= featStock) { featQtyVal = n; document.getElementById('featQtyDisplay').innerText = n; }
+}
+
+function featRequireLogin(cb) {
+    fetch('check_login.php').then(r => r.json()).then(d => {
+        if (!d.logged_in) { if (window.openLoginModal) setTimeout(openLoginModal, 200); return; }
+        cb();
+    }).catch(() => {});
+}
+
+function featAddFromModal() {
+    if (featId === 0 || featStock <= 0) return;
+    featRequireLogin(() => {
+        fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'product_id=' + featId + '&quantity=' + featQtyVal })
+            .then(r => r.text()).then(t => {
+                if (t.trim() === 'login_required') { featClose(); if (window.openLoginModal) openLoginModal(); }
+                else { featClose(); if (window.updateCartBadge) window.updateCartBadge(); }
+            });
+    });
+}
+
+function featBuyNow() {
+    if (featId === 0 || featStock <= 0) return;
+    featRequireLogin(() => {
+        fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'product_id=' + featId + '&quantity=' + featQtyVal + '&replace=1' })
+            .then(r => r.text()).then(t => {
+                if (t.trim() === 'login_required') { featClose(); if (window.openLoginModal) openLoginModal(); return; }
+                fetch('get_cart_id.php?product_id=' + featId).then(r => r.text()).then(cid => {
+                    featClose();
+                    window.location.href = 'checkout_selected.php?items=' + cid;
+                });
+            });
+    });
+}
+</script>
 
 <!-- 3. HOW IT WORKS -->
 <div class="container">
@@ -686,27 +814,48 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
 <?php include 'footer.php'; ?>
 
 <script>
+(function () {
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
+    const controls = document.querySelector('.carousel-controls');
+    if (!slides.length || !controls) return;
+
     let currentIndex = 0, autoSlideInterval;
 
     function updateCarousel(index) {
         slides.forEach(s => s.classList.remove('active'));
         dots.forEach(d => d.classList.remove('active'));
         slides[index].classList.add('active');
-        dots[index].classList.add('active');
+        if (dots[index]) dots[index].classList.add('active');
         currentIndex = index;
     }
 
-    nextBtn.addEventListener('click', () => { updateCarousel((currentIndex + 1) % slides.length); resetTimer(); });
-    prevBtn.addEventListener('click', () => { updateCarousel((currentIndex - 1 + slides.length) % slides.length); resetTimer(); });
-    dots.forEach(d => d.addEventListener('click', (e) => { updateCarousel(parseInt(e.target.dataset.index)); resetTimer(); }));
-
     function startTimer() { autoSlideInterval = setInterval(() => updateCarousel((currentIndex + 1) % slides.length), 5000); }
     function resetTimer() { clearInterval(autoSlideInterval); startTimer(); }
+
+    // Delegated click handling: works even if a click lands on the <i> icon
+    // inside #prevBtn/#nextBtn, and doesn't depend on the buttons already
+    // existing at script-parse time.
+    controls.addEventListener('click', (e) => {
+        const dot = e.target.closest('.dot');
+        if (dot) {
+            updateCarousel(parseInt(dot.dataset.index, 10));
+            resetTimer();
+            return;
+        }
+        if (e.target.closest('#nextBtn')) {
+            updateCarousel((currentIndex + 1) % slides.length);
+            resetTimer();
+            return;
+        }
+        if (e.target.closest('#prevBtn')) {
+            updateCarousel((currentIndex - 1 + slides.length) % slides.length);
+            resetTimer();
+        }
+    });
+
     startTimer();
+})();
 </script>
 
 <script>

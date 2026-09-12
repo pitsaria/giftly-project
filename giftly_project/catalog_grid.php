@@ -132,6 +132,20 @@ if (isset($_SESSION['user_id'])) {
     .cat-modal-price { font-size: 23px; font-weight: 700; color: #111; margin-bottom: 15px; }
     .cat-modal-desc { font-size: 15px; color: #666; line-height: 1.6; margin-bottom: 20px; word-wrap: break-word; }
     #catModalStock { font-size: 14px; font-weight: 500; margin-bottom: 15px; }
+
+    .cat-modal-inside { margin-bottom: 18px; }
+    .cat-modal-inside-title, .cat-modal-options-title { font-size: 13px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+    .cat-modal-inside ul { margin: 0; padding-left: 20px; color: #555; font-size: 14px; line-height: 1.7; }
+    .cat-modal-options { margin-bottom: 18px; }
+    .cat-modal-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+    .cat-swatch { width: 46px; height: 46px; border-radius: 50%; padding: 2px; border: 2px solid transparent; cursor: pointer; background: #fafafa; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .cat-swatch img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .cat-swatch.active { border-color: #ff8ba7; box-shadow: 0 2px 8px rgba(255,139,167,0.4); }
+    .cat-swatch-label { display: block; text-align: center; font-size: 10px; color: #888; margin-top: 4px; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-modal-sizebtns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cat-size-btn { padding: 8px 16px; border: 1.5px solid #eee; border-radius: 30px; background: #fff; color: #555; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: 'Poppins'; }
+    .cat-size-btn:hover { border-color: #ffc1cc; }
+    .cat-size-btn.active { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border-color: #FEA5B6; }
     .cat-modal-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: auto; width: 100%; }
     .cat-qty { display: flex; align-items: center; border: 1px solid #eee; border-radius: 50px; padding: 4px 12px; background: #fff; width: fit-content; }
     .cat-qty button { background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 0 8px; color: #555; font-family: 'Poppins'; }
@@ -206,9 +220,17 @@ if (isset($_SESSION['user_id'])) {
                 $is_on_sale = catalog_on_sale($row);
                 $disc_pct   = ($is_on_sale && (float)$row['price'] > 0)
                     ? (int) round(((float)$row['price'] - $eff_price) / (float)$row['price'] * 100) : 0;
+
+                $whats_inside_lines = catalog_whats_inside_lines($row['whats_inside'] ?? '');
+                $opt_colors = $cat_type === 'occasion_box' ? catalog_get_colors($conn, $id) : [];
+                $opt_sizes  = $cat_type === 'occasion_box' ? catalog_get_sizes($conn, $id) : [];
+                $colors_js = array_map(function ($c) { return ['name' => $c['color_name'], 'image' => img_url($c['image'] ?? '')]; }, $opt_colors);
+                $sizes_js  = array_map(function ($s) { return ['name' => $s['size_name'], 'price' => (float) $s['price']]; }, $opt_sizes);
+
                 $onClick = $inStock
                     ? htmlspecialchars(
-                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $eff_price . ", " . (int) $row['quantity'] . ")",
+                        "catOpen($id, " . json_encode($row['name']) . ", " . json_encode($row['description']) . ", " . json_encode(img_url($row['image'])) . ", " . (float) $eff_price . ", " . (int) $row['quantity']
+                        . ", " . json_encode($whats_inside_lines) . ", " . json_encode($colors_js) . ", " . json_encode($sizes_js) . ")",
                         ENT_QUOTES)
                     : "";
             ?>
@@ -272,6 +294,18 @@ if (isset($_SESSION['user_id'])) {
             <h3 id="catModalTitle"></h3>
             <div class="cat-modal-price" id="catModalPrice"></div>
             <div class="cat-modal-desc" id="catModalDesc"></div>
+            <div id="catModalInside" class="cat-modal-inside" style="display:none;">
+                <div class="cat-modal-inside-title">What's Inside</div>
+                <ul id="catModalInsideList"></ul>
+            </div>
+            <div id="catModalColors" class="cat-modal-options" style="display:none;">
+                <div class="cat-modal-options-title">Color</div>
+                <div id="catModalColorSwatches" class="cat-modal-swatches"></div>
+            </div>
+            <div id="catModalSizes" class="cat-modal-options" style="display:none;">
+                <div class="cat-modal-options-title">Size</div>
+                <div id="catModalSizeButtons" class="cat-modal-sizebtns"></div>
+            </div>
             <div id="catModalStock"></div>
             <div class="cat-modal-actions">
                 <div class="cat-qty">
@@ -300,15 +334,74 @@ if (isset($_SESSION['user_id'])) {
 </div>
 
 <script>
-let catId = 0, catQtyVal = 1, catStock = 0;
+let catId = 0, catQtyVal = 1, catStock = 0, catBasePrice = 0, catBaseImage = '';
 
-function catOpen(id, name, desc, image, price, stock) {
-    catId = id; catStock = stock; catQtyVal = 1;
+function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes) {
+    catId = id; catStock = stock; catQtyVal = 1; catBasePrice = price; catBaseImage = image;
     document.getElementById('catQtyDisplay').innerText = 1;
     document.getElementById('catModalImg').src = image; // already resolved by img_url() in PHP
     document.getElementById('catModalTitle').innerText = name;
     document.getElementById('catModalDesc').innerText = desc || 'No description available.';
     document.getElementById('catModalPrice').innerText = 'PHP ' + parseFloat(price).toFixed(2);
+
+    // What's Inside
+    const insideWrap = document.getElementById('catModalInside');
+    const insideList = document.getElementById('catModalInsideList');
+    insideList.innerHTML = '';
+    if (whatsInside && whatsInside.length) {
+        whatsInside.forEach(function (line) {
+            const li = document.createElement('li');
+            li.textContent = line;
+            insideList.appendChild(li);
+        });
+        insideWrap.style.display = '';
+    } else {
+        insideWrap.style.display = 'none';
+    }
+
+    // Color options — selecting one swaps the displayed image
+    const colorWrap = document.getElementById('catModalColors');
+    const swatchBox = document.getElementById('catModalColorSwatches');
+    swatchBox.innerHTML = '';
+    if (colors && colors.length) {
+        colors.forEach(function (c, idx) {
+            const el = document.createElement('div');
+            el.innerHTML = '<div class="cat-swatch' + (idx === 0 ? ' active' : '') + '"><img src="' + c.image + '" alt=""></div><span class="cat-swatch-label">' + c.name + '</span>';
+            el.querySelector('.cat-swatch').addEventListener('click', function () {
+                swatchBox.querySelectorAll('.cat-swatch').forEach(function (s) { s.classList.remove('active'); });
+                this.classList.add('active');
+                document.getElementById('catModalImg').src = c.image || catBaseImage;
+            });
+            swatchBox.appendChild(el);
+        });
+        colorWrap.style.display = '';
+    } else {
+        colorWrap.style.display = 'none';
+    }
+
+    // Size options — selecting one swaps the displayed price
+    const sizeWrap = document.getElementById('catModalSizes');
+    const sizeBox = document.getElementById('catModalSizeButtons');
+    sizeBox.innerHTML = '';
+    if (sizes && sizes.length) {
+        sizes.forEach(function (s, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cat-size-btn' + (idx === 0 ? ' active' : '');
+            btn.textContent = s.name;
+            btn.addEventListener('click', function () {
+                sizeBox.querySelectorAll('.cat-size-btn').forEach(function (b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                document.getElementById('catModalPrice').innerText = 'PHP ' + parseFloat(s.price).toFixed(2);
+            });
+            sizeBox.appendChild(btn);
+        });
+        sizeWrap.style.display = '';
+        document.getElementById('catModalPrice').innerText = 'PHP ' + parseFloat(sizes[0].price).toFixed(2);
+    } else {
+        sizeWrap.style.display = 'none';
+    }
+
     const stockEl = document.getElementById('catModalStock');
     const addBtn = document.getElementById('catModalAdd');
     const buyBtn = document.getElementById('catModalBuy');

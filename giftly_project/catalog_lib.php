@@ -15,7 +15,7 @@ if (!function_exists('catalog_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok_v3'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['catalog_schema_ok_v4'])) {
             return;
         }
 
@@ -40,8 +40,107 @@ if (!function_exists('catalog_ensure_schema')) {
             $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_ends  TIMESTAMP");
         }
 
+        $c4 = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'products' AND column_name = 'is_featured'");
+        if (!($c4 && $c4->num_rows > 0)) {
+            $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE");
+            $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS featured_order INTEGER NOT NULL DEFAULT 0");
+        }
+
+        $c5 = $conn->query("SELECT 1 AS c FROM information_schema.columns
+                            WHERE table_name = 'products' AND column_name = 'whats_inside'");
+        if (!($c5 && $c5->num_rows > 0)) {
+            $conn->query("ALTER TABLE products ADD COLUMN IF NOT EXISTS whats_inside TEXT");
+        }
+
+        $conn->query("CREATE TABLE IF NOT EXISTS product_colors (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            color_name VARCHAR(60) NOT NULL,
+            image TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0
+        )");
+        $conn->query("CREATE TABLE IF NOT EXISTS product_sizes (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            size_name VARCHAR(60) NOT NULL,
+            price NUMERIC(10,2) NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0
+        )");
+
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['catalog_schema_ok_v3'] = true;
+            $_SESSION['catalog_schema_ok_v4'] = true;
+        }
+    }
+
+    /** Split a "What's Inside" textarea (one item per line) into a clean list. */
+    function catalog_whats_inside_lines($text) {
+        if (!$text) return [];
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $lines = array_map('trim', $lines);
+        return array_values(array_filter($lines, function ($l) { return $l !== ''; }));
+    }
+
+    /** Fetch a product's color options, ordered for display. */
+    function catalog_get_colors($conn, $product_id) {
+        $pid = (int) $product_id;
+        $rows = [];
+        $res = $conn->query("SELECT * FROM product_colors WHERE product_id = $pid ORDER BY sort_order ASC, id ASC");
+        while ($res && $row = $res->fetch_assoc()) $rows[] = $row;
+        return $rows;
+    }
+
+    /** Fetch a product's size options, ordered for display. */
+    function catalog_get_sizes($conn, $product_id) {
+        $pid = (int) $product_id;
+        $rows = [];
+        $res = $conn->query("SELECT * FROM product_sizes WHERE product_id = $pid ORDER BY sort_order ASC, id ASC");
+        while ($res && $row = $res->fetch_assoc()) $rows[] = $row;
+        return $rows;
+    }
+
+    /** Replace a product's color options from parallel $names/$images arrays. */
+    function catalog_save_colors($conn, $product_id, $names, $images) {
+        $pid = (int) $product_id;
+        $conn->query("DELETE FROM product_colors WHERE product_id = $pid");
+        $order = 0;
+        foreach ($names as $i => $name) {
+            $name = trim($name ?? '');
+            if ($name === '') continue;
+            $image = trim($images[$i] ?? '');
+            $name_esc = $conn->real_escape_string(mb_substr($name, 0, 60));
+            $image_sql = $image !== '' ? "'" . $conn->real_escape_string(mb_substr($image, 0, 500)) . "'" : 'NULL';
+            $conn->query("INSERT INTO product_colors (product_id, color_name, image, sort_order)
+                          VALUES ($pid, '$name_esc', $image_sql, $order)");
+            $order++;
+        }
+    }
+
+    /** Normalize one index of a PHP array-style file upload field (name="x[]") into a single $_FILES-shaped array. */
+    function catalog_normalize_file($files_field, $index) {
+        if (!isset($files_field['name'][$index]) || $files_field['name'][$index] === '') return null;
+        return [
+            'name'     => $files_field['name'][$index],
+            'type'     => $files_field['type'][$index] ?? '',
+            'tmp_name' => $files_field['tmp_name'][$index] ?? '',
+            'error'    => $files_field['error'][$index] ?? UPLOAD_ERR_NO_FILE,
+            'size'     => $files_field['size'][$index] ?? 0,
+        ];
+    }
+
+    /** Replace a product's size options from parallel $names/$prices arrays. */
+    function catalog_save_sizes($conn, $product_id, $names, $prices) {
+        $pid = (int) $product_id;
+        $conn->query("DELETE FROM product_sizes WHERE product_id = $pid");
+        $order = 0;
+        foreach ($names as $i => $name) {
+            $name = trim($name ?? '');
+            if ($name === '') continue;
+            $price = floatval($prices[$i] ?? 0);
+            $name_esc = $conn->real_escape_string(mb_substr($name, 0, 60));
+            $conn->query("INSERT INTO product_sizes (product_id, size_name, price, sort_order)
+                          VALUES ($pid, '$name_esc', $price, $order)");
+            $order++;
         }
     }
 

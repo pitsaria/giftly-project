@@ -92,30 +92,39 @@ if ($result->num_rows > 0) {
         z-index: 999999; display: none; justify-content: center; align-items: center; padding: 20px;
     }
     .order-modal-box {
-        background: #ffffff; 
-        border-radius: 30px; 
-        padding: 40px; 
-        max-width: 550px; 
+        background: #ffffff;
+        border-radius: 30px;
+        padding: 40px;
+        max-width: 550px;
         width: 100%;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15); 
-        position: relative; 
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        position: relative;
         animation: fadeUp 0.3s ease;
-        max-height: 85vh;  
-        overflow-y: auto;  
-        overflow-x: hidden; 
-        
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Only this inner area scrolls, so the close icon (a sibling, not a
+       child of the scrolling element) stays put on screen while the
+       order details underneath it scroll. */
+    .order-modal-scroll {
+        overflow-y: auto;
+        overflow-x: hidden;
+
         /* 🚨 HIDE SCROLLBAR FOR CHROME/SAFARI */
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE and Edge */
     }
-    
-    /* 🚨 HIDE SCROLLBAR FOR CHROME/SAFARI */
-    .order-modal-box::-webkit-scrollbar {
+    .order-modal-scroll::-webkit-scrollbar {
         display: none;
     }
-    
+
     .order-modal-close {
         position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; transition: 0.2s;
+        width: 32px; height: 32px; border-radius: 50%; background: #fff;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08); z-index: 2;
     }
     .order-modal-close:hover { color: #ff8ba7; transform: rotate(90deg); }
     @keyframes fadeUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -343,12 +352,14 @@ if ($result->num_rows > 0) {
 <div class="order-modal-overlay" id="orderModal">
     <div class="order-modal-box">
         <div class="order-modal-close" onclick="closeOrderModal()">&times;</div>
-        <h3 style="font-size: 22px; font-weight: 700; color: #222; margin-bottom: 20px;">Order Details</h3>
-        
-        <div id="orderModalContent">
-            <!-- Content will be loaded via AJAX -->
-            <div style="text-align: center; padding: 20px; color: #888;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i> Loading...
+        <div class="order-modal-scroll">
+            <h3 style="font-size: 22px; font-weight: 700; color: #222; margin-bottom: 20px;">Order Details</h3>
+
+            <div id="orderModalContent">
+                <!-- Content will be loaded via AJAX -->
+                <div style="text-align: center; padding: 20px; color: #888;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i> Loading...
+                </div>
             </div>
         </div>
     </div>

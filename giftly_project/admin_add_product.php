@@ -105,9 +105,32 @@ if ($quantity > 9999) {
         }
     }
 
+    // Occasion Boxes & Baskets: "What's Inside" (one item per line)
+    $whats_inside = in_array($product_type, ['occasion_box', 'basket'], true)
+        ? trim($_POST['whats_inside'] ?? '') : '';
+    $whats_inside_sql = $whats_inside !== '' ? "'" . $conn->real_escape_string($whats_inside) . "'" : 'NULL';
+
+    // Occasion Boxes only: color options (each needs its own image) + size options (each needs its own price)
+    $color_names = $product_type === 'occasion_box' ? ($_POST['color_name'] ?? []) : [];
+    $size_names  = $product_type === 'occasion_box' ? ($_POST['size_name'] ?? []) : [];
+    $size_prices = $product_type === 'occasion_box' ? ($_POST['size_price'] ?? []) : [];
+
+    $color_images = [];
+    foreach ($color_names as $i => $cname) {
+        if (trim($cname) === '') continue;
+        $cfile = catalog_normalize_file($_FILES['color_image'] ?? [], $i);
+        $curl = $cfile ? supabase_upload_image($cfile) : null;
+        if ($curl === null) {
+            $_SESSION['product_error'] = "Please add a product image for each color option.";
+            header("Location: admin_add_product.php");
+            exit();
+        }
+        $color_images[$i] = $curl;
+    }
+
     $image_esc = mysqli_real_escape_string($conn, $new_filename);
     $is_active = isset($_POST['is_active']) ? 'TRUE' : 'FALSE';
-    $sql = "INSERT INTO products (name, description, price, sale_price, sale_ends, quantity, category_id, image, product_type, is_active) VALUES ('$name', '$desc', '$price', $sale_sql, $sale_ends_sql, '$quantity', '$category_id', '$image_esc', '$product_type', $is_active)";
+    $sql = "INSERT INTO products (name, description, price, sale_price, sale_ends, quantity, category_id, image, product_type, is_active, whats_inside) VALUES ('$name', '$desc', '$price', $sale_sql, $sale_ends_sql, '$quantity', '$category_id', '$image_esc', '$product_type', $is_active, $whats_inside_sql)";
     if ($conn->query($sql) === TRUE) {
         // Resolve the new product id and record its allowed box sizes
         $new_pid = intval($conn->insert_id);
@@ -122,6 +145,8 @@ if ($quantity > 9999) {
                 $conn->query("INSERT INTO product_box_sizes (product_id, box_size_id)
                               VALUES ($new_pid, $bsid) ON CONFLICT DO NOTHING");
             }
+            catalog_save_colors($conn, $new_pid, $color_names, $color_images);
+            catalog_save_sizes($conn, $new_pid, $size_names, $size_prices);
         }
         $_SESSION['product_added'] = true;
         header("Location: admin_add_product.php");
@@ -169,15 +194,24 @@ include 'admin_header.php';
     .wide-container { max-width: 750px; margin: 0 auto; padding: 40px 20px; width: 100%; flex: 1; }
 
 .admin-alert-error {
-    background: #fdeded; 
-    border: 1px solid #ffc1cc; 
-    color: #d32f2f; 
-    padding: 15px 20px; 
-    border-radius: 16px; 
-    margin-bottom: 25px; 
-    text-align: center; 
+    background: #fdeded;
+    border: 1px solid #ffc1cc;
+    color: #d32f2f;
+    padding: 15px 20px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    text-align: center;
     font-weight: 500;
 }
+
+.opt-add-btn { background: #fff0f5; color: #ff8ba7; border: 1.5px dashed #ffc1cc; padding: 10px 18px; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.opt-add-btn:hover { background: #ff8ba7; color: #fff; border-style: solid; }
+.opt-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.opt-row input[type="text"], .opt-row input[type="number"] { flex: 1; padding: 12px 14px; border: 1.5px solid #eee; border-radius: 12px; font-size: 13px; font-family: 'Poppins'; outline: none; }
+.opt-row input[type="file"] { flex: 1.3; font-size: 12px; }
+.opt-row img.opt-preview { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #fafafa; }
+.opt-remove-btn { background: #ffe4e4; color: #d32f2f; border: none; width: 32px; height: 32px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+.opt-remove-btn:hover { background: #d32f2f; color: #fff; }
 </style>
 
 <div class="wide-container">
@@ -280,6 +314,35 @@ include 'admin_header.php';
                 </div>
             </div>
 
+            <!-- WHAT'S INSIDE (Occasion Boxes & Baskets) -->
+            <div class="admin-form-group" id="whatsInsideGroup">
+                <label for="whats_inside">What's Inside</label>
+                <textarea id="whats_inside" name="whats_inside" class="admin-input" rows="5" placeholder="One item per line, e.g.&#10;Scented candle&#10;Handwritten card&#10;Box of chocolates"></textarea>
+                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                    <i class="fas fa-info-circle"></i> One item per line — shown to customers as a bulleted list.
+                </div>
+            </div>
+
+            <!-- COLOR OPTIONS (Occasion Boxes only) -->
+            <div class="admin-form-group" id="colorOptionsGroup">
+                <label>Color Options</label>
+                <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
+                    <i class="fas fa-info-circle"></i> Each color needs its own product image — it swaps in when the customer picks that color.
+                </div>
+                <div id="colorRows"></div>
+                <button type="button" class="opt-add-btn" onclick="addColorRow()"><i class="fas fa-plus"></i> Add Color</button>
+            </div>
+
+            <!-- SIZE OPTIONS (Occasion Boxes only) -->
+            <div class="admin-form-group" id="sizeOptionsGroup">
+                <label>Size Options</label>
+                <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
+                    <i class="fas fa-info-circle"></i> Each size has its own price — it replaces the base price when the customer picks that size.
+                </div>
+                <div id="sizeRows"></div>
+                <button type="button" class="opt-add-btn" onclick="addSizeRow()"><i class="fas fa-plus"></i> Add Size</button>
+            </div>
+
             <div class="admin-form-group">
                 <label>Product Image</label>
                 <div class="file-upload-wrapper" id="fileWrapper">
@@ -309,7 +372,10 @@ include 'admin_header.php';
 
 <script>
     function toggleBoxSizes() {
-        var isShop = document.getElementById('product_type').value === 'catalog';
+        var type = document.getElementById('product_type').value;
+        var isShop = type === 'catalog';
+        var isBox = type === 'occasion_box';
+        var isBoxOrBasket = type === 'occasion_box' || type === 'basket';
 
         var boxGrp = document.getElementById('boxSizesGroup');
         boxGrp.style.display = isShop ? '' : 'none';
@@ -320,8 +386,37 @@ include 'admin_header.php';
         catGrp.style.display = isShop ? '' : 'none';
         catSel.required = isShop;
         catSel.disabled = !isShop;
+
+        document.getElementById('whatsInsideGroup').style.display = isBoxOrBasket ? '' : 'none';
+        document.getElementById('colorOptionsGroup').style.display = isBox ? '' : 'none';
+        document.getElementById('sizeOptionsGroup').style.display = isBox ? '' : 'none';
     }
     toggleBoxSizes();
+
+    function addColorRow(name, imageUrl) {
+        var row = document.createElement('div');
+        row.className = 'opt-row';
+        row.innerHTML =
+            '<input type="text" name="color_name[]" placeholder="Color name (e.g. Red)" value="' + (name ? name.replace(/"/g, '&quot;') : '') + '">' +
+            (imageUrl ? '<img class="opt-preview" src="' + imageUrl + '">' : '') +
+            '<input type="file" name="color_image[]" accept="image/*">' +
+            (imageUrl ? '<input type="hidden" name="color_existing_image[]" value="' + imageUrl + '">' : '<input type="hidden" name="color_existing_image[]" value="">') +
+            '<button type="button" class="opt-remove-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+        document.getElementById('colorRows').appendChild(row);
+    }
+
+    function addSizeRow(name, price) {
+        var row = document.createElement('div');
+        row.className = 'opt-row';
+        row.innerHTML =
+            '<input type="text" name="size_name[]" placeholder="Size name (e.g. Small)" value="' + (name ? name.replace(/"/g, '&quot;') : '') + '">' +
+            '<input type="number" step="0.01" min="0" name="size_price[]" placeholder="Price (PHP)" value="' + (price !== undefined ? price : '') + '">' +
+            '<button type="button" class="opt-remove-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+        document.getElementById('sizeRows').appendChild(row);
+    }
+    // Start with one blank row of each so the admin sees the fields right away.
+    addColorRow();
+    addSizeRow();
 
     document.getElementById('imageInput').addEventListener('change', function(e) {
         var fileName = e.target.files[0].name;

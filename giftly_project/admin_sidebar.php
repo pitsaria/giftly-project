@@ -78,6 +78,12 @@ $__sb_badge = 'margin-left:auto; background:#ff8ba7; color:#fff; font-size:11px;
             </a>
         </li>
         <li>
+            <a href="admin_featured.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_featured.php') ? 'active' : ''; ?>">
+                <i class="fas fa-star-half-alt"></i>
+                <span>Featured Products</span>
+            </a>
+        </li>
+        <li>
             <a href="admin_reviews.php" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_reviews.php') ? 'active' : ''; ?>">
                 <i class="fas fa-star"></i>
                 <span>Reviews</span>

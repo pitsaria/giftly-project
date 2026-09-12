@@ -67,6 +67,30 @@ function bab_sizes_attr($pid, $map) {
     return implode(',', $map[intval($pid)] ?? []);
 }
 
+// Occasion Box color/size options, keyed by product_id
+$opt_colors = [];
+$oc_res = $conn->query("SELECT * FROM product_colors ORDER BY product_id, sort_order ASC, id ASC");
+while ($oc_res && $oc_row = $oc_res->fetch_assoc()) {
+    $opt_colors[intval($oc_row['product_id'])][] = ['name' => $oc_row['color_name'], 'image' => img_url($oc_row['image'] ?? '')];
+}
+$opt_sizes = [];
+$os_res = $conn->query("SELECT * FROM product_sizes ORDER BY product_id, sort_order ASC, id ASC");
+while ($os_res && $os_row = $os_res->fetch_assoc()) {
+    $opt_sizes[intval($os_row['product_id'])][] = ['name' => $os_row['size_name'], 'price' => (float) $os_row['price']];
+}
+/** JSON blob (safe for a single-quoted JS string literal) of a product's saved colors. */
+function opt_colors_attr($pid, $map) {
+    return addslashes(json_encode($map[intval($pid)] ?? []));
+}
+/** JSON blob (safe for a single-quoted JS string literal) of a product's saved sizes. */
+function opt_sizes_attr($pid, $map) {
+    return addslashes(json_encode($map[intval($pid)] ?? []));
+}
+/** Escape a multi-line value (e.g. "What's Inside") for a single-quoted inline-JS string literal. */
+function js_multiline_attr($s) {
+    return str_replace(["\r\n", "\r", "\n"], '\\n', addslashes((string) $s));
+}
+
 // Handle Flash messages
 $show_deleted = false;
 $show_updated = false;
@@ -574,10 +598,18 @@ if (isset($_SESSION['product_updated']) && $_SESSION['product_updated'] === true
         box-shadow: 0 4px 12px rgba(254, 165, 182, 0.25);
         margin-top: 5px;
     }
-    .modal-btn:hover { 
-        transform: translateY(-2px); 
+    .modal-btn:hover {
+        transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(254, 165, 182, 0.35);
     }
+    .opt-add-btn { background: #fff0f5; color: #ff8ba7; border: 1.5px dashed #ffc1cc; padding: 10px 18px; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .opt-add-btn:hover { background: #ff8ba7; color: #fff; border-style: solid; }
+    .opt-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .opt-row input[type="text"], .opt-row input[type="number"] { flex: 1; padding: 12px 14px; border: 1.5px solid #eee; border-radius: 12px; font-size: 13px; font-family: 'Poppins'; outline: none; }
+    .opt-row input[type="file"] { flex: 1.3; font-size: 12px; }
+    .opt-row img.opt-preview { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #fafafa; }
+    .opt-remove-btn { background: #ffe4e4; color: #d32f2f; border: none; width: 32px; height: 32px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+    .opt-remove-btn:hover { background: #d32f2f; color: #fff; }
 
     /* --- PAGINATION --- */
     .pagination-wrapper { 
@@ -784,7 +816,7 @@ case 'sale_price':
                         <span>'.($g_active ? 'Visible on site' : 'Hidden from site').'</span>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$g_sale_p.', \''.$g_sale_e.'\')">
+                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$g_sale_p.', \''.$g_sale_e.'\', \''.js_multiline_attr($row['whats_inside'] ?? '').'\', \''.opt_colors_attr($row['id'], $opt_colors).'\', \''.opt_sizes_attr($row['id'], $opt_sizes).'\')">
                             <i class="fas fa-pen"></i> Edit
                         </button>
                         <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -862,7 +894,7 @@ case 'sale_price':
                             <td><label class="at-switch"><input type="checkbox" '.($l_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label></td>
                             <td>
                                 <div class="list-actions">
-                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$l_sale_p.', \''.$l_sale_e.'\')">
+                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$l_sale_p.', \''.$l_sale_e.'\', \''.js_multiline_attr($row['whats_inside'] ?? '').'\', \''.opt_colors_attr($row['id'], $opt_colors).'\', \''.opt_sizes_attr($row['id'], $opt_sizes).'\')">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -923,6 +955,11 @@ case 'sale_price':
         <h3 class="modal-title">✏️ Edit Product</h3>
         <form action="admin_update_product.php" method="POST" enctype="multipart/form-data" onsubmit="return validateEditForm()">
             <input type="hidden" name="id" id="edit_id">
+            <input type="hidden" name="return_view" value="<?php echo htmlspecialchars($current_view); ?>">
+            <input type="hidden" name="return_filter_cat" value="<?php echo (int) $filter_category; ?>">
+            <input type="hidden" name="return_filter_type" value="<?php echo htmlspecialchars($_GET['filter_type'] ?? ''); ?>">
+            <input type="hidden" name="return_search" value="<?php echo htmlspecialchars($search); ?>">
+            <input type="hidden" name="return_page" value="<?php echo (int) $page; ?>">
 
             <label class="modal-label">Product Type</label>
             <select name="product_type" id="edit_product_type" class="modal-input" onchange="toggleEditBoxSizes()">
@@ -976,6 +1013,28 @@ case 'sale_price':
             </div>
             </div>
 
+            <div id="edit_whats_inside_group">
+                <label class="modal-label">What's Inside</label>
+                <textarea name="whats_inside" id="edit_whats_inside" class="modal-input" rows="5" placeholder="One item per line"></textarea>
+                <div style="font-size: 12px; color: #888; margin: -8px 0 16px;"><i class="fas fa-info-circle"></i> One item per line — shown to customers as a bulleted list.</div>
+            </div>
+
+            <div id="edit_color_options_group">
+                <label class="modal-label">Color Options</label>
+                <div style="font-size: 12px; color: #888; margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Each color needs its own image. Leave the file field blank to keep the current image.</div>
+                <div id="edit_colorRows"></div>
+                <button type="button" class="opt-add-btn" onclick="addEditColorRow()"><i class="fas fa-plus"></i> Add Color</button>
+                <div style="margin-bottom:16px;"></div>
+            </div>
+
+            <div id="edit_size_options_group">
+                <label class="modal-label">Size Options</label>
+                <div style="font-size: 12px; color: #888; margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Each size has its own price.</div>
+                <div id="edit_sizeRows"></div>
+                <button type="button" class="opt-add-btn" onclick="addEditSizeRow()"><i class="fas fa-plus"></i> Add Size</button>
+                <div style="margin-bottom:16px;"></div>
+            </div>
+
             <label class="modal-label">New Image <span style="font-weight: 400; color: #999;">(Optional)</span></label>
             <input type="file" name="image" class="modal-input" style="padding: 10px; background: #fafafa;">
             
@@ -988,7 +1047,10 @@ case 'sale_price':
 
 <script>
     function toggleEditBoxSizes() {
-        var isShop = document.getElementById('edit_product_type').value === 'catalog';
+        var type = document.getElementById('edit_product_type').value;
+        var isShop = type === 'catalog';
+        var isBox = type === 'occasion_box';
+        var isBoxOrBasket = type === 'occasion_box' || type === 'basket';
 
         var grp = document.getElementById('edit_box_sizes_group');
         grp.style.display = isShop ? '' : 'none';
@@ -998,9 +1060,35 @@ case 'sale_price':
         var catSel = document.getElementById('edit_category_id');
         catGrp.style.display = isShop ? '' : 'none';
         catSel.disabled = !isShop;
+
+        document.getElementById('edit_whats_inside_group').style.display = isBoxOrBasket ? '' : 'none';
+        document.getElementById('edit_color_options_group').style.display = isBox ? '' : 'none';
+        document.getElementById('edit_size_options_group').style.display = isBox ? '' : 'none';
     }
 
-    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType, salePrice, saleEnds) {
+    function addEditColorRow(name, imageUrl) {
+        var row = document.createElement('div');
+        row.className = 'opt-row';
+        row.innerHTML =
+            '<input type="text" name="color_name[]" placeholder="Color name (e.g. Red)" value="' + (name ? String(name).replace(/"/g, '&quot;') : '') + '">' +
+            (imageUrl ? '<img class="opt-preview" src="' + imageUrl + '">' : '') +
+            '<input type="file" name="color_image[]" accept="image/*">' +
+            '<input type="hidden" name="color_existing_image[]" value="' + (imageUrl || '') + '">' +
+            '<button type="button" class="opt-remove-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+        document.getElementById('edit_colorRows').appendChild(row);
+    }
+
+    function addEditSizeRow(name, price) {
+        var row = document.createElement('div');
+        row.className = 'opt-row';
+        row.innerHTML =
+            '<input type="text" name="size_name[]" placeholder="Size name (e.g. Small)" value="' + (name ? String(name).replace(/"/g, '&quot;') : '') + '">' +
+            '<input type="number" step="0.01" min="0" name="size_price[]" placeholder="Price (PHP)" value="' + (price !== undefined && price !== null ? price : '') + '">' +
+            '<button type="button" class="opt-remove-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+        document.getElementById('edit_sizeRows').appendChild(row);
+    }
+
+    function openEditModal(id, name, desc, price, quantity, category_id, boxSizes, productType, salePrice, saleEnds, whatsInside, colorsJson, sizesJson) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_desc').value = desc;
@@ -1010,11 +1098,26 @@ case 'sale_price':
         document.getElementById('edit_quantity').value = quantity;
         document.getElementById('edit_category_id').value = category_id;
         document.getElementById('edit_product_type').value = productType || 'catalog';
+        document.getElementById('edit_whats_inside').value = whatsInside || '';
 
         var allowed = (boxSizes ? String(boxSizes).split(',') : []).filter(Boolean);
         document.querySelectorAll('.edit-box-size').forEach(function(cb) {
             cb.checked = allowed.indexOf(cb.value) !== -1;
         });
+
+        document.getElementById('edit_colorRows').innerHTML = '';
+        document.getElementById('edit_sizeRows').innerHTML = '';
+        try {
+            var colors = colorsJson ? JSON.parse(colorsJson) : [];
+            colors.forEach(function(c) { addEditColorRow(c.name, c.image); });
+        } catch (e) {}
+        if (!document.getElementById('edit_colorRows').children.length) addEditColorRow();
+        try {
+            var sizes = sizesJson ? JSON.parse(sizesJson) : [];
+            sizes.forEach(function(s) { addEditSizeRow(s.name, s.price); });
+        } catch (e) {}
+        if (!document.getElementById('edit_sizeRows').children.length) addEditSizeRow();
+
         toggleEditBoxSizes();
 
         document.getElementById('editModal').style.display = 'flex';
