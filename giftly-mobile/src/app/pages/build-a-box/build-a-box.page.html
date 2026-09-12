@@ -44,7 +44,7 @@
             *ngFor="let s of sizes()"
             (click)="chooseSize(s)"
           >
-            <ion-icon name="gift-outline"></ion-icon>
+            <img [src]="sizeImage(s.code)" [alt]="s.name" class="size-img" />
             <h3>{{ s.name }}</h3>
             <span>Holds up to {{ s.max_items }} items</span>
             <span class="price" *ngIf="s.price > 0">+ ₱{{ s.price | number: '1.2-2' }}</span>
@@ -52,7 +52,7 @@
         </div>
 
         <div class="chosen-bar" *ngIf="sizeCollapsed() && selectedSize() as size">
-          <ion-icon name="gift-outline"></ion-icon>
+          <img [src]="sizeImage(size.code)" [alt]="size.name" class="chosen-bar-img" />
           <span><b>{{ size.name }}</b> · holds up to {{ size.max_items }} items</span>
           <ion-button fill="clear" size="small" (click)="changeSize()">Change</ion-button>
         </div>

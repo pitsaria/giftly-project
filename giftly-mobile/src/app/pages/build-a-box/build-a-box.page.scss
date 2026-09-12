@@ -104,9 +104,11 @@
     background: #fff0f5;
   }
 
-  ion-icon {
-    font-size: 26px;
-    color: var(--ion-color-primary);
+  .size-img {
+    width: 100%;
+    height: 64px;
+    object-fit: contain;
+    margin-bottom: 4px;
   }
 
   h3 {
@@ -140,8 +142,11 @@
   font-size: 13px;
   color: #444;
 
-  ion-icon {
-    color: var(--ion-color-primary);
+  .chosen-bar-img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   span {

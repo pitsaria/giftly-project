@@ -223,6 +223,16 @@ export class BuildABoxPage implements OnInit {
     this.sizeCollapsed.set(false);
   }
 
+  private static readonly SIZE_IMAGES: Record<string, string> = {
+    small: 'assets/giftly/smallbox.png',
+    medium: 'assets/giftly/mediumbox.png',
+    large: 'assets/giftly/largebox.png',
+  };
+
+  sizeImage(code: string): string {
+    return BuildABoxPage.SIZE_IMAGES[code] ?? 'assets/giftly/mediumbox.png';
+  }
+
   async onSearch(): Promise<void> {
     this.productPage = 1;
     await this.loadProducts(true);
