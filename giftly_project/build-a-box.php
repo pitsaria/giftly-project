@@ -68,7 +68,8 @@ if ($edit_box) {
     }
     .bab-size-card:hover { border-color: #ffc1cc; background: #fff8fa; transform: translateY(-3px); }
     .bab-size-card.selected { border-color: #ff8ba7; background: #fff0f5; box-shadow: 0 0 0 4px rgba(255,139,167,0.12); }
-    .bab-size-card .ico { font-size: 34px; color: #ff8ba7; margin-bottom: 10px; }
+    .bab-size-card .ico { font-size: 34px; color: #ff8ba7; margin-bottom: 10px; height: 70px; display: flex; align-items: center; justify-content: center; }
+    .bab-size-card .ico img { max-height: 100%; max-width: 100px; object-fit: contain; }
     .bab-size-card h3 { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 4px; }
     .bab-size-card .cap { font-size: 13px; color: #888; }
     .bab-size-card .tick {
@@ -216,8 +217,10 @@ if ($edit_box) {
     .lm-style .emo { font-size: 20px; line-height: 1; }
     .lm-style .lbl { font-size: 10px; font-weight: 600; color: #555; text-align: center; line-height: 1.2; }
     .bab-letter-modal textarea {
-        width: 100%; min-height: 120px; border: 1.5px solid #eee; border-radius: 14px; padding: 14px 16px;
-        font-family: 'Poppins'; font-size: 14px; resize: vertical; outline: none; background: #fafafa;
+        width: 100%; min-height: 120px; max-height: 220px; border: 1.5px solid #eee; border-radius: 14px; padding: 14px 16px;
+        font-family: 'Poppins'; font-size: 14px; resize: none; outline: none; background: #fafafa;
+        overflow-y: auto; overflow-wrap: break-word; word-break: break-word; white-space: pre-wrap;
+        box-sizing: border-box;
     }
     .bab-letter-modal textarea:focus { border-color: #ffc1cc; background: #fff; }
     .lm-actions { display: flex; gap: 10px; margin-top: 16px; }
@@ -346,11 +349,21 @@ if ($edit_box) {
     <div id="sizeSection">
         <h2 class="bab-section-title"><span class="badge">1</span> Choose your box size</h2>
         <div class="bab-size-grid" id="sizeGrid">
-            <?php foreach ($sizes as $i => $s): ?>
+            <?php
+            $bab_size_images = ['small' => 'smallbox.png', 'medium' => 'mediumbox.png', 'large' => 'largebox.png'];
+            foreach ($sizes as $i => $s):
+                $size_img = $bab_size_images[$s['code']] ?? null;
+            ?>
                 <div class="bab-size-card" data-id="<?php echo $s['id']; ?>" data-max="<?php echo $s['max_items']; ?>"
                      data-name="<?php echo htmlspecialchars($s['name']); ?>" onclick="babChooseSize(this)">
                     <span class="tick"><i class="fas fa-check-circle"></i></span>
-                    <div class="ico"><i class="fas fa-gift"></i></div>
+                    <div class="ico">
+                        <?php if ($size_img): ?>
+                            <img src="<?php echo htmlspecialchars($size_img); ?>" alt="<?php echo htmlspecialchars($s['name']); ?>">
+                        <?php else: ?>
+                            <i class="fas fa-gift"></i>
+                        <?php endif; ?>
+                    </div>
                     <h3><?php echo htmlspecialchars($s['name']); ?></h3>
                     <div class="cap">Holds up to <strong><?php echo $s['max_items']; ?></strong> items</div>
                 </div>

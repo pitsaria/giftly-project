@@ -37,13 +37,6 @@ if ($cart_check->num_rows == 0) {
 $cart_item = $cart_check->fetch_assoc();
 $product_id = $cart_item['product_id'];
 
-// Check if wishlist table exists
-$table_check = $conn->query("SHOW TABLES LIKE 'wishlist'");
-if ($table_check->num_rows == 0) {
-    echo json_encode(['success' => false, 'message' => 'Wishlist table does not exist. Please run the SQL to create it.']);
-    exit();
-}
-
 // Check if product is already in wishlist
 $wishlist_check = $conn->query("SELECT id FROM wishlist WHERE user_id = $user_id AND product_id = $product_id");
 

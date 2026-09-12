@@ -2,6 +2,7 @@
 include 'db_connect.php';
 include_once 'catalog_lib.php';
 catalog_ensure_schema($conn);
+cart_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -470,7 +471,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
         <div id="cartItemsList">
         <?php
     // ✅ DIRECT DATABASE QUERY - NO API CALL
-    $sql = "SELECT c.id as cart_id, c.quantity, p.name,
+    $sql = "SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
                    p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
                    p.image, p.quantity as stock_quantity, p.is_active
             FROM carts c
@@ -484,6 +485,11 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
     $stock_warnings = [];
 
     while($row = $result->fetch_assoc()) {
+        // A chosen Occasion Box size has its own price — it overrides the catalog price.
+        if ($row['variant_price'] !== null && $row['variant_price'] !== '') {
+            $row['price'] = (float) $row['variant_price'];
+            $row['list_price'] = (float) $row['variant_price'];
+        }
         $totalQuantity += $row['quantity'];
         $row['_unavailable'] = !catalog_is_active($row['is_active'] ?? true);
 
@@ -525,6 +531,16 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                 <!-- Name & Price -->
                 <div class="ci-details">
                     <div class="ci-name"><?php echo $row['name']; ?></div>
+                    <?php if (!empty($row['selected_color']) || !empty($row['selected_size'])): ?>
+                        <div style="font-size:11.5px; color:#d81b60; font-weight:600; margin-top:2px;">
+                            <?php
+                            $variant_bits = [];
+                            if (!empty($row['selected_color'])) $variant_bits[] = 'Color: ' . htmlspecialchars($row['selected_color']);
+                            if (!empty($row['selected_size'])) $variant_bits[] = 'Size: ' . htmlspecialchars($row['selected_size']);
+                            echo implode(' &middot; ', $variant_bits);
+                            ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each<?php if ((float)$row['price'] < (float)$row['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($row['list_price'], 2); ?></span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span><?php endif; ?></div>
                     <div style="font-size: 11px; color: #888; margin-top: 2px;">
                         Stock: <?php echo $row['stock_quantity']; ?> available
@@ -574,6 +590,16 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                     <!-- Name & Price -->
                     <div class="ci-details">
                         <div class="ci-name"><?php echo $row['name']; ?></div>
+                        <?php if (!empty($row['selected_color']) || !empty($row['selected_size'])): ?>
+                            <div style="font-size:11.5px; color:#999; font-weight:600; margin-top:2px;">
+                                <?php
+                                $variant_bits = [];
+                                if (!empty($row['selected_color'])) $variant_bits[] = 'Color: ' . htmlspecialchars($row['selected_color']);
+                                if (!empty($row['selected_size'])) $variant_bits[] = 'Size: ' . htmlspecialchars($row['selected_size']);
+                                echo implode(' &middot; ', $variant_bits);
+                                ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each</div>
                         <div style="font-size:11px; font-weight:600; color:#d32f2f; margin-top:3px;">
                             <?php echo !empty($row['_unavailable']) ? 'No longer available' : 'Out of stock'; ?>

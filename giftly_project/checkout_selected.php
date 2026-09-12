@@ -11,6 +11,7 @@ orders_ensure_schema($conn);
 pay_ensure_schema($conn);
 addr_ensure_schema($conn);
 catalog_ensure_schema($conn);
+cart_ensure_schema($conn);
 promo_ensure_schema($conn);
 addons_ensure_schema($conn);
 $paymongo_on = paymongo_configured();
@@ -188,7 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     }
 
     $ids_string = implode(',', array_map('intval', $selected_ids));
-    $cart_result = $conn->query("SELECT c.product_id, c.quantity, " . catalog_price_sql('p.') . " AS price
+    $cart_result = $conn->query("SELECT c.product_id, c.quantity, c.selected_color, c.selected_size,
+                                        COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price
                                  FROM carts c
                                  JOIN products p ON c.product_id = p.id
                                  WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
@@ -241,7 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         unset($_SESSION['gift_context']);
 
         foreach($items as $item) {
-            $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']})");
+            $item_color_esc = $conn->real_escape_string($item['selected_color'] ?? '');
+            $item_size_esc  = $conn->real_escape_string($item['selected_size'] ?? '');
+            $conn->query("INSERT INTO order_items (order_id, product_id, quantity, price, selected_color, selected_size)
+                          VALUES ($order_id, {$item['product_id']}, {$item['quantity']}, {$item['price']}, '$item_color_esc', '$item_size_esc')");
             $conn->query("UPDATE products SET quantity = quantity - {$item['quantity']} WHERE id = {$item['product_id']}");
         }
 
@@ -454,8 +459,8 @@ if(empty($selected_ids)) {
     exit();
 }
 $ids_string = implode(',', array_map('intval', $selected_ids));
-$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, p.name,
-                                    p.price AS list_price, " . catalog_price_sql('p.') . " AS price,
+$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
+                                    p.price AS list_price, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price,
                                     p.image, p.quantity as stock_quantity, p.is_active
                              FROM carts c
                              JOIN products p ON c.product_id = p.id
@@ -468,6 +473,10 @@ while($row = $items_query->fetch_assoc()){
     if (!catalog_is_active($row['is_active'] ?? true)) {
         $unavailable_names[] = $row['name'];
         continue; // don't include it in the order summary or total
+    }
+    // A chosen Occasion Box size has its own price — no catalog-sale strikethrough for it.
+    if ($row['variant_price'] !== null && $row['variant_price'] !== '') {
+        $row['list_price'] = $row['price'];
     }
     $row['subtotal'] = $row['price'] * $row['quantity'];
     $total_sum += $row['subtotal'];
@@ -1357,6 +1366,16 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" class="os-img">
         <div class="os-details">
             <div class="os-name"><?php echo $item['name']; ?></div>
+            <?php if (!empty($item['selected_color']) || !empty($item['selected_size'])): ?>
+                <div style="font-size:11.5px; color:#d81b60; font-weight:600; margin-top:1px;">
+                    <?php
+                    $co_bits = [];
+                    if (!empty($item['selected_color'])) $co_bits[] = 'Color: ' . htmlspecialchars($item['selected_color']);
+                    if (!empty($item['selected_size'])) $co_bits[] = 'Size: ' . htmlspecialchars($item['selected_size']);
+                    echo implode(' &middot; ', $co_bits);
+                    ?>
+                </div>
+            <?php endif; ?>
             <div class="os-price">PHP <?php echo number_format($item['price'], 2); ?> each<?php if ((float)$item['price'] < (float)$item['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($item['list_price'], 2); ?></span><?php endif; ?></div>
             <div style="font-size: 11px; color: #888; margin-top: 2px;">
                 Stock: <?php echo $item['stock_quantity']; ?> available

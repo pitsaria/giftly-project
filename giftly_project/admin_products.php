@@ -78,17 +78,33 @@ $os_res = $conn->query("SELECT * FROM product_sizes ORDER BY product_id, sort_or
 while ($os_res && $os_row = $os_res->fetch_assoc()) {
     $opt_sizes[intval($os_row['product_id'])][] = ['name' => $os_row['size_name'], 'price' => (float) $os_row['price']];
 }
-/** JSON blob (safe for a single-quoted JS string literal) of a product's saved colors. */
-function opt_colors_attr($pid, $map) {
-    return addslashes(json_encode($map[intval($pid)] ?? []));
-}
-/** JSON blob (safe for a single-quoted JS string literal) of a product's saved sizes. */
-function opt_sizes_attr($pid, $map) {
-    return addslashes(json_encode($map[intval($pid)] ?? []));
-}
-/** Escape a multi-line value (e.g. "What's Inside") for a single-quoted inline-JS string literal. */
-function js_multiline_attr($s) {
-    return str_replace(["\r\n", "\r", "\n"], '\\n', addslashes((string) $s));
+/**
+ * Builds the fully-escaped openEditModal(...) call for a product's Edit button.
+ * Every string argument goes through json_encode() (so quotes/newlines/backslashes
+ * inside a name, description, or "What's Inside" list are valid JS), and the whole
+ * call is then htmlspecialchars()'d so it can be dropped straight into an
+ * onclick="..." HTML attribute without a stray embedded quote breaking the tag —
+ * that embedded-quote bug is what made the Edit button silently fail on any
+ * product that had colors/sizes (or a quote in its name/description) saved.
+ */
+function admin_edit_onclick($row, $bab_product_sizes, $opt_colors, $opt_sizes, $sale_price_js, $sale_ends) {
+    $pid = (int) $row['id'];
+    $call = 'openEditModal('
+          . $pid . ', '
+          . json_encode((string) $row['name']) . ', '
+          . json_encode((string) $row['description']) . ', '
+          . (float) $row['price'] . ', '
+          . (int) $row['quantity'] . ', '
+          . (int) $row['category_id'] . ', '
+          . json_encode(bab_sizes_attr($pid, $bab_product_sizes)) . ', '
+          . json_encode(catalog_type_key($row['product_type'] ?? 'catalog')) . ', '
+          . $sale_price_js . ', '
+          . json_encode((string) $sale_ends) . ', '
+          . json_encode((string) ($row['whats_inside'] ?? '')) . ', '
+          . json_encode($opt_colors[$pid] ?? []) . ', '
+          . json_encode($opt_sizes[$pid] ?? [])
+          . ')';
+    return htmlspecialchars($call, ENT_QUOTES);
 }
 
 // Handle Flash messages
@@ -816,7 +832,7 @@ case 'sale_price':
                         <span>'.($g_active ? 'Visible on site' : 'Hidden from site').'</span>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$g_sale_p.', \''.$g_sale_e.'\', \''.js_multiline_attr($row['whats_inside'] ?? '').'\', \''.opt_colors_attr($row['id'], $opt_colors).'\', \''.opt_sizes_attr($row['id'], $opt_sizes).'\')">
+                        <button class="btn-edit" onclick="'.admin_edit_onclick($row, $bab_product_sizes, $opt_colors, $opt_sizes, $g_sale_p, $g_sale_e).'">
                             <i class="fas fa-pen"></i> Edit
                         </button>
                         <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -894,7 +910,7 @@ case 'sale_price':
                             <td><label class="at-switch"><input type="checkbox" '.($l_active ? 'checked' : '').' onchange="toggleActive(this,\'product\','.$row['id'].')"><span class="at-slider"></span></label></td>
                             <td>
                                 <div class="list-actions">
-                                    <button class="btn-edit" onclick="openEditModal('.$row['id'].', \''.addslashes($row['name']).'\', \''.addslashes($row['description']).'\', '.$row['price'].', '.$row['quantity'].', '.$row['category_id'].', \''.bab_sizes_attr($row['id'], $bab_product_sizes).'\', \''.catalog_type_key($row['product_type'] ?? 'catalog').'\', '.$l_sale_p.', \''.$l_sale_e.'\', \''.js_multiline_attr($row['whats_inside'] ?? '').'\', \''.opt_colors_attr($row['id'], $opt_colors).'\', \''.opt_sizes_attr($row['id'], $opt_sizes).'\')">
+                                    <button class="btn-edit" onclick="'.admin_edit_onclick($row, $bab_product_sizes, $opt_colors, $opt_sizes, $l_sale_p, $l_sale_e).'">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     <a href="admin_delete_product.php?id='.$row['id'].'" onclick="return confirm(\'Are you sure you want to delete this product?\');" class="btn-delete">
@@ -975,13 +991,16 @@ case 'sale_price':
             <textarea name="description" id="edit_desc" class="modal-input" rows="3"></textarea>
             
             <label class="modal-label">Price (PHP)</label>
-            <input type="number" step="0.01" name="price" id="edit_price" class="modal-input" min="0" required>
+            <input type="number" step="0.01" name="price" id="edit_price" class="modal-input" min="0" required oninput="checkEditSalePrice()">
 
             <label class="modal-label">Sale Price (PHP) <span style="font-weight:400;color:#999;">(optional)</span></label>
-            <input type="number" step="0.01" name="sale_price" id="edit_sale_price" class="modal-input" min="0" placeholder="Leave blank for no sale">
+            <input type="number" step="0.01" name="sale_price" id="edit_sale_price" class="modal-input" min="0" placeholder="Leave blank for no sale" oninput="checkEditSalePrice()">
             <label class="modal-label" style="margin-top:8px;">Sale ends <span style="font-weight:400;color:#999;">(optional)</span></label>
             <input type="date" name="sale_ends" id="edit_sale_ends" class="modal-input">
             <div style="font-size:12px;color:#888;margin:4px 0 4px;"><i class="fas fa-tag"></i> Must be lower than the price. Clear it to end the sale.</div>
+            <div id="editSalePriceWarning" style="display:none; font-size:12.5px; color:#d32f2f; margin:-2px 0 12px; font-weight:600;">
+                <i class="fas fa-exclamation-triangle"></i> Sale price must be lower than the regular price.
+            </div>
 
             <label class="modal-label">Stock Quantity</label>
             <input type="number" name="quantity" id="edit_quantity" class="modal-input" min="0" required>
@@ -1095,6 +1114,7 @@ case 'sale_price':
         document.getElementById('edit_price').value = price;
         document.getElementById('edit_sale_price').value = (salePrice === null || salePrice === undefined) ? '' : salePrice;
         document.getElementById('edit_sale_ends').value = saleEnds || '';
+        document.getElementById('editSalePriceWarning').style.display = 'none';
         document.getElementById('edit_quantity').value = quantity;
         document.getElementById('edit_category_id').value = category_id;
         document.getElementById('edit_product_type').value = productType || 'catalog';
@@ -1135,6 +1155,18 @@ case 'sale_price':
         } 
     });
 
+    /** Warns (without touching any field's value) when the sale price isn't lower than the regular price. */
+    function checkEditSalePrice() {
+        var saleRaw = document.getElementById('edit_sale_price').value.trim();
+        var warning = document.getElementById('editSalePriceWarning');
+        if (saleRaw === '') { warning.style.display = 'none'; return true; }
+        var sale = parseFloat(saleRaw);
+        var price = parseFloat(document.getElementById('edit_price').value);
+        var invalid = isNaN(sale) || sale < 0 || (!isNaN(price) && sale >= price);
+        warning.style.display = invalid ? 'block' : 'none';
+        return !invalid;
+    }
+
     function validateEditForm() {
     var quantity = parseInt(document.getElementById('edit_quantity').value);
     var price = parseFloat(document.getElementById('edit_price').value);
@@ -1163,11 +1195,9 @@ case 'sale_price':
         alert('Maximum price allowed is 9,999.99.');
         return false;
     }
-    var saleRaw = document.getElementById('edit_sale_price').value.trim();
-    if (saleRaw !== '') {
-        var sale = parseFloat(saleRaw);
-        if (isNaN(sale) || sale < 0) { alert('Sale price must be a valid amount.'); return false; }
-        if (sale >= price) { alert('Sale price must be lower than the regular price.'); return false; }
+    if (!checkEditSalePrice()) {
+        document.getElementById('edit_sale_price').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
     }
     if (document.getElementById('edit_product_type').value === 'catalog'
         && document.querySelectorAll('.edit-box-size:checked').length === 0) {

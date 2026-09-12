@@ -73,6 +73,29 @@ if (!function_exists('catalog_ensure_schema')) {
         }
     }
 
+    /**
+     * Adds the columns needed to remember a cart line's chosen Occasion Box
+     * color/size (and the size's own price) so it survives into checkout and
+     * the placed order. Empty string, not NULL, means "no variant chosen" —
+     * that keeps the WHERE-clause matching used to dedupe cart rows simple.
+     */
+    function cart_ensure_schema($conn) {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['cart_schema_ok_v1'])) {
+            return;
+        }
+        $conn->query("ALTER TABLE carts ADD COLUMN IF NOT EXISTS selected_color VARCHAR(60) NOT NULL DEFAULT ''");
+        $conn->query("ALTER TABLE carts ADD COLUMN IF NOT EXISTS selected_size  VARCHAR(60) NOT NULL DEFAULT ''");
+        $conn->query("ALTER TABLE carts ADD COLUMN IF NOT EXISTS variant_price  NUMERIC(10,2)");
+        $conn->query("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_color VARCHAR(60) NOT NULL DEFAULT ''");
+        $conn->query("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_size  VARCHAR(60) NOT NULL DEFAULT ''");
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['cart_schema_ok_v1'] = true;
+        }
+    }
+
     /** Split a "What's Inside" textarea (one item per line) into a clean list. */
     function catalog_whats_inside_lines($text) {
         if (!$text) return [];

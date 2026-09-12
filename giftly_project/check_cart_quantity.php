@@ -14,11 +14,9 @@ if ($product_id <= 0) {
     exit();
 }
 
-$query = $conn->query("SELECT quantity FROM carts WHERE user_id = $user_id AND product_id = $product_id");
-if ($query->num_rows > 0) {
-    $row = $query->fetch_assoc();
-    echo json_encode(['quantity' => intval($row['quantity'])]);
-} else {
-    echo json_encode(['quantity' => 0]);
-}
+// A product can now have several cart rows (one per chosen color/size combo),
+// so this needs to add them all up rather than reading a single row.
+$query = $conn->query("SELECT COALESCE(SUM(quantity), 0) AS quantity FROM carts WHERE user_id = $user_id AND product_id = $product_id");
+$row = $query ? $query->fetch_assoc() : null;
+echo json_encode(['quantity' => $row ? intval($row['quantity']) : 0]);
 ?>

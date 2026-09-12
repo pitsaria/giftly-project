@@ -2,6 +2,7 @@
 include 'db_connect.php';
 include_once 'catalog_lib.php';
 catalog_ensure_schema($conn);
+cart_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false]);
@@ -62,8 +63,8 @@ if ($action == 'increase') {
     exit();
 }
 
-// Get new quantity and subtotal
-$row = $conn->query("SELECT c.quantity, " . catalog_price_sql('p.') . " AS price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
+// Get new quantity and subtotal — a chosen Occasion Box size's own price wins over the catalog price.
+$row = $conn->query("SELECT c.quantity, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
 
 if ($row) {
     $new_qty = intval($row['quantity']);

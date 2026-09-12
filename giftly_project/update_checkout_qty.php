@@ -2,6 +2,7 @@
 include 'db_connect.php';
 include_once 'catalog_lib.php';
 catalog_ensure_schema($conn);
+cart_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     echo "error";
@@ -18,7 +19,7 @@ if ($cart_id === 0) {
 }
 
 // Security check: Ensure this cart item belongs to the user AND get stock info
-$check = $conn->query("SELECT c.id, c.quantity, c.product_id, p.quantity as stock_quantity, " . catalog_price_sql('p.') . " AS price
+$check = $conn->query("SELECT c.id, c.quantity, c.product_id, p.quantity as stock_quantity, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price
                        FROM carts c
                        JOIN products p ON c.product_id = p.id
                        WHERE c.id = $cart_id AND c.user_id = $user_id");
@@ -60,7 +61,7 @@ if ($action === 'increase') {
 }
 
 // Return the new quantity and the product price so we can update the total
-$row = $conn->query("SELECT c.quantity, " . catalog_price_sql('p.') . " AS price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
+$row = $conn->query("SELECT c.quantity, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price FROM carts c JOIN products p ON c.product_id = p.id WHERE c.id = $cart_id")->fetch_assoc();
 
 if ($row) {
     $new_qty = intval($row['quantity']);

@@ -233,7 +233,7 @@ include 'admin_header.php';
 <?php endif; ?>
 
     <div class="admin-form-container">
-        <form action="" method="POST" enctype="multipart/form-data">
+        <form action="" method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
             <div class="admin-form-group">
                 <label for="product_type">Product Type</label>
                 <select id="product_type" name="product_type" class="admin-input" onchange="toggleBoxSizes()">
@@ -255,20 +255,23 @@ include 'admin_header.php';
             </div>
             <div class="admin-form-group">
     <label for="price">Price (PHP)</label>
-    <input type="number" step="0.01" id="price" name="price" class="admin-input" placeholder="e.g. 500.00" min="0" max="9999.99" oninput="validatePrice(this)" required>
+    <input type="number" step="0.01" id="price" name="price" class="admin-input" placeholder="e.g. 500.00" min="0" max="9999.99" oninput="validatePrice(this); checkSalePrice();" required>
     <div style="font-size: 12px; color: #888; margin-top: 4px;">
         <i class="fas fa-info-circle"></i> Price must be between 0 and greater
     </div>
 </div>
 <div class="admin-form-group">
     <label for="sale_price">Sale Price (PHP) <span style="color:#bbb; font-weight:400;">(optional)</span></label>
-    <input type="number" step="0.01" id="sale_price" name="sale_price" class="admin-input" placeholder="Leave blank for no sale" min="0" max="9999.99">
+    <input type="number" step="0.01" id="sale_price" name="sale_price" class="admin-input" placeholder="Leave blank for no sale" min="0" max="9999.99" oninput="checkSalePrice()">
     <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-weight:400; font-size:13px; color:#555;">
         Sale ends <input type="date" id="sale_ends" name="sale_ends" class="admin-input" style="width:auto; padding:8px 12px;">
         <span style="color:#999;">(optional — leave blank to run until you remove the sale price)</span>
     </label>
     <div style="font-size: 12px; color: #888; margin-top: 4px;">
         <i class="fas fa-tag"></i> Must be lower than the regular price. Shoppers see the old price struck through.
+    </div>
+    <div id="salePriceWarning" style="display:none; font-size:12.5px; color:#d32f2f; margin-top:6px; font-weight:600;">
+        <i class="fas fa-exclamation-triangle"></i> Sale price must be lower than the regular price.
     </div>
 </div>
 <div class="admin-form-group">
@@ -498,6 +501,22 @@ function validateForm() {
         alert('Maximum price allowed is 9,999.99.');
         return false;
     }
+    if (!checkSalePrice()) {
+        document.getElementById('sale_price').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
     return true;
+}
+
+/** Warns (without touching any field's value) when the sale price isn't lower than the regular price. */
+function checkSalePrice() {
+    var saleRaw = document.getElementById('sale_price').value.trim();
+    var warning = document.getElementById('salePriceWarning');
+    if (saleRaw === '') { warning.style.display = 'none'; return true; }
+    var sale = parseFloat(saleRaw);
+    var price = parseFloat(document.getElementById('price').value);
+    var invalid = isNaN(sale) || sale < 0 || (!isNaN(price) && sale >= price);
+    warning.style.display = invalid ? 'block' : 'none';
+    return !invalid;
 }
 </script>

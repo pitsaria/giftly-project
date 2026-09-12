@@ -29,13 +29,6 @@ if (empty($cart_ids)) {
     exit();
 }
 
-// Check if wishlist table exists
-$table_check = $conn->query("SHOW TABLES LIKE 'wishlist'");
-if ($table_check->num_rows == 0) {
-    echo json_encode(['success' => false, 'message' => 'Wishlist table does not exist. Please run the SQL to create it.']);
-    exit();
-}
-
 $moved_count = 0;
 $already_in_wishlist = 0;
 $errors = [];

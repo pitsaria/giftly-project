@@ -17,6 +17,7 @@ include 'db_connect.php';
 include_once 'catalog_lib.php';
 include_once 'promo_lib.php';
 catalog_ensure_schema($conn);
+cart_ensure_schema($conn);
 promo_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
@@ -50,7 +51,7 @@ if ($scope === 'box') {
     $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
     if (!empty($ids)) {
         $ids_str = implode(',', $ids);
-        $q = $conn->query("SELECT c.quantity, " . catalog_price_sql('p.') . " AS price
+        $q = $conn->query("SELECT c.quantity, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price
                            FROM carts c JOIN products p ON c.product_id = p.id
                            WHERE c.user_id = $user_id AND c.id IN ($ids_str)
                              AND p.is_active = TRUE");

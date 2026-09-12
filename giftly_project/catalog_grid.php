@@ -135,7 +135,8 @@ if (isset($_SESSION['user_id'])) {
 
     .cat-modal-inside { margin-bottom: 18px; }
     .cat-modal-inside-title, .cat-modal-options-title { font-size: 13px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
-    .cat-modal-inside ul { margin: 0; padding-left: 20px; color: #555; font-size: 14px; line-height: 1.7; }
+    .cat-modal-inside ul { list-style: disc; margin: 0; padding-left: 20px; color: #555; font-size: 14px; line-height: 1.7; max-height: 140px; overflow-y: auto; }
+    .cat-modal-inside ul li { list-style: disc; margin-bottom: 2px; }
     .cat-modal-options { margin-bottom: 18px; }
     .cat-modal-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
     .cat-swatch { width: 46px; height: 46px; border-radius: 50%; padding: 2px; border: 2px solid transparent; cursor: pointer; background: #fafafa; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
@@ -294,10 +295,6 @@ if (isset($_SESSION['user_id'])) {
             <h3 id="catModalTitle"></h3>
             <div class="cat-modal-price" id="catModalPrice"></div>
             <div class="cat-modal-desc" id="catModalDesc"></div>
-            <div id="catModalInside" class="cat-modal-inside" style="display:none;">
-                <div class="cat-modal-inside-title">What's Inside</div>
-                <ul id="catModalInsideList"></ul>
-            </div>
             <div id="catModalColors" class="cat-modal-options" style="display:none;">
                 <div class="cat-modal-options-title">Color</div>
                 <div id="catModalColorSwatches" class="cat-modal-swatches"></div>
@@ -305,6 +302,10 @@ if (isset($_SESSION['user_id'])) {
             <div id="catModalSizes" class="cat-modal-options" style="display:none;">
                 <div class="cat-modal-options-title">Size</div>
                 <div id="catModalSizeButtons" class="cat-modal-sizebtns"></div>
+            </div>
+            <div id="catModalInside" class="cat-modal-inside" style="display:none;">
+                <div class="cat-modal-inside-title">What's Inside</div>
+                <ul id="catModalInsideList"></ul>
             </div>
             <div id="catModalStock"></div>
             <div class="cat-modal-actions">
@@ -335,9 +336,12 @@ if (isset($_SESSION['user_id'])) {
 
 <script>
 let catId = 0, catQtyVal = 1, catStock = 0, catBasePrice = 0, catBaseImage = '';
+let catSelectedColor = '', catSelectedSize = '';
 
 function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes) {
     catId = id; catStock = stock; catQtyVal = 1; catBasePrice = price; catBaseImage = image;
+    catSelectedColor = (colors && colors.length) ? colors[0].name : '';
+    catSelectedSize = (sizes && sizes.length) ? sizes[0].name : '';
     document.getElementById('catQtyDisplay').innerText = 1;
     document.getElementById('catModalImg').src = image; // already resolved by img_url() in PHP
     document.getElementById('catModalTitle').innerText = name;
@@ -371,6 +375,7 @@ function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes
                 swatchBox.querySelectorAll('.cat-swatch').forEach(function (s) { s.classList.remove('active'); });
                 this.classList.add('active');
                 document.getElementById('catModalImg').src = c.image || catBaseImage;
+                catSelectedColor = c.name;
             });
             swatchBox.appendChild(el);
         });
@@ -393,6 +398,7 @@ function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes
                 sizeBox.querySelectorAll('.cat-size-btn').forEach(function (b) { b.classList.remove('active'); });
                 this.classList.add('active');
                 document.getElementById('catModalPrice').innerText = 'PHP ' + parseFloat(s.price).toFixed(2);
+                catSelectedSize = s.name;
             });
             sizeBox.appendChild(btn);
         });
@@ -464,7 +470,9 @@ function catAddFromModal() {
                 catShowStock(canAdd <= 0 ? 'You already have the maximum available (' + catStock + ') in your cart.' : 'You can only add ' + canAdd + ' more. Only ' + catStock + ' in stock.');
                 return;
             }
-            fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'product_id=' + catId + '&quantity=' + catQtyVal })
+            var body = 'product_id=' + catId + '&quantity=' + catQtyVal
+                + '&color=' + encodeURIComponent(catSelectedColor) + '&size=' + encodeURIComponent(catSelectedSize);
+            fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
                 .then(r => r.text()).then(t => {
                     if (t.trim() === 'login_required') { catClose(); if (window.openLoginModal) openLoginModal(); }
                     else if (t.trim() === 'stock_limit_reached') catShowStock('You have reached the maximum available stock for this item.');
@@ -477,7 +485,9 @@ function catAddFromModal() {
 function catBuyNow() {
     if (catId === 0 || catStock <= 0) return;
     catRequireLogin(() => {
-        fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'product_id=' + catId + '&quantity=' + catQtyVal + '&replace=1' })
+        var body = 'product_id=' + catId + '&quantity=' + catQtyVal + '&replace=1'
+            + '&color=' + encodeURIComponent(catSelectedColor) + '&size=' + encodeURIComponent(catSelectedSize);
+        fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
             .then(r => r.text()).then(t => {
                 if (t.trim() === 'login_required') { catClose(); if (window.openLoginModal) openLoginModal(); return; }
                 if (t.trim() === 'stock_limit_reached') { catShowStock('You have reached the maximum available stock for this item.'); return; }
