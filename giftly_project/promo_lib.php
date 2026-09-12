@@ -239,7 +239,7 @@ if (!function_exists('promo_ensure_schema')) {
                     $more = $need - $item_count;
                     if ($more > 0 && $more <= 2 && promo_free_item_product($conn, $r['free_item_product_id'] ?? 0)) {
                         $fi = promo_free_item_product($conn, $r['free_item_product_id'] ?? 0);
-                        $out['free_item_nudge'] = ['name' => $fi['name'], 'more' => $more];
+                        $out['free_item_nudge'] = ['name' => $fi['name'], 'more' => $more, 'image' => img_url($fi['image'] ?? '')];
                     }
                 }
                 continue;

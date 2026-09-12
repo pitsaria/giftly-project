@@ -420,7 +420,7 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
             </div>
             
             <div class="slide-graphic" style="flex: 1.25; height: 100%; display: flex; justify-content: flex-end; align-items: center; padding-right: 0px;">
-                <img src="occasion_box.png" alt="Occasion Box" style="max-width: 120%; max-height: 115%; object-fit: contain; transform: translateX(100px);">
+                <img src="bunny-in-box.png" alt="Occasion Box" style="max-width: 120%; max-height: 115%; object-fit: contain; transform: translateX(100px);">
             </div>
         </div>
 
@@ -436,7 +436,7 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
             </div>
             
             <div class="slide-graphic" style="flex: 1.25; height: 100%; display: flex; justify-content: flex-end; align-items: center; padding-right: 15px;">
-                <img src="giftly_basket.png" alt="Giftly Basket" style="max-width: 125%; max-height: 120%; object-fit: contain; transform: translateX(80px);">
+                <img src="kitty-in-basket.png" alt="Giftly Basket" style="max-width: 125%; max-height: 120%; object-fit: contain; transform: translateX(80px);">
             </div>
         </div>
 

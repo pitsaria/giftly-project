@@ -525,7 +525,10 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
     
     /* LEFT COLUMN: FORM */
     .checkout-left { flex: 1; min-width: 350px; }
-    .checkout-title { font-size: 26px; font-weight: 700; color: #222; margin-bottom: 30px; }
+    .checkout-title { font-size: 26px; font-weight: 700; color: #222; margin-bottom: 0; }
+    .checkout-title-row { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
+    .checkout-back-btn { background: #f3f3f3; color: #555; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 16px; transition: 0.2s; flex-shrink: 0; }
+    .checkout-back-btn:hover { background: #ffc1cc; color: #fff; }
     
     .checkout-section { margin-bottom: 30px; }
     .checkout-section h3 { font-size: 16px; font-weight: 600; color: #444; margin-bottom: 15px; }
@@ -605,7 +608,8 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
     .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
     .promo-terms { font-size: 11.5px; color: #888; margin-top: 5px; }
     .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
-    .promo-nudge { color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
+    .promo-nudge { display: flex; align-items: center; gap: 10px; color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
+    .promo-nudge-img { width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: #fff; flex-shrink: 0; }
     .os-grand-total { font-size: 22px; font-weight: 700; color: #222; }
     
     .btn-checkout-submit {
@@ -1078,7 +1082,10 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
 <div class="checkout-wrapper">
     <!-- LEFT COLUMN: FORM -->
     <div class="checkout-left">
-        <h1 class="checkout-title">Checkout</h1>
+        <div class="checkout-title-row">
+            <button type="button" class="checkout-back-btn" onclick="showUnsavedModal('cart.php')" title="Cancel checkout"><i class="fas fa-arrow-left"></i></button>
+            <h1 class="checkout-title">Checkout</h1>
+        </div>
 
         <form id="orderForm" action="checkout_selected.php" method="POST">
             <input type="hidden" name="selected_ids_hidden" id="selectedIdsHidden" value="<?php echo implode(',', $selected_ids); ?>">
@@ -1381,7 +1388,11 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
                 <div class="promo-nudge" id="promoNudge" <?php echo $promo_eval['free_item_nudge'] ? '' : 'style="display:none;"'; ?>>
                     <?php if ($promo_eval['free_item_nudge']): $n = $promo_eval['free_item_nudge']; ?>
-                        🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!
+                        <img id="promoNudgeImg" class="promo-nudge-img" src="<?php echo htmlspecialchars($n['image']); ?>" alt="" <?php echo empty($n['image']) ? 'style="display:none;"' : ''; ?>>
+                        <span id="promoNudgeText">🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!</span>
+                    <?php else: ?>
+                        <img id="promoNudgeImg" class="promo-nudge-img" src="" alt="" style="display:none;">
+                        <span id="promoNudgeText"></span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -2023,8 +2034,11 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         var nudge = document.getElementById('promoNudge');
         if (nudge) {
             if (d.free_item_nudge) {
-                nudge.textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
-                nudge.style.display = 'block';
+                document.getElementById('promoNudgeText').textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
+                var nimg = document.getElementById('promoNudgeImg');
+                if (d.free_item_nudge.image) { nimg.src = d.free_item_nudge.image; nimg.style.display = ''; }
+                else { nimg.style.display = 'none'; }
+                nudge.style.display = 'flex';
             } else {
                 nudge.style.display = 'none';
             }

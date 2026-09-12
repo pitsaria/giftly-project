@@ -112,13 +112,7 @@ if (!empty($error_msg)): ?>
 
             <!-- RIGHT: Promotional Art -->
             <div class="login-modal-art">
-                <div style="font-size: 80px; color: #ff8ba7; margin-bottom: 15px;">
-                    <i class="fas fa-gift"></i>
-                </div>
-                <h3 style="font-size: 22px; font-weight: 700; color: #222;">Login Instantly</h3>
-                <p style="font-size: 14px; color: #666; line-height: 1.5; max-width: 250px; margin: 0 auto;">
-                    Sign in to start building your perfect gift box.
-                </p>
+                <img src="uploads/login-art.png" alt="Sign in to start building your perfect gift box" class="login-modal-art-img">
             </div>
         </div>
     </div>
@@ -215,13 +209,21 @@ if (!empty($error_msg)): ?>
         flex: 1;
         background: #fff0f5;
         border-radius: 24px;
-        padding: 40px 20px;
         text-align: center;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         min-height: 320px;
+        overflow: hidden;
+    }
+    .login-modal-art-img {
+        width: 100%;
+        height: 100%;
+        min-height: 320px;
+        object-fit: cover;
+        border-radius: 24px;
+        display: block;
     }
 
     /* --- LOGIN SUCCESS MODAL STYLES --- */
@@ -320,8 +322,8 @@ if (!empty($error_msg)): ?>
     /* --- RESPONSIVE --- */
     @media (max-width: 700px) {
         .login-modal-split { flex-direction: column-reverse; gap: 20px; }
-        .login-modal-art { min-height: 150px; padding: 30px 20px; }
-        .login-modal-art i { font-size: 50px !important; }
+        .login-modal-art { min-height: 150px; }
+        .login-modal-art-img { min-height: 150px; }
     }
 </style>
 

@@ -1119,11 +1119,13 @@ function refreshCartFreeGift() {
                 box.style.display = 'block';
             } else if (d.free_item_nudge && d.free_item_nudge.more > 0) {
                 var n = d.free_item_nudge;
-                box.innerHTML = '🎁 Add <strong>' + n.more + ' more item' + (n.more == 1 ? '' : 's') +
+                box.innerHTML = (n.image ? '<img src="' + n.image + '" alt="" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#fff;vertical-align:middle;margin-right:8px;">' : '') +
+                                '🎁 Add <strong>' + n.more + ' more item' + (n.more == 1 ? '' : 's') +
                                 '</strong> to get a free ' + escapeHtmlSmall(n.name) + '!';
                 box.style.background = '#fff0f5';
                 box.style.color = '#d81b60';
-                box.style.display = 'block';
+                box.style.display = 'flex';
+                box.style.alignItems = 'center';
             } else {
                 box.style.display = 'none';
             }

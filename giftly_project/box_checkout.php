@@ -412,7 +412,8 @@ unset($_SESSION['box_checkout_error']);
     .promo-applied button { background: none; border: none; color: #888; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
     .promo-terms { font-size: 11.5px; color: #888; margin-top: 5px; }
     .promo-error { color: #d32f2f; font-size: 12px; margin-top: 6px; }
-    .promo-nudge { color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
+    .promo-nudge { display: flex; align-items: center; gap: 10px; color: #d81b60; font-size: 12px; font-weight: 600; margin-top: 8px; background: #fff0f5; border-radius: 10px; padding: 8px 12px; }
+    .promo-nudge-img { width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: #fff; flex-shrink: 0; }
     .co-tot .r.g { border-top: 1px solid #f0f0f0; padding-top: 12px; font-size: 19px; font-weight: 700; color: #222; }
     .co-btn { width: 100%; padding: 15px; border: none; border-radius: 50px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: 0.2s; }
     .co-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(254,165,182,0.4); }
@@ -693,7 +694,11 @@ unset($_SESSION['box_checkout_error']);
                 <div class="promo-error" id="promoError" <?php echo $promo_eval['code_error'] !== '' ? '' : 'style="display:none;"'; ?>><?php echo htmlspecialchars($promo_eval['code_error']); ?></div>
                 <div class="promo-nudge" id="promoNudge" <?php echo $promo_eval['free_item_nudge'] ? '' : 'style="display:none;"'; ?>>
                     <?php if ($promo_eval['free_item_nudge']): $n = $promo_eval['free_item_nudge']; ?>
-                        🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!
+                        <img id="promoNudgeImg" class="promo-nudge-img" src="<?php echo htmlspecialchars($n['image']); ?>" alt="" <?php echo empty($n['image']) ? 'style="display:none;"' : ''; ?>>
+                        <span id="promoNudgeText">🎁 Add <?php echo (int) $n['more']; ?> more item<?php echo $n['more'] == 1 ? '' : 's'; ?> to get a free <?php echo htmlspecialchars($n['name']); ?>!</span>
+                    <?php else: ?>
+                        <img id="promoNudgeImg" class="promo-nudge-img" src="" alt="" style="display:none;">
+                        <span id="promoNudgeText"></span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -948,8 +953,11 @@ unset($_SESSION['box_checkout_error']);
             var nudge = document.getElementById('promoNudge');
             if (nudge) {
                 if (d.free_item_nudge) {
-                    nudge.textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
-                    nudge.style.display = 'block';
+                    document.getElementById('promoNudgeText').textContent = '🎁 Add ' + d.free_item_nudge.more + ' more item' + (d.free_item_nudge.more == 1 ? '' : 's') + ' to get a free ' + d.free_item_nudge.name + '!';
+                    var nimg = document.getElementById('promoNudgeImg');
+                    if (d.free_item_nudge.image) { nimg.src = d.free_item_nudge.image; nimg.style.display = ''; }
+                    else { nimg.style.display = 'none'; }
+                    nudge.style.display = 'flex';
                 } else { nudge.style.display = 'none'; }
             }
         }
