@@ -3,8 +3,10 @@ include 'db_connect.php';
 include_once 'orders_lib.php';
 include_once 'paymongo_lib.php';
 include_once 'mail_lib.php';
+include_once 'push_lib.php';
 orders_ensure_schema($conn);
 pay_ensure_schema($conn);
+push_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -56,6 +58,10 @@ if (isset($_POST['update_status_here']) && isset($_POST['order_id']) && isset($_
             if ($new_status !== $cur_status && function_exists('send_status_email')) {
                 $ok = send_status_email($conn, $order_id, $new_status);
                 error_log("status email order #$order_id -> $new_status: " . ($ok ? 'sent' : 'skipped/failed - ' . mail_last_error()));
+            }
+            if ($new_status !== $cur_status && function_exists('send_status_push')) {
+                $pushed = send_status_push($conn, $order_id, $new_status);
+                error_log("status push order #$order_id -> $new_status: " . ($pushed ? 'sent' : 'skipped/failed - ' . fcm_last_error()));
             }
         }
     }

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Preferences } from '@capacitor/preferences';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
+import { PushService } from './push.service';
 import { User } from './models';
 
 const TOKEN_KEY = 'giftly_token';
@@ -23,6 +24,7 @@ export function isOtpChallenge(r: LoginResult): r is OtpChallenge {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private api = inject(ApiService);
+  private push = inject(PushService);
 
   private tokenValue: string | null = null;
   readonly user = signal<User | null>(null);
@@ -50,6 +52,7 @@ export class AuthService {
       this.user.set(res.data.user);
       this.isLoggedIn.set(true);
       await Preferences.set({ key: USER_KEY, value: JSON.stringify(res.data.user) });
+      void this.push.init();
     } catch {
       await this.clearSession();
     }
@@ -157,6 +160,7 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
+    await this.push.teardown();
     try {
       await firstValueFrom(this.api.post('auth/logout', {}));
     } catch {
@@ -171,6 +175,7 @@ export class AuthService {
     this.isLoggedIn.set(true);
     await Preferences.set({ key: TOKEN_KEY, value: token });
     await Preferences.set({ key: USER_KEY, value: JSON.stringify(user) });
+    void this.push.init();
   }
 
   private async clearSession(): Promise<void> {

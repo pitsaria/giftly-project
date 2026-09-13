@@ -509,6 +509,27 @@ case 'cart/verify-stock':
         }
         break;
 
+    // === PUSH NOTIFICATIONS (device token registry) ===
+    case 'push/register':
+        require_once 'services/PushService.php';
+        $pushSvc = new PushService($conn);
+        if ($method == 'POST') {
+            $pushSvc->register($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'push/unregister':
+        require_once 'services/PushService.php';
+        $pushSvc = new PushService($conn);
+        if ($method == 'POST') {
+            $pushSvc->unregister($input, $headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     default:
         sendError('Invalid API endpoint', 404);
         break;
