@@ -18,10 +18,21 @@
   </div>
 
   <section class="ab-section">
+    <h2>Inside the studio</h2>
+    <div class="gallery">
+      <div class="shot" *ngFor="let s of shots; let i = index" [class.big]="i === 0">
+        <img [src]="s.img" [alt]="s.alt" />
+      </div>
+    </div>
+  </section>
+
+  <section class="ab-section">
     <h2>The people behind Giftly</h2>
     <div class="owners">
       <div class="owner" *ngFor="let o of owners">
-        <div class="avatar">{{ initials(o.name) }}</div>
+        <div class="avatar">
+          <img [src]="o.img" [alt]="o.name" />
+        </div>
         <h3>{{ o.name }}</h3>
         <div class="role">{{ o.role }}</div>
         <p>{{ o.bio }}</p>

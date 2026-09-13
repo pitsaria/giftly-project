@@ -18,12 +18,18 @@ interface Owner {
   name: string;
   role: string;
   bio: string;
+  img: string;
 }
 
 interface Value {
   icon: string;
   title: string;
   text: string;
+}
+
+interface Shot {
+  img: string;
+  alt: string;
 }
 
 // Static port of giftly_project/about.php.
@@ -46,11 +52,18 @@ interface Value {
 })
 export class AboutPage {
   readonly owners: Owner[] = [
-    { name: 'Peatzie Cosino', role: 'Founder & CEO', bio: 'Started Giftly from a kitchen table with a glue gun and a lot of ribbon.' },
-    { name: 'Angela Castillo', role: 'Head of Design', bio: 'Obsesses over paper weight, palette, and the perfect bow.' },
-    { name: 'Feliciti Gacilla', role: 'Operations & Logistics', bio: 'Makes sure every box arrives on time and in one beautiful piece.' },
-    { name: 'Gabriel Edpao', role: 'Head of Curation', bio: 'Hunts down the small-batch makers behind our favourite finds.' },
-    { name: 'Rachelle Dilig', role: 'Customer Happiness', bio: 'The voice on the other end of every message — and every thank-you note.' },
+    { name: 'Peatzie Cosino', role: 'Founder & CEO', bio: 'Started Giftly from a kitchen table with a glue gun and a lot of ribbon.', img: 'assets/giftly/cosino.png' },
+    { name: 'Angela Castillo', role: 'Head of Design', bio: 'Obsesses over paper weight, palette, and the perfect bow.', img: 'assets/giftly/castillo.jpg' },
+    { name: 'Feliciti Gacilla', role: 'Operations & Logistics', bio: 'Makes sure every box arrives on time and in one beautiful piece.', img: 'assets/giftly/gacilla.jpeg' },
+    { name: 'Gabriel Edpao', role: 'Head of Curation', bio: 'Hunts down the small-batch makers behind our favourite finds.', img: 'assets/giftly/edpao.JPG' },
+    { name: 'Rachelle Dilig', role: 'Customer Happiness', bio: 'The voice on the other end of every message — and every thank-you note.', img: 'assets/giftly/dilig.JPG' },
+  ];
+
+  readonly shots: Shot[] = [
+    { img: 'assets/giftly/storefront.jpeg', alt: 'Our storefront' },
+    { img: 'assets/giftly/shelves.jpg', alt: 'Curated shelves' },
+    { img: 'assets/giftly/wrap.jpeg', alt: 'The wrapping bench' },
+    { img: 'assets/giftly/packing.jpg', alt: 'Packing day' },
   ];
 
   readonly values: Value[] = [
@@ -61,10 +74,5 @@ export class AboutPage {
 
   constructor() {
     addIcons({ giftOutline, sparklesOutline, heartOutline, rocketOutline });
-  }
-
-  initials(name: string): string {
-    const parts = name.trim().split(/\s+/);
-    return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
   }
 }
