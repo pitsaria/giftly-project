@@ -464,6 +464,13 @@ function isInWishlist($product_id, $wishlist_ids) {
         font-size: 24px; color: #888; cursor: pointer; transition: 0.2s; z-index: 2;
     }
     .modal-close:hover { color: #ff8ba7; transform: rotate(90deg); }
+    .modal-share {
+        position: absolute; top: 17px; right: 58px;
+        font-size: 16px; color: #888; cursor: pointer; transition: 0.2s; z-index: 2;
+        width: 30px; height: 30px; border-radius: 50%; background: #f4f4f6;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .modal-share:hover { color: #ff8ba7; background: #fff0f5; }
 
     .modal-left { flex: 0.9; min-width: 300px; background: #fafafa; padding: 40px; display: flex; justify-content: center; align-items: center; }
     .modal-img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 16px; }
@@ -948,6 +955,7 @@ $heartClass = $isInWishlist ? 'active' : '';
 <!-- UPGRADED QUICK VIEW MODAL WITH BUY NOW -->
 <div class="modal-overlay" id="productModal">
     <div class="modal-box">
+        <span class="modal-share" onclick="shareProduct()" title="Share"><i class="fas fa-share-nodes"></i></span>
         <span class="modal-close" onclick="closeModal()">&times;</span>
         <div class="modal-left">
             <img id="modalImg" src="" class="modal-img">
@@ -1058,6 +1066,15 @@ $heartClass = $isInWishlist ? 'active' : '';
         currentModalId = id;
         currentStock = stock;
         currentQty = 1;
+        // Keeps the address bar a real, copyable/shareable link to this
+        // product — skipped when it's already there (the ?product= auto-open
+        // on page load) so opening from that link doesn't push a duplicate
+        // history entry.
+        const curParams = new URLSearchParams(window.location.search);
+        if (curParams.get('product') != id) {
+            curParams.set('product', id);
+            history.pushState({ modalProduct: id }, '', window.location.pathname + '?' + curParams.toString());
+        }
         document.getElementById('qtyDisplay').innerText = 1;
         document.getElementById('modalImg').src = image; // already resolved by img_url() in PHP
         document.getElementById('modalTitle').innerText = name;
@@ -1089,7 +1106,34 @@ $heartClass = $isInWishlist ? 'active' : '';
         if (window.loadProductReviews) loadProductReviews(id);
     }
 
-    function closeModal() { document.getElementById('productModal').style.display = 'none'; }
+    function closeModal() {
+        document.getElementById('productModal').style.display = 'none';
+        const curParams = new URLSearchParams(window.location.search);
+        if (curParams.has('product')) {
+            curParams.delete('product');
+            const qs = curParams.toString();
+            history.pushState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+        }
+    }
+
+    // Shares the currently open product — native share sheet where supported
+    // (mostly mobile browsers), otherwise copies the link and reuses the
+    // existing wishlist toast.
+    function shareProduct() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('product', currentModalId);
+        const shareUrl = window.location.origin + window.location.pathname + '?' + params.toString();
+        const title = document.getElementById('modalTitle').innerText;
+        if (navigator.share) {
+            navigator.share({ title: title, text: 'Check out ' + title + ' on Giftly!', url: shareUrl }).catch(() => {});
+            return;
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareUrl)
+                .then(() => showWishlistToast('Link copied to clipboard 🔗'))
+                .catch(() => showWishlistToast('Could not copy link'));
+        }
+    }
 
     /* --- UPDATE QUANTITY IN MODAL --- */
 function updateQty(change) {
@@ -1403,6 +1447,22 @@ function showWishlistToast(message) {
         toast.style.transform = 'translateX(-50%) translateY(20px)';
     }, 2500);
 }
+
+// Shared-product links (mobile app's share button, or this page's own
+// shareProduct()) land here as ?product=<id> — auto-open that product's
+// quick-view the same way clicking its card would.
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const sharedId = parseInt(params.get('product'), 10);
+    if (!sharedId) return;
+    fetch('product_open_data.php?id=' + sharedId)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) return;
+            openModal(d.id, d.name, d.description, d.image, d.price, d.quantity, d.listPrice);
+        })
+        .catch(() => {});
+})();
 </script>
 
 <?php include 'footer.php'; ?>

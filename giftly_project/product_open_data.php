@@ -40,6 +40,10 @@ echo json_encode([
     'description' => $row['description'],
     'image' => img_url($row['image']),
     'price' => (float) $eff_price,
+    // Original (pre-sale) price — shop.php's openModal() shows this
+    // struck-through when it differs from the effective price above;
+    // catalog_grid.php's catOpen() ignores it.
+    'listPrice' => (float) $row['price'],
     'quantity' => (int) $row['quantity'],
     'whatsInside' => $whats_inside_lines,
     'colors' => $colors_js,
