@@ -132,11 +132,11 @@ include 'header.php';
                 </div>
                 <div class="ct-row">
                     <div class="ic"><i class="fas fa-clock"></i></div>
-                    <div><div class="lbl">Hours</div><div class="val">Mon – Sat, 9:00 AM – 6:00 PM</div></div>
+                    <div><div class="lbl">Hours</div><div class="val">Mon – Sat, 7:00 AM – 8:00 AM</div></div>
                 </div>
                 <div class="ct-row">
                     <div class="ic"><i class="fas fa-location-dot"></i></div>
-                    <div><div class="lbl">Studio</div><div class="val">Giftly Studio, Metro Manila<br><span style="color:#aaa;font-weight:400;font-size:13px;">Visits by appointment</span></div></div>
+                    <div><div class="lbl">Studio</div><div class="val">Giftly Studio, Quezon City<br><span style="color:#aaa;font-weight:400;font-size:13px;">Visits by appointment</span></div></div>
                 </div>
             </div>
 
