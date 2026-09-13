@@ -88,15 +88,25 @@
 
   <p class="in-box-note" *ngIf="mode === 'box' && inBoxQty > 0">{{ inBoxQty }} already in your box</p>
 
-  <ion-button
-    *ngIf="mode === 'cart'"
-    expand="block"
-    class="giftly-btn-primary"
-    [disabled]="!inStock() || adding()"
-    (click)="addToCart()"
-  >
-    {{ inStock() ? 'Add to Cart' : 'Out of Stock' }}
-  </ion-button>
+  <div class="cart-actions-row" *ngIf="mode === 'cart'">
+    <ion-button
+      expand="block"
+      fill="outline"
+      class="buy-now-btn"
+      [disabled]="!inStock() || adding() || buyingNow()"
+      (click)="buyNow()"
+    >
+      <ion-icon slot="start" name="flash-outline"></ion-icon> Buy Now
+    </ion-button>
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      [disabled]="!inStock() || adding() || buyingNow()"
+      (click)="addToCart()"
+    >
+      {{ inStock() ? 'Add to Cart' : 'Out of Stock' }}
+    </ion-button>
+  </div>
 
   <ion-button
     *ngIf="mode === 'box'"

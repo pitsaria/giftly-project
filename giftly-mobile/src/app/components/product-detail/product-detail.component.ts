@@ -1,9 +1,10 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { IonButton, IonIcon, IonContent, ModalController, ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline } from 'ionicons/icons';
+import { closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline, flashOutline } from 'ionicons/icons';
 import { Share } from '@capacitor/share';
 import { environment } from '../../../environments/environment';
 import { Product } from '../../core/models';
@@ -38,10 +39,12 @@ export class ProductDetailComponent implements OnInit {
   private cart = inject(CartService);
   private wishlist = inject(WishlistService);
   private productSvc = inject(ProductService);
+  private router = inject(Router);
   auth = inject(AuthService);
 
   readonly quantity = signal(1);
   readonly adding = signal(false);
+  readonly buyingNow = signal(false);
 
   // Occasion Box color/size — mirrors catalog_grid.php's swatch/size picker:
   // the first option of each is preselected, and picking a size overrides
@@ -50,7 +53,7 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedSize = signal<string | null>(null);
 
   constructor() {
-    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline });
+    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline, flashOutline });
   }
 
   ngOnInit(): void {
@@ -173,6 +176,36 @@ export class ProductDetailComponent implements OnInit {
       await this.presentToast('Could not add to cart. Please try again.');
     } finally {
       this.adding.set(false);
+    }
+  }
+
+  // Adds this exact line (quantity + chosen color/size) to the cart and jumps
+  // straight to Checkout with just it selected — skips Cart entirely.
+  async buyNow(): Promise<void> {
+    if (!this.auth.isLoggedIn()) {
+      await this.presentToast('Please log in to checkout');
+      return;
+    }
+    this.buyingNow.set(true);
+    try {
+      const color = this.selectedColor() ?? undefined;
+      const size = this.selectedSize() ?? undefined;
+      await this.cart.addToCart(this.product.id, this.quantity(), color, size);
+      const cart = await this.cart.getCart();
+      const line = cart.items.find(
+        (i) => i.id === this.product.id && (i.selected_color ?? '') === (color ?? '') && (i.selected_size ?? '') === (size ?? '')
+      );
+      if (!line) {
+        await this.presentToast('Could not start checkout. Please try again.');
+        return;
+      }
+      this.cart.selectedCartIds.set([line.cart_id]);
+      this.modalCtrl.dismiss();
+      this.router.navigateByUrl('/checkout');
+    } catch {
+      await this.presentToast('Could not start checkout. Please try again.');
+    } finally {
+      this.buyingNow.set(false);
     }
   }
 

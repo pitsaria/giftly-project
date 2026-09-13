@@ -22,7 +22,6 @@ import {
   pricetagOutline,
   star,
   arrowForward,
-  flashOutline,
 } from 'ionicons/icons';
 import { Category, HomePromo, Order, Product } from '../../core/models';
 import { ProductService } from '../../core/product.service';
@@ -217,7 +216,7 @@ export class HomePage implements OnInit {
   }
 
   constructor() {
-    addIcons({ giftOutline, addCircle, checkmarkCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward, flashOutline });
+    addIcons({ giftOutline, addCircle, checkmarkCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
   }
 
   onHeroScroll(ev: Event): void {
@@ -414,33 +413,6 @@ export class HomePage implements OnInit {
       await this.toast(`Added ${product.name} to cart`);
     } catch (err: any) {
       await this.toast(err?.error?.error ?? 'Could not add to cart. Please try again.');
-    }
-  }
-
-  // Skips the cart page entirely — adds the item (if not already there) and
-  // sends the customer straight to Checkout with just this line selected.
-  async buyNow(product: Product, ev: Event): Promise<void> {
-    ev.stopPropagation();
-    if (!this.auth.isLoggedIn()) {
-      await this.toast('Please log in to checkout');
-      return;
-    }
-    if (product.quantity <= 0) {
-      await this.toast('This item is out of stock');
-      return;
-    }
-    try {
-      await this.cart.addToCart(product.id, 1);
-      const cart = await this.cart.getCart();
-      const line = cart.items.find((i) => i.id === product.id);
-      if (!line) {
-        await this.toast('Could not start checkout. Please try again.');
-        return;
-      }
-      this.cart.selectedCartIds.set([line.cart_id]);
-      this.router.navigateByUrl('/checkout');
-    } catch (err: any) {
-      await this.toast(err?.error?.error ?? 'Could not start checkout. Please try again.');
     }
   }
 

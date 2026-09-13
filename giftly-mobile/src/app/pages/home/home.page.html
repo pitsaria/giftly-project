@@ -107,23 +107,14 @@
             <span class="f-now">₱{{ product.price }}</span>
             <span class="f-was" *ngIf="product.on_sale">₱{{ product.list_price }}</span>
           </span>
-          <div class="card-actions">
-            <button
-              class="buy-now-btn"
-              [disabled]="product.quantity <= 0"
-              (click)="buyNow(product, $event)"
-            >
-              <ion-icon name="flash-outline"></ion-icon>
-            </button>
-            <button
-              class="add-btn"
-              [class.added]="justAdded(product.id)"
-              [disabled]="product.quantity <= 0"
-              (click)="quickAdd(product, $event)"
-            >
-              <ion-icon [name]="justAdded(product.id) ? 'checkmark-circle' : 'add-circle'"></ion-icon>
-            </button>
-          </div>
+          <button
+            class="add-btn"
+            [class.added]="justAdded(product.id)"
+            [disabled]="product.quantity <= 0"
+            (click)="quickAdd(product, $event)"
+          >
+            <ion-icon [name]="justAdded(product.id) ? 'checkmark-circle' : 'add-circle'"></ion-icon>
+          </button>
         </div>
       </div>
       <p class="empty-msg" *ngIf="!featured().length">No products yet — check back soon!</p>

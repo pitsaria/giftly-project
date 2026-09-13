@@ -228,6 +228,21 @@ h1 {
   margin: 0 0 12px;
 }
 
+.cart-actions-row {
+  display: flex;
+  gap: 10px;
+
+  ion-button {
+    flex: 1;
+    margin: 0;
+  }
+
+  .buy-now-btn {
+    --border-color: var(--ion-color-primary);
+    --color: var(--ion-color-primary);
+  }
+}
+
 .quantity-row {
   display: flex;
   align-items: center;
