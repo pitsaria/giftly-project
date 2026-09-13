@@ -16,10 +16,6 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
-  IonItemSliding,
-  IonItem,
-  IonItemOptions,
-  IonItemOption,
   AlertController,
   ToastController,
   ModalController,
@@ -95,10 +91,6 @@ const RECIPIENT_AVATAR_COLORS = ['#FEA5B6', '#8ec5fc', '#fcb69f', '#96e6a1', '#f
     IonSelect,
     IonSelectOption,
     IonCheckbox,
-    IonItemSliding,
-    IonItem,
-    IonItemOptions,
-    IonItemOption,
     TopBarComponent,
     ImgUrlPipe,
     AddressSearchComponent,
@@ -168,6 +160,7 @@ export class ProfilePage implements OnInit {
   }
 
   showAddAddress = false;
+  editingAddressId: number | null = null;
   newAddress: NewAddress = this.blankAddress();
   private blankAddress(): NewAddress {
     return {
@@ -408,13 +401,42 @@ export class ProfilePage implements OnInit {
       return;
     }
     try {
-      await this.addressSvc.create(a);
+      if (this.editingAddressId != null) {
+        await this.addressSvc.update(this.editingAddressId, a);
+      } else {
+        await this.addressSvc.create(a);
+      }
       this.newAddress = this.blankAddress();
+      this.editingAddressId = null;
       this.showAddAddress = false;
       this.addresses.set(await this.addressSvc.getAll());
     } catch (err) {
       await this.toast(describeError(err));
     }
+  }
+
+  editAddress(a: Address): void {
+    this.editingAddressId = a.id;
+    this.newAddress = {
+      label_choice: (['Home', 'Office'] as const).includes(a.label as 'Home' | 'Office')
+        ? (a.label as 'Home' | 'Office')
+        : 'Other',
+      label_other: (['Home', 'Office'] as const).includes(a.label as 'Home' | 'Office') ? '' : a.label || '',
+      house_no: '',
+      address: a.address,
+      barangay: '',
+      city: a.city,
+      province: a.province,
+      zip: a.zip,
+      make_default: false,
+    };
+    this.showAddAddress = true;
+  }
+
+  cancelEditAddress(): void {
+    this.editingAddressId = null;
+    this.newAddress = this.blankAddress();
+    this.showAddAddress = false;
   }
 
   onAddressPicked(d: AddressParts): void {
@@ -446,7 +468,6 @@ export class ProfilePage implements OnInit {
           handler: async () => {
             try {
               await this.addressSvc.remove(id);
-              this.haptics.medium();
               this.addresses.set(await this.addressSvc.getAll());
             } catch {
               await this.toast('Could not delete this address. Please try again.');

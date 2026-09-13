@@ -32,6 +32,10 @@ export class TopBarComponent {
   // Home flips it back to false once the page is scrolled past the hero.
   @Input() transparent = false;
 
+  // Home already surfaces Profile via the bottom tab bar, so it hides this
+  // duplicate entry point; every other tab page keeps showing it.
+  @Input() showProfileIcon = true;
+
   // Bumps the cart badge whenever the count changes, instead of it just
   // silently updating — a small nudge that something was actually added.
   readonly bumping = signal(false);

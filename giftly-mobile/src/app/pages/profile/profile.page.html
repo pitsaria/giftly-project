@@ -132,7 +132,7 @@
 
     <!-- ADDRESSES -->
     <div class="tab-panel" *ngIf="tab() === 'addresses' && !loading() && !error()">
-      <ion-button expand="block" fill="outline" (click)="showAddAddress = !showAddAddress">
+      <ion-button expand="block" fill="outline" (click)="showAddAddress ? cancelEditAddress() : (showAddAddress = true)">
         {{ showAddAddress ? 'Cancel' : '+ Add New Address' }}
       </ion-button>
 
@@ -172,32 +172,31 @@
         <ion-checkbox labelPlacement="end" [(ngModel)]="newAddress.make_default" class="default-check">
           Set as my default address
         </ion-checkbox>
-        <ion-button expand="block" class="giftly-btn-primary" (click)="addAddress()">Save Address</ion-button>
+        <ion-button expand="block" class="giftly-btn-primary" (click)="addAddress()">
+          {{ editingAddressId != null ? 'Save Changes' : 'Save Address' }}
+        </ion-button>
       </div>
 
-      <ion-item-sliding *ngFor="let a of addresses()">
-        <ion-item lines="none" class="address-card-wrap">
-          <div class="address-card" [class.is-default]="a.is_default">
-            <div class="info">
-              <h4>
-                {{ a.label || 'Address' }}
-                <span class="default-chip" *ngIf="a.is_default">DEFAULT</span>
-              </h4>
-              <p>{{ a.address }}, {{ a.city }}, {{ a.province }} {{ a.zip }}</p>
-            </div>
-            <div class="addr-actions">
-              <button class="set-default-btn" *ngIf="!a.is_default" (click)="setDefaultAddress(a.id)">
-                <ion-icon name="star-outline"></ion-icon>
-              </button>
-            </div>
-          </div>
-        </ion-item>
-        <ion-item-options side="end">
-          <ion-item-option color="danger" (click)="deleteAddress(a.id)">
-            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-          </ion-item-option>
-        </ion-item-options>
-      </ion-item-sliding>
+      <div class="address-card" *ngFor="let a of addresses()" [class.is-default]="a.is_default">
+        <div class="info">
+          <h4>
+            {{ a.label || 'Address' }}
+            <span class="default-chip" *ngIf="a.is_default">DEFAULT</span>
+          </h4>
+          <p>{{ a.address }}, {{ a.city }}, {{ a.province }} {{ a.zip }}</p>
+        </div>
+        <div class="addr-actions">
+          <button class="set-default-btn" *ngIf="!a.is_default" (click)="setDefaultAddress(a.id)">
+            <ion-icon name="star-outline"></ion-icon>
+          </button>
+          <button class="edit-btn" (click)="editAddress(a)">
+            <ion-icon name="create-outline"></ion-icon>
+          </button>
+          <button class="delete-btn" (click)="deleteAddress(a.id)">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+        </div>
+      </div>
       <p class="empty-msg" *ngIf="!addresses().length">You haven't added any addresses yet.</p>
     </div>
 

@@ -411,6 +411,8 @@ case 'cart/verify-stock':
         $addressSvc = new AddressService($conn);
         if ($method == 'DELETE' && isset($_GET['id'])) {
             $addressSvc->delete($_GET['id'], $headers);
+        } elseif ($method == 'PUT' && isset($_GET['id'])) {
+            $addressSvc->update($_GET['id'], $input, $headers);
         } else {
             sendError('Missing address ID or method not allowed', 400);
         }

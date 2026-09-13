@@ -227,24 +227,6 @@ h3 {
   margin: 12px 0 16px;
 }
 
-// ion-item (added for swipe-to-delete via ion-item-sliding) has its own
-// internal flex/slot layout that doesn't treat plain light-DOM children as a
-// simple row — so it's zeroed out and used only as an invisible wrapper; the
-// untouched .address-card <div> below still does 100% of the visual layout.
-ion-item.address-card-wrap {
-  --padding-start: 0;
-  --padding-end: 0;
-  --inner-padding-end: 0;
-  --padding-top: 0;
-  --padding-bottom: 0;
-  --background: transparent;
-  --min-height: auto;
-
-  &::part(native) {
-    padding: 0;
-  }
-}
-
 .address-card {
   background: #fff;
   border: 1px solid #f0f0f0;
@@ -294,7 +276,9 @@ ion-item.address-card-wrap {
     flex-shrink: 0;
   }
 
-  .set-default-btn {
+  .set-default-btn,
+  .edit-btn,
+  .delete-btn {
     background: #fff0f5;
     color: var(--ion-color-primary);
     border: none;
@@ -303,19 +287,11 @@ ion-item.address-card-wrap {
     border-radius: 50%;
   }
 
-}
-
-ion-item-option {
-  width: 56px;
-
-  // Ionic's own ::slotted([slot=icon-only]) rule forces the icon to 1.8em
-  // (relative to the item-option's font-size) — that shadow-internal rule's
-  // specificity (0,1,1) beats a plain `ion-item-option ion-icon` selector
-  // (0,0,2), so !important is the only reliable way to win. Matches the
-  // 20px trash icon size used on the cart page's swipe-to-delete.
-  ion-icon {
-    font-size: 20px !important;
+  .delete-btn {
+    background: #fdeeee;
+    color: var(--ion-color-danger);
   }
+
 }
 
 .default-check {

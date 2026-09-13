@@ -6,7 +6,7 @@
 
     <ion-buttons slot="end">
       <ion-button *ngIf="!auth.isLoggedIn()" class="login-pill" routerLink="/login">Login</ion-button>
-      <ion-button *ngIf="auth.isLoggedIn()" fill="clear" class="icon-btn" routerLink="/tabs/profile">
+      <ion-button *ngIf="auth.isLoggedIn() && showProfileIcon" fill="clear" class="icon-btn" routerLink="/tabs/profile">
         <ion-icon slot="icon-only" name="person-circle-outline"></ion-icon>
       </ion-button>
 

@@ -32,6 +32,10 @@ export class AddressService {
     return res.data.id;
   }
 
+  async update(id: number, address: NewAddress): Promise<void> {
+    await firstValueFrom(this.api.put('addresses/single', address, { id }));
+  }
+
   async setDefault(id: number): Promise<void> {
     await firstValueFrom(this.api.put('addresses/default', {}, { id }));
   }

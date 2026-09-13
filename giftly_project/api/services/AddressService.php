@@ -100,6 +100,68 @@ class AddressService {
         sendSuccess(['id' => $new_id, 'is_default' => $make_default], 'Address saved successfully');
     }
 
+    // PUT addresses/single?id=
+    //   Same body shape as create().
+    public function update($id, $input, $headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+            return;
+        }
+        $id = intval($id);
+
+        if (isset($input['label_choice'])) {
+            $choice = $input['label_choice'];
+            if ($choice === 'Other') {
+                $label_raw = trim($input['label_other'] ?? '');
+                if ($label_raw === '') $label_raw = 'Other';
+            } else {
+                $label_raw = in_array($choice, addr_labels(), true) ? $choice : 'Home';
+            }
+        } else {
+            $label_raw = trim($input['label'] ?? 'Home');
+        }
+        $label = $this->conn->real_escape_string(mb_substr($label_raw, 0, 50));
+
+        $house_no = trim($input['house_no'] ?? '');
+        $street   = trim($input['address'] ?? '');
+        $barangay = trim($input['barangay'] ?? '');
+        $line = trim($house_no . ' ' . $street);
+        if ($barangay !== '') {
+            $line .= ($line !== '' ? ', ' : '')
+                   . (preg_match('/^(brgy|barangay|bgy)\b/i', $barangay) ? $barangay : 'Brgy. ' . $barangay);
+        }
+        $address  = $this->conn->real_escape_string(mb_substr($line, 0, 255));
+        $city     = $this->conn->real_escape_string($input['city'] ?? '');
+        $province = $this->conn->real_escape_string($input['province'] ?? '');
+        $zip      = $this->conn->real_escape_string($input['zip'] ?? '');
+
+        if ($address === '' || $city === '' || $province === '' || $zip === '') {
+            sendError('Street address, city, province, and ZIP are required');
+            return;
+        }
+
+        $exists = $this->conn->query("SELECT id FROM addresses WHERE id = $id AND user_id = $user_id");
+        if (!$exists || $exists->num_rows === 0) {
+            sendError('Address not found', 404);
+            return;
+        }
+
+        $ok = $this->conn->query("UPDATE addresses SET label = '$label', address = '$address',
+                                  city = '$city', province = '$province', zip = '$zip'
+                                  WHERE id = $id AND user_id = $user_id");
+        if (!$ok) {
+            sendError('Failed to update address: ' . $this->conn->error);
+            return;
+        }
+
+        if (!empty($input['make_default'])) {
+            addr_set_default($this->conn, $user_id, $id);
+        }
+
+        sendSuccess(['id' => $id], 'Address updated successfully');
+    }
+
     // PUT addresses/default?id=
     public function setDefault($id, $headers) {
         $user_id = $this->getUserId($headers);
