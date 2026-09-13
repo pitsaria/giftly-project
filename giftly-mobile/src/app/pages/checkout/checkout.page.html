@@ -194,6 +194,29 @@
     </p>
   </div>
 
+  <h2 class="section-title"><ion-icon name="bag-handle-outline"></ion-icon> Your Order</h2>
+  <div class="order-items">
+    <div class="order-item" *ngFor="let item of cartItems()">
+      <img [src]="item.image | imgUrl" [alt]="item.name" />
+      <div class="oi-text">
+        <span class="oi-name">
+          {{ item.name }}
+          <span class="oi-sale-badge" *ngIf="item.on_sale">SALE</span>
+        </span>
+        <span class="oi-variant" *ngIf="item.selected_color || item.selected_size">
+          <span *ngIf="item.selected_color">Color: {{ item.selected_color }}</span>
+          <span *ngIf="item.selected_color && item.selected_size"> · </span>
+          <span *ngIf="item.selected_size">Size: {{ item.selected_size }}</span>
+        </span>
+        <span class="oi-meta">
+          x{{ item.quantity }} · ₱{{ item.price | number: '1.2-2' }}
+          <span class="oi-was" *ngIf="item.on_sale">₱{{ item.list_price | number: '1.2-2' }}</span>
+        </span>
+      </div>
+      <span class="oi-sub">₱{{ item.subtotal | number: '1.2-2' }}</span>
+    </div>
+  </div>
+
   <h2 class="section-title"><ion-icon name="pricetag-outline"></ion-icon> Promo Code</h2>
   <div class="promo-row" *ngIf="!promoEval()?.code">
     <ion-input placeholder="Enter code" fill="outline" [(ngModel)]="promoCodeInput" class="field promo-input"></ion-input>

@@ -19,7 +19,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline, hourglassOutline } from 'ionicons/icons';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline, hourglassOutline, bagHandleOutline } from 'ionicons/icons';
 import { Address, CartItem, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { ProfileService } from '../../core/profile.service';
@@ -132,7 +132,7 @@ export class CheckoutPage implements OnInit {
   readonly applyingCode = signal(false);
 
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline, hourglassOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline, hourglassOutline, bagHandleOutline });
   }
 
   async ngOnInit(): Promise<void> {
