@@ -19,7 +19,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline } from 'ionicons/icons';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline } from 'ionicons/icons';
 import { Address, CartItem, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { ProfileService } from '../../core/profile.service';
@@ -111,13 +111,17 @@ export class CheckoutPage implements OnInit {
   deliveryTime = '08:00';
   // Blocks picking a past date outright, and a past time when the picked
   // date is today — same "can't book what's already gone" rule as the
-  // server-side check in placeOrder() below.
+  // server-side check in placeOrder() below. Delivery hours are also
+  // clamped to 8 AM-8 PM, matching checkout_selected.php's own note/clamp.
   readonly minDate = new Date().toISOString().substring(0, 10);
-  get minTime(): string | undefined {
-    return this.deliveryDate === this.minDate
-      ? new Date().toTimeString().substring(0, 5)
-      : undefined;
+  static readonly OPEN_TIME = '08:00';
+  static readonly CLOSE_TIME = '20:00';
+  get minTime(): string {
+    if (this.deliveryDate !== this.minDate) return CheckoutPage.OPEN_TIME;
+    const nowTime = new Date().toTimeString().substring(0, 5);
+    return nowTime > CheckoutPage.OPEN_TIME ? nowTime : CheckoutPage.OPEN_TIME;
   }
+  readonly maxTime = CheckoutPage.CLOSE_TIME;
   giftMessage = '';
   paymentMethod: PaymentMethod = 'cod';
   cardHolder = '';
@@ -132,7 +136,7 @@ export class CheckoutPage implements OnInit {
   readonly applyingCode = signal(false);
 
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline, timeOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -358,6 +362,10 @@ export class CheckoutPage implements OnInit {
       const picked = new Date(`${this.deliveryDate}T${this.deliveryTime.length === 5 ? this.deliveryTime + ':00' : this.deliveryTime}`);
       if (!isNaN(picked.getTime()) && picked.getTime() < Date.now()) {
         missing.push('Delivery Date/Time (cannot be in the past)');
+      }
+      const timeOnly = this.deliveryTime.substring(0, 5);
+      if (timeOnly < CheckoutPage.OPEN_TIME || timeOnly > CheckoutPage.CLOSE_TIME) {
+        missing.push('Delivery Time (between 8:00 AM and 8:00 PM)');
       }
     }
     if (this.deliveryType === 'recipient') {

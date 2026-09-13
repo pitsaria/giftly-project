@@ -332,6 +332,24 @@ class BoxService {
             $delivery_time = $this->conn->real_escape_string($input['delivery_time'] ?? '08:00:00');
             $delivery_type = isset($input['delivery_type']) ? $input['delivery_type'] : 'me';
 
+            // Delivery hours are strictly 8:00 AM-8:00 PM, and can't be in the past —
+            // mirrors checkout_selected.php's client-side clamp/note, enforced here
+            // server-side since neither the mobile app nor a raw API call had this checked.
+            $delivery_ts = strtotime("$delivery_date $delivery_time");
+            if ($delivery_ts === false) {
+                $this->conn->rollback();
+                sendError('Invalid delivery date/time.');
+            }
+            $delivery_time_only = date('H:i:s', $delivery_ts);
+            if ($delivery_time_only < '08:00:00' || $delivery_time_only > '20:00:00') {
+                $this->conn->rollback();
+                sendError('Delivery hours are between 8:00 AM and 8:00 PM.');
+            }
+            if ($delivery_ts < time()) {
+                $this->conn->rollback();
+                sendError('Delivery date/time cannot be in the past.');
+            }
+
             // Card payment: validate, keep only last 4 + holder name.
             $card_last4 = '';
             $card_holder = '';

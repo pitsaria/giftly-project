@@ -92,6 +92,22 @@ class OrderService {
         $payment_method = $input['payment_method'] ?? 'cod';
         $delivery_date = $input['delivery_date'] ?? date('Y-m-d', strtotime('+3 days'));
         $delivery_time = $input['delivery_time'] ?? '08:00:00';
+
+        // Delivery hours are strictly 8:00 AM-8:00 PM, and can't be in the past —
+        // mirrors checkout_selected.php's client-side clamp/note, enforced here
+        // server-side since neither the mobile app nor a raw API call had this checked.
+        $delivery_ts = strtotime("$delivery_date $delivery_time");
+        if ($delivery_ts === false) {
+            sendError('Invalid delivery date/time.');
+        }
+        $delivery_time_only = date('H:i:s', $delivery_ts);
+        if ($delivery_time_only < '08:00:00' || $delivery_time_only > '20:00:00') {
+            sendError('Delivery hours are between 8:00 AM and 8:00 PM.');
+        }
+        if ($delivery_ts < time()) {
+            sendError('Delivery date/time cannot be in the past.');
+        }
+
         $gift_message = $input['gift_message'] ?? '';
         $recipient_name = $input['recipient_name'] ?? null;
         $recipient_phone = $input['recipient_phone'] ?? null;

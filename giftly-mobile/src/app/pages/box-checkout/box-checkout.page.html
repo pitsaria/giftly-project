@@ -86,8 +86,9 @@
 
     <div class="field-row">
       <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [min]="minDate" [(ngModel)]="deliveryDate" class="field"></ion-input>
-      <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [min]="minTime" [(ngModel)]="deliveryTime" class="field"></ion-input>
+      <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [min]="minTime" [max]="maxTime" [(ngModel)]="deliveryTime" class="field"></ion-input>
     </div>
+    <p class="delivery-hours-note"><ion-icon name="time-outline"></ion-icon> Delivery hours are strictly between 8:00 AM and 8:00 PM.</p>
 
     <ng-container *ngIf="addons().length">
       <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons <span class="optional-tag">(optional)</span></h2>
