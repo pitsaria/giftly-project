@@ -18,7 +18,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline, timeOutline } from 'ionicons/icons';
+import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline, timeOutline, hourglassOutline } from 'ionicons/icons';
 import { Address, Box, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
 import { ProfileService } from '../../core/profile.service';
@@ -101,21 +101,17 @@ export class BoxCheckoutPage implements OnInit {
   recipientName = '';
   recipientPhoneDigits = '';
   recipientPhoneTouched = false;
-  deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().substring(0, 10);
-  deliveryTime = '08:00';
-  // Blocks picking a past date outright, and a past time when the picked
-  // date is today — same "can't book what's already gone" rule as the
-  // server-side check in placeOrder() below. Delivery hours are also
-  // clamped to 8 AM-8 PM, matching checkout_selected.php's own note/clamp.
-  readonly minDate = new Date().toISOString().substring(0, 10);
+  static readonly PROCESSING_DAYS = 3;
   static readonly OPEN_TIME = '08:00';
   static readonly CLOSE_TIME = '20:00';
-  get minTime(): string {
-    if (this.deliveryDate !== this.minDate) return BoxCheckoutPage.OPEN_TIME;
-    const nowTime = new Date().toTimeString().substring(0, 5);
-    return nowTime > BoxCheckoutPage.OPEN_TIME ? nowTime : BoxCheckoutPage.OPEN_TIME;
-  }
+  // The earliest bookable date/time — mirrors checkout_selected.php's own
+  // rules: at least 3 days out (processing/prep time) and within the 8
+  // AM-8 PM delivery window, both enforced again server-side in placeOrder().
+  readonly minDate = new Date(Date.now() + BoxCheckoutPage.PROCESSING_DAYS * 86400000).toISOString().substring(0, 10);
+  readonly minTime = BoxCheckoutPage.OPEN_TIME;
   readonly maxTime = BoxCheckoutPage.CLOSE_TIME;
+  deliveryDate = this.minDate;
+  deliveryTime = BoxCheckoutPage.OPEN_TIME;
   paymentMethod: PaymentMethod = 'cod';
   readonly onlineEnabled = signal(false);
   cardHolder = '';
@@ -149,7 +145,7 @@ export class BoxCheckoutPage implements OnInit {
   readonly applyingCode = signal(false);
 
   constructor() {
-    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline, timeOutline });
+    addIcons({ personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline, timeOutline, hourglassOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -310,11 +306,10 @@ export class BoxCheckoutPage implements OnInit {
     if (!/^\d{10}$/.test(this.senderPhoneDigits)) missing.push('Sender Phone (10 digits after +63)');
     if (!this.deliveryDate) missing.push('Delivery Date');
     if (!this.deliveryTime) missing.push('Delivery Time');
-    if (this.deliveryDate && this.deliveryTime) {
-      const picked = new Date(`${this.deliveryDate}T${this.deliveryTime.length === 5 ? this.deliveryTime + ':00' : this.deliveryTime}`);
-      if (!isNaN(picked.getTime()) && picked.getTime() < Date.now()) {
-        missing.push('Delivery Date/Time (cannot be in the past)');
-      }
+    if (this.deliveryDate && this.deliveryDate < this.minDate) {
+      missing.push(`Delivery Date (at least ${BoxCheckoutPage.PROCESSING_DAYS} days out)`);
+    }
+    if (this.deliveryTime) {
       const timeOnly = this.deliveryTime.substring(0, 5);
       if (timeOnly < BoxCheckoutPage.OPEN_TIME || timeOnly > BoxCheckoutPage.CLOSE_TIME) {
         missing.push('Delivery Time (between 8:00 AM and 8:00 PM)');

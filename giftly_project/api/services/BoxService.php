@@ -332,9 +332,10 @@ class BoxService {
             $delivery_time = $this->conn->real_escape_string($input['delivery_time'] ?? '08:00:00');
             $delivery_type = isset($input['delivery_type']) ? $input['delivery_type'] : 'me';
 
-            // Delivery hours are strictly 8:00 AM-8:00 PM, and can't be in the past —
-            // mirrors checkout_selected.php's client-side clamp/note, enforced here
-            // server-side since neither the mobile app nor a raw API call had this checked.
+            // Delivery hours are strictly 8:00 AM-8:00 PM, and the date must be at
+            // least 3 days out (processing/prep time) — mirrors checkout_selected.php's
+            // client-side clamp/note, enforced here server-side since neither the
+            // mobile app nor a raw API call had this checked.
             $delivery_ts = strtotime("$delivery_date $delivery_time");
             if ($delivery_ts === false) {
                 $this->conn->rollback();
@@ -345,9 +346,10 @@ class BoxService {
                 $this->conn->rollback();
                 sendError('Delivery hours are between 8:00 AM and 8:00 PM.');
             }
-            if ($delivery_ts < time()) {
+            $min_delivery_date = date('Y-m-d', strtotime('+3 days'));
+            if ($delivery_date < $min_delivery_date) {
                 $this->conn->rollback();
-                sendError('Delivery date/time cannot be in the past.');
+                sendError('Delivery date must be at least 3 days out to allow for processing.');
             }
 
             // Card payment: validate, keep only last 4 + holder name.

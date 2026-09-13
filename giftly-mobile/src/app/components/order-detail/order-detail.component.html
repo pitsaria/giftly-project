@@ -42,46 +42,6 @@
       </div>
     </ng-container>
 
-    <h3 class="section-title">Items</h3>
-    <div class="item-row" *ngFor="let item of d.items">
-      <img [src]="item.image | imgUrl" [alt]="item.name" />
-      <div class="item-info">
-        <div class="item-name">
-          {{ item.name }}
-          <span class="free-badge" *ngIf="d.free_item_product_id === item.product_id">FREE</span>
-        </div>
-        <div class="item-variant" *ngIf="item.selected_color || item.selected_size">
-          <span *ngIf="item.selected_color">Color: {{ item.selected_color }}</span>
-          <span *ngIf="item.selected_color && item.selected_size"> · </span>
-          <span *ngIf="item.selected_size">Size: {{ item.selected_size }}</span>
-        </div>
-        <div class="item-meta">Qty {{ item.quantity }} · ₱{{ item.price }}</div>
-      </div>
-      <ion-button
-        *ngIf="d.received_at"
-        size="small"
-        fill="clear"
-        (click)="openReview(item)"
-      >
-        <ion-icon slot="start" name="star-outline"></ion-icon> Review
-      </ion-button>
-    </div>
-
-    <ion-button
-      expand="block"
-      class="giftly-btn-primary"
-      *ngIf="canConfirmReceived()"
-      [disabled]="confirming()"
-      (click)="confirmReceived()"
-    >
-      {{ confirming() ? 'Confirming...' : 'Confirm order received' }}
-    </ion-button>
-
-    <div class="gift-message" *ngIf="d.gift_message">
-      <div class="label">Gift Message</div>
-      <p>{{ d.gift_message }}</p>
-    </div>
-
     <h3 class="section-title">Delivery</h3>
     <div class="info-box">
       <div class="row"><span>Address</span><strong>{{ d.address }}, {{ d.city }}</strong></div>
@@ -110,6 +70,49 @@
       (click)="payNow()"
     >
       {{ paying() ? 'Opening…' : 'Pay now' }}
+    </ion-button>
+
+    <div class="gift-message" *ngIf="d.gift_message">
+      <div class="label">Gift Message</div>
+      <p>{{ d.gift_message }}</p>
+    </div>
+
+    <h3 class="section-title">Items</h3>
+    <div class="item-row" *ngFor="let item of d.items">
+      <img [src]="item.image | imgUrl" [alt]="item.name" />
+      <div class="item-info">
+        <div class="item-name">
+          {{ item.name }}
+          <span class="free-badge" *ngIf="d.free_item_product_id === item.product_id">FREE</span>
+        </div>
+        <div class="item-variant" *ngIf="item.selected_color || item.selected_size">
+          <span *ngIf="item.selected_color">Color: {{ item.selected_color }}</span>
+          <span *ngIf="item.selected_color && item.selected_size"> · </span>
+          <span *ngIf="item.selected_size">Size: {{ item.selected_size }}</span>
+        </div>
+        <div class="item-meta">Qty {{ item.quantity }} · ₱{{ item.price }}</div>
+        <div class="item-whats-inside" *ngIf="whatsInsideLines(item).length">
+          <strong>What's Inside:</strong> {{ whatsInsideLines(item).join(', ') }}
+        </div>
+      </div>
+      <ion-button
+        *ngIf="d.received_at"
+        size="small"
+        fill="clear"
+        (click)="openReview(item)"
+      >
+        <ion-icon slot="start" name="star-outline"></ion-icon> Review
+      </ion-button>
+    </div>
+
+    <ion-button
+      expand="block"
+      class="giftly-btn-primary"
+      *ngIf="canConfirmReceived()"
+      [disabled]="confirming()"
+      (click)="confirmReceived()"
+    >
+      {{ confirming() ? 'Confirming...' : 'Confirm order received' }}
     </ion-button>
 
     <div class="cancel-note pending" *ngIf="d.cancel_status === 'requested'">

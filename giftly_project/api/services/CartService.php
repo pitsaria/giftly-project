@@ -29,7 +29,8 @@ class CartService {
                 FROM carts c
                 JOIN products p ON c.product_id = p.id
                 LEFT JOIN product_colors pc ON pc.product_id = c.product_id AND pc.color_name = c.selected_color AND c.selected_color <> ''
-                WHERE c.user_id = $user_id";
+                WHERE c.user_id = $user_id
+                ORDER BY c.id DESC";
 
         $result = $this->conn->query($sql);
         $items = [];

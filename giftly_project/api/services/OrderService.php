@@ -93,9 +93,10 @@ class OrderService {
         $delivery_date = $input['delivery_date'] ?? date('Y-m-d', strtotime('+3 days'));
         $delivery_time = $input['delivery_time'] ?? '08:00:00';
 
-        // Delivery hours are strictly 8:00 AM-8:00 PM, and can't be in the past —
-        // mirrors checkout_selected.php's client-side clamp/note, enforced here
-        // server-side since neither the mobile app nor a raw API call had this checked.
+        // Delivery hours are strictly 8:00 AM-8:00 PM, and the date must be at
+        // least 3 days out (processing/prep time) — mirrors checkout_selected.php's
+        // client-side clamp/note, enforced here server-side since neither the
+        // mobile app nor a raw API call had this checked.
         $delivery_ts = strtotime("$delivery_date $delivery_time");
         if ($delivery_ts === false) {
             sendError('Invalid delivery date/time.');
@@ -104,8 +105,9 @@ class OrderService {
         if ($delivery_time_only < '08:00:00' || $delivery_time_only > '20:00:00') {
             sendError('Delivery hours are between 8:00 AM and 8:00 PM.');
         }
-        if ($delivery_ts < time()) {
-            sendError('Delivery date/time cannot be in the past.');
+        $min_delivery_date = date('Y-m-d', strtotime('+3 days'));
+        if ($delivery_date < $min_delivery_date) {
+            sendError('Delivery date must be at least 3 days out to allow for processing.');
         }
 
         $gift_message = $input['gift_message'] ?? '';
@@ -293,7 +295,10 @@ class OrderService {
         
         // Same color-photo swap as CartService::getCart() — a chosen Occasion
         // Box color shows its own photo instead of the product's base image.
-        $items = $this->conn->query("SELECT oi.*, p.name, p.image, pc.image AS color_image
+        // whats_inside is included raw (one line per item) for Occasion
+        // Box/Basket items — the client splits it the same way
+        // catalog_whats_inside_lines() does server-side elsewhere.
+        $items = $this->conn->query("SELECT oi.*, p.name, p.image, p.whats_inside, pc.image AS color_image
                                      FROM order_items oi
                                      JOIN products p ON oi.product_id = p.id
                                      LEFT JOIN product_colors pc ON pc.product_id = oi.product_id

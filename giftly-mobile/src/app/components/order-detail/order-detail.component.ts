@@ -65,6 +65,16 @@ export class OrderDetailComponent implements OnInit {
     );
   }
 
+  // Same split/trim/filter as catalog_whats_inside_lines() in catalog_lib.php —
+  // Occasion Box / Basket items carry their own "What's Inside" list.
+  whatsInsideLines(item: OrderItem): string[] {
+    if (!item.whats_inside) return [];
+    return item.whats_inside
+      .split(/\r\n|\r|\n/)
+      .map((l) => l.trim())
+      .filter((l) => l !== '');
+  }
+
   async payNow(): Promise<void> {
     const d = this.detail();
     if (!d) return;
