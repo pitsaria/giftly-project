@@ -103,6 +103,15 @@ export class BoxCheckoutPage implements OnInit {
   recipientPhoneTouched = false;
   deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().substring(0, 10);
   deliveryTime = '08:00';
+  // Blocks picking a past date outright, and a past time when the picked
+  // date is today — same "can't book what's already gone" rule as the
+  // server-side check in placeOrder() below.
+  readonly minDate = new Date().toISOString().substring(0, 10);
+  get minTime(): string | undefined {
+    return this.deliveryDate === this.minDate
+      ? new Date().toTimeString().substring(0, 5)
+      : undefined;
+  }
   paymentMethod: PaymentMethod = 'cod';
   readonly onlineEnabled = signal(false);
   cardHolder = '';
@@ -117,12 +126,13 @@ export class BoxCheckoutPage implements OnInit {
     const sub = this.box()?.subtotal ?? 0;
     return sub > 0 && sub < 300 ? 50 : 0;
   });
-  readonly addonsTotal = computed(() => {
+  // The order summary lists each selected add-on by name rather than just
+  // the combined total.
+  readonly selectedAddonsList = computed(() => {
     const ids = new Set(this.selectedAddonIds());
-    return this.addons()
-      .filter((a) => ids.has(a.id))
-      .reduce((sum, a) => sum + a.price, 0);
+    return this.addons().filter((a) => ids.has(a.id));
   });
+  readonly addonsTotal = computed(() => this.selectedAddonsList().reduce((sum, a) => sum + a.price, 0));
   readonly grandTotal = computed(() => {
     const ev = this.promoEval();
     const base = ev ? ev.total : (this.box()?.subtotal ?? 0) + this.shippingFee() + (this.box()?.box_price ?? 0);
@@ -296,6 +306,12 @@ export class BoxCheckoutPage implements OnInit {
     if (!/^\d{10}$/.test(this.senderPhoneDigits)) missing.push('Sender Phone (10 digits after +63)');
     if (!this.deliveryDate) missing.push('Delivery Date');
     if (!this.deliveryTime) missing.push('Delivery Time');
+    if (this.deliveryDate && this.deliveryTime) {
+      const picked = new Date(`${this.deliveryDate}T${this.deliveryTime.length === 5 ? this.deliveryTime + ':00' : this.deliveryTime}`);
+      if (!isNaN(picked.getTime()) && picked.getTime() < Date.now()) {
+        missing.push('Delivery Date/Time (cannot be in the past)');
+      }
+    }
     if (this.deliveryType === 'recipient') {
       if (!this.recipientName.trim()) missing.push('Recipient Name');
       if (!/^\d{10}$/.test(this.recipientPhoneDigits)) missing.push('Recipient Phone (10 digits after +63)');

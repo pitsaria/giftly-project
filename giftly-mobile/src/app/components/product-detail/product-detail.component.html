@@ -3,7 +3,7 @@
     <button class="close-btn" (click)="dismiss()" aria-label="Close">
       <ion-icon name="close-outline"></ion-icon>
     </button>
-    <img [src]="product.image | imgUrl" [alt]="product.name" class="product-image" />
+    <img [src]="displayImage() | imgUrl" [alt]="product.name" class="product-image" />
     <div class="top-right-actions">
       <button class="share-btn" (click)="share()" aria-label="Share">
         <ion-icon name="share-social-outline"></ion-icon>
@@ -61,6 +61,13 @@
         {{ s.size_name }}
       </button>
     </div>
+  </div>
+
+  <div class="whats-inside" *ngIf="whatsInsideLines().length">
+    <span>What's Inside</span>
+    <ul>
+      <li *ngFor="let line of whatsInsideLines()">{{ line }}</li>
+    </ul>
   </div>
 
   <div class="quantity-row" *ngIf="mode === 'cart' && inStock()">

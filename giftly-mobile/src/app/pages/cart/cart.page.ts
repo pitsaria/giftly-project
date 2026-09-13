@@ -23,9 +23,10 @@ import {
   AlertController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline } from 'ionicons/icons';
+import { removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline, heartOutline } from 'ionicons/icons';
 import { CartItem, PromoFreeItem, PromoFreeItemNudge } from '../../core/models';
 import { CartService } from '../../core/cart.service';
+import { WishlistService } from '../../core/wishlist.service';
 import { PromoService } from '../../core/promo.service';
 import { HapticsService } from '../../core/haptics.service';
 import { describeError } from '../../core/http-error';
@@ -63,6 +64,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
 })
 export class CartPage implements OnInit {
   private cart = inject(CartService);
+  private wishlist = inject(WishlistService);
   private promoSvc = inject(PromoService);
   private haptics = inject(HapticsService);
   private router = inject(Router);
@@ -84,7 +86,7 @@ export class CartPage implements OnInit {
   private promoTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline });
+    addIcons({ removeOutline, addOutline, trashOutline, bagHandleOutline, giftOutline, heartOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -227,6 +229,26 @@ export class CartPage implements OnInit {
       ],
     });
     await alert.present();
+  }
+
+  // Moves a cart line to the wishlist — mirrors the reverse action already
+  // on the Wishlist tab (addWishlistItemToCart in profile.page.ts). toggle()
+  // flips whichever way the item isn't already, so refresh wishlist state
+  // first and only call it when the item isn't already wishlisted.
+  async moveToWishlist(item: CartItem): Promise<void> {
+    try {
+      await this.wishlist.getWishlist();
+      if (!this.wishlist.productIds().has(item.id)) {
+        await this.wishlist.toggle(item.id);
+      }
+      await this.cart.removeItem(item.cart_id);
+      await this.refresh();
+      const t = await this.toastCtrl.create({ message: 'Moved to Wishlist', duration: 1800 });
+      await t.present();
+    } catch {
+      const t = await this.toastCtrl.create({ message: 'Could not move this item to your wishlist.', duration: 2000 });
+      await t.present();
+    }
   }
 
   async checkout(): Promise<void> {

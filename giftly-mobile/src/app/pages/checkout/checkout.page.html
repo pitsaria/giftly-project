@@ -80,12 +80,20 @@
   </ng-container>
 
   <div class="field-row">
-    <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
-    <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
+    <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [min]="minDate" [(ngModel)]="deliveryDate" class="field"></ion-input>
+    <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [min]="minTime" [(ngModel)]="deliveryTime" class="field"></ion-input>
   </div>
 
   <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Message</h2>
-  <ion-textarea placeholder="Add a personal note (optional)" fill="outline" [(ngModel)]="giftMessage" class="field" [autoGrow]="true"></ion-textarea>
+  <ion-textarea
+    placeholder="Add a personal note (optional)"
+    fill="outline"
+    [(ngModel)]="giftMessage"
+    class="field"
+    [autoGrow]="true"
+    maxlength="300"
+    [counter]="true"
+  ></ion-textarea>
 
   <ng-container *ngIf="addons().length">
     <h2 class="section-title"><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons <span class="optional-tag">(optional)</span></h2>
@@ -202,9 +210,9 @@
       <span>{{ line.amount === 0 ? 'FREE' : '− ₱' + (absAmount(line.amount) | number: '1.2-2') }}</span>
     </div>
     <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
-    <div class="row addons" *ngIf="addonsTotal() > 0">
-      <span><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons</span>
-      <span>₱{{ addonsTotal() | number: '1.2-2' }}</span>
+    <div class="row addons" *ngFor="let a of selectedAddonsList()">
+      <span><ion-icon name="gift-outline"></ion-icon> {{ a.name }}</span>
+      <span>₱{{ a.price | number: '1.2-2' }}</span>
     </div>
     <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
   </div>

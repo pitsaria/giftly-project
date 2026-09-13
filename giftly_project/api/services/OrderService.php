@@ -275,13 +275,21 @@ class OrderService {
         
         $order_data = $order->fetch_assoc();
         
-        $items = $this->conn->query("SELECT oi.*, p.name, p.image 
-                                     FROM order_items oi 
-                                     JOIN products p ON oi.product_id = p.id 
+        // Same color-photo swap as CartService::getCart() — a chosen Occasion
+        // Box color shows its own photo instead of the product's base image.
+        $items = $this->conn->query("SELECT oi.*, p.name, p.image, pc.image AS color_image
+                                     FROM order_items oi
+                                     JOIN products p ON oi.product_id = p.id
+                                     LEFT JOIN product_colors pc ON pc.product_id = oi.product_id
+                                        AND pc.color_name = oi.selected_color AND oi.selected_color <> ''
                                      WHERE oi.order_id = $id");
-        
+
         $order_items = [];
         while ($item = $items->fetch_assoc()) {
+            if (!empty($item['color_image'])) {
+                $item['image'] = $item['color_image'];
+            }
+            unset($item['color_image']);
             $order_items[] = $item;
         }
         

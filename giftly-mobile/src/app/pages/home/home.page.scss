@@ -458,11 +458,19 @@ ion-content::part(scroll) {
       }
     }
 
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .buy-now-btn,
     .add-btn {
       background: none;
       border: none;
       color: var(--ion-color-primary);
-      font-size: 22px;
+      font-size: 20px;
       display: flex;
       transition: var(--giftly-press-transition), color 200ms ease;
 
@@ -470,13 +478,15 @@ ion-content::part(scroll) {
         transform: scale(0.9);
       }
 
+      &:disabled {
+        opacity: 0.4;
+      }
+    }
+
+    .add-btn {
       &.added {
         color: var(--giftly-success);
         animation: giftly-pop 350ms cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
-      &:disabled {
-        opacity: 0.4;
       }
     }
   }

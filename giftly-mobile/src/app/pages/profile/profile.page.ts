@@ -720,6 +720,11 @@ export class ProfilePage implements OnInit {
 
   async addWishlistItemToCart(productId: number): Promise<void> {
     try {
+      const cart = await this.cart.getCart();
+      if (cart.items.some((i) => i.id === productId)) {
+        await this.toast('Already in Cart');
+        return;
+      }
       await this.cart.addToCart(productId, 1);
       await this.toast('Added to cart');
     } catch {

@@ -34,6 +34,10 @@ export interface Product {
   // product_type === 'occasion_box' (see ProductService::attachVariants).
   colors?: ProductColor[];
   sizes?: ProductSize[];
+  // Raw "What's Inside" textarea (one line per item) — mirrors
+  // catalog_grid.php's whats_inside column, split client-side the same way
+  // catalog_whats_inside_lines() does server-side.
+  whats_inside?: string;
 }
 
 export interface ProductColor {
@@ -146,7 +150,12 @@ export interface OrderItem {
   quantity: number;
   price: string;
   name: string;
+  // Already swapped to the chosen color's own photo server-side when one was
+  // picked — see OrderService::getOrderDetails.
   image: string;
+  // Occasion Box variant chosen when this line was ordered — '' means none.
+  selected_color?: string;
+  selected_size?: string;
 }
 
 export interface Profile {

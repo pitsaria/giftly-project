@@ -72,6 +72,22 @@ export class ProductDetailComponent implements OnInit {
     return size ? size.price : this.product.price;
   }
 
+  // Swaps to the selected color's own photo — mirrors catalog_grid.php's
+  // swatch click handler (document.getElementById('catModalImg').src = c.image).
+  displayImage(): string {
+    const color = this.product.colors?.find((c) => c.color_name === this.selectedColor());
+    return color?.image || this.product.image;
+  }
+
+  // Same split/trim/filter as catalog_whats_inside_lines() in catalog_lib.php.
+  whatsInsideLines(): string[] {
+    if (!this.product.whats_inside) return [];
+    return this.product.whats_inside
+      .split(/\r\n|\r|\n/)
+      .map((l) => l.trim())
+      .filter((l) => l !== '');
+  }
+
   // Pushes the fresh count into the shared store — read by this sheet's own
   // rating line below and by whatever card opened it (Featured Products,
   // Shop grid), so both update the moment a review is submitted.

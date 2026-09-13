@@ -325,23 +325,41 @@
     margin-bottom: 6px;
   }
 
+  .card-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .buy-now-btn,
   .add-btn {
-    background: #f3f3f3;
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    color: var(--ion-color-primary);
     border: none;
     font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto;
     transition: var(--giftly-press-transition), background 200ms ease, color 200ms ease;
 
     &:active {
       transform: scale(0.9);
     }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .buy-now-btn {
+    background: var(--giftly-gradient);
+    color: #fff;
+  }
+
+  .add-btn {
+    background: #f3f3f3;
+    color: var(--ion-color-primary);
 
     &.added {
       background: var(--giftly-success-bg);

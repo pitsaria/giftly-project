@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Preferences } from '@capacitor/preferences';
 import {
   IonToolbar,
@@ -27,7 +27,7 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline } from 'ionicons/icons';
+import { heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline, flashOutline } from 'ionicons/icons';
 import { Category, Product, ProductType } from '../../core/models';
 import { ProductService, ProductSort } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
@@ -79,6 +79,7 @@ export class ShopPage implements OnInit {
   private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   // Signals, not plain fields: a signal write always schedules a re-render
   // regardless of zone/zoneless configuration, unlike a plain field mutated
@@ -125,7 +126,7 @@ export class ShopPage implements OnInit {
   }
 
   constructor() {
-    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline });
+    addIcons({ heart, heartOutline, addCircle, checkmarkCircle, star, timeOutline, closeOutline, optionsOutline, chevronUpOutline, flashOutline });
   }
 
   toggleFilters(): void {
@@ -356,6 +357,33 @@ export class ShopPage implements OnInit {
       await this.toast(`Added ${product.name} to cart`);
     } catch (err: any) {
       await this.toast(err?.error?.error ?? 'Could not add to cart. Please try again.');
+    }
+  }
+
+  // Skips the cart page entirely — adds the item (if not already there) and
+  // sends the customer straight to Checkout with just this line selected.
+  async buyNow(product: Product, ev: Event): Promise<void> {
+    ev.stopPropagation();
+    if (!this.auth.isLoggedIn()) {
+      await this.toast('Please log in to checkout');
+      return;
+    }
+    if (product.quantity <= 0) {
+      await this.toast('This item is out of stock');
+      return;
+    }
+    try {
+      await this.cart.addToCart(product.id, 1);
+      const cart = await this.cart.getCart();
+      const line = cart.items.find((i) => i.id === product.id);
+      if (!line) {
+        await this.toast('Could not start checkout. Please try again.');
+        return;
+      }
+      this.cart.selectedCartIds.set([line.cart_id]);
+      this.router.navigateByUrl('/checkout');
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? 'Could not start checkout. Please try again.');
     }
   }
 

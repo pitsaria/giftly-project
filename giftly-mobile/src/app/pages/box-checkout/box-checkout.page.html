@@ -85,8 +85,8 @@
     </ng-container>
 
     <div class="field-row">
-      <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryDate" class="field"></ion-input>
-      <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [(ngModel)]="deliveryTime" class="field"></ion-input>
+      <ion-input type="date" label="Delivery Date *" labelPlacement="stacked" fill="outline" [min]="minDate" [(ngModel)]="deliveryDate" class="field"></ion-input>
+      <ion-input type="time" label="Delivery Time *" labelPlacement="stacked" fill="outline" [min]="minTime" [(ngModel)]="deliveryTime" class="field"></ion-input>
     </div>
 
     <ng-container *ngIf="addons().length">
@@ -227,9 +227,9 @@
       </div>
       <div class="row" *ngIf="b.box_price > 0"><span>Box</span><span>₱{{ b.box_price | number: '1.2-2' }}</span></div>
       <div class="row"><span>Shipping</span><span>{{ shippingFee() ? '₱' + shippingFee() : 'Free' }}</span></div>
-      <div class="row addons" *ngIf="addonsTotal() > 0">
-        <span><ion-icon name="gift-outline"></ion-icon> Gift Wrapping &amp; Add-ons</span>
-        <span>₱{{ addonsTotal() | number: '1.2-2' }}</span>
+      <div class="row addons" *ngFor="let a of selectedAddonsList()">
+        <span><ion-icon name="gift-outline"></ion-icon> {{ a.name }}</span>
+        <span>₱{{ a.price | number: '1.2-2' }}</span>
       </div>
       <div class="row total"><span>Total</span><span>₱{{ grandTotal() | number: '1.2-2' }}</span></div>
     </div>

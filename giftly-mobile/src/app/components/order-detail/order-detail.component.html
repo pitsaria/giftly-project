@@ -50,6 +50,11 @@
           {{ item.name }}
           <span class="free-badge" *ngIf="d.free_item_product_id === item.product_id">FREE</span>
         </div>
+        <div class="item-variant" *ngIf="item.selected_color || item.selected_size">
+          <span *ngIf="item.selected_color">Color: {{ item.selected_color }}</span>
+          <span *ngIf="item.selected_color && item.selected_size"> · </span>
+          <span *ngIf="item.selected_size">Size: {{ item.selected_size }}</span>
+        </div>
         <div class="item-meta">Qty {{ item.quantity }} · ₱{{ item.price }}</div>
       </div>
       <ion-button
@@ -72,10 +77,18 @@
       {{ confirming() ? 'Confirming...' : 'Confirm order received' }}
     </ion-button>
 
+    <div class="gift-message" *ngIf="d.gift_message">
+      <div class="label">Gift Message</div>
+      <p>{{ d.gift_message }}</p>
+    </div>
+
     <h3 class="section-title">Delivery</h3>
     <div class="info-box">
       <div class="row"><span>Address</span><strong>{{ d.address }}, {{ d.city }}</strong></div>
+      <div class="row"><span>Sent By</span><strong>{{ d.fullname }}</strong></div>
+      <div class="row" *ngIf="d.sender_phone"><span>Sender Phone</span><strong>{{ d.sender_phone }}</strong></div>
       <div class="row" *ngIf="d.recipient_name"><span>Recipient</span><strong>{{ d.recipient_name }}</strong></div>
+      <div class="row" *ngIf="d.recipient_phone"><span>Recipient Phone</span><strong>{{ d.recipient_phone }}</strong></div>
       <div class="row"><span>Delivery Date</span><strong>{{ d.delivery_date | date: 'mediumDate' }}</strong></div>
       <div class="row"><span>Delivery Time</span><strong>{{ d.delivery_time }}</strong></div>
       <div class="row"><span>Payment</span><strong>{{ paymentLabel(d) }}</strong></div>
@@ -98,11 +111,6 @@
     >
       {{ paying() ? 'Opening…' : 'Pay now' }}
     </ion-button>
-
-    <div class="gift-message" *ngIf="d.gift_message">
-      <div class="label">Gift Message</div>
-      <p>{{ d.gift_message }}</p>
-    </div>
 
     <div class="cancel-note pending" *ngIf="d.cancel_status === 'requested'">
       Cancellation requested — waiting for an admin to review it.
