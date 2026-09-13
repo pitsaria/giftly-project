@@ -125,6 +125,8 @@ if (isset($_SESSION['user_id'])) {
     @keyframes catModalIn { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
     .cat-modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; transition: 0.2s; z-index: 2; }
     .cat-modal-close:hover { color: #ff8ba7; transform: rotate(90deg); }
+    .cat-modal-share { position: absolute; top: 17px; right: 58px; font-size: 16px; color: #888; cursor: pointer; transition: 0.2s; z-index: 2; width: 30px; height: 30px; border-radius: 50%; background: #f4f4f6; display: flex; align-items: center; justify-content: center; }
+    .cat-modal-share:hover { color: #ff8ba7; background: #fff0f5; }
     .cat-modal-left { flex: 0.9; min-width: 300px; background: #fafafa; padding: 40px; display: flex; justify-content: center; align-items: center; }
     .cat-modal-left img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 16px; }
     .cat-modal-right { flex: 1.1; min-width: 300px; padding: 45px 40px 35px; display: flex; flex-direction: column; }
@@ -289,6 +291,7 @@ if (isset($_SESSION['user_id'])) {
 <!-- QUICK VIEW MODAL -->
 <div class="cat-modal-overlay" id="catModal">
     <div class="cat-modal-box">
+        <span class="cat-modal-share" onclick="catShare()" title="Share"><i class="fas fa-share-nodes"></i></span>
         <span class="cat-modal-close" onclick="catClose()">&times;</span>
         <div class="cat-modal-left"><img id="catModalImg" src="" alt=""></div>
         <div class="cat-modal-right">
@@ -340,6 +343,14 @@ let catSelectedColor = '', catSelectedSize = '';
 
 function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes) {
     catId = id; catStock = stock; catQtyVal = 1; catBasePrice = price; catBaseImage = image;
+    // Keeps the address bar a real, copyable/shareable link to this product —
+    // skipped when it's already there (e.g. the ?product= auto-open on page
+    // load) so opening from that link doesn't push a duplicate history entry.
+    const curParams = new URLSearchParams(window.location.search);
+    if (curParams.get('product') != id) {
+        curParams.set('product', id);
+        history.pushState({ catProduct: id }, '', window.location.pathname + '?' + curParams.toString());
+    }
     catSelectedColor = (colors && colors.length) ? colors[0].name : '';
     catSelectedSize = (sizes && sizes.length) ? sizes[0].name : '';
     document.getElementById('catQtyDisplay').innerText = 1;
@@ -421,7 +432,34 @@ function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes
     document.getElementById('catModal').style.display = 'flex';
     if (window.loadProductReviews) loadProductReviews(id);
 }
-function catClose() { document.getElementById('catModal').style.display = 'none'; }
+function catClose() {
+    document.getElementById('catModal').style.display = 'none';
+    const curParams = new URLSearchParams(window.location.search);
+    if (curParams.has('product')) {
+        curParams.delete('product');
+        const qs = curParams.toString();
+        history.pushState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+    }
+}
+
+// Shares the currently open product — native share sheet where supported
+// (mostly mobile browsers), otherwise copies the link and reuses the same
+// toast the wishlist button already shows.
+function catShare() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('product', catId);
+    const shareUrl = window.location.origin + window.location.pathname + '?' + params.toString();
+    const title = document.getElementById('catModalTitle').innerText;
+    if (navigator.share) {
+        navigator.share({ title: title, text: 'Check out ' + title + ' on Giftly!', url: shareUrl }).catch(() => {});
+        return;
+    }
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl)
+            .then(() => catToastMsg('Link copied to clipboard 🔗'))
+            .catch(() => catToastMsg('Could not copy link'));
+    }
+}
 document.getElementById('catModal').addEventListener('click', function (e) { if (e.target === this) catClose(); });
 
 function catQty(delta) {
