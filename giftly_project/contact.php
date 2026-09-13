@@ -132,7 +132,7 @@ include 'header.php';
                 </div>
                 <div class="ct-row">
                     <div class="ic"><i class="fas fa-clock"></i></div>
-                    <div><div class="lbl">Hours</div><div class="val">Mon – Sat, 7:00 AM – 8:00 AM</div></div>
+                    <div><div class="lbl">Hours</div><div class="val">Mon – Sat, 7:00 AM – 8:00 PM</div></div>
                 </div>
                 <div class="ct-row">
                     <div class="ic"><i class="fas fa-location-dot"></i></div>
