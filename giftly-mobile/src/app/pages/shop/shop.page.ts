@@ -222,6 +222,12 @@ export class ShopPage implements OnInit {
       this.productType.set(type === 'occasion_box' || type === 'basket' ? type : 'catalog');
       this.page = 1;
       this.loadProducts();
+
+      // ?product= comes from a tapped share link (see product-detail's
+      // share() and app.component.ts's appUrlOpen listener) — open that
+      // product's quick-view straight away instead of just landing on Shop.
+      const productId = Number(params.get('product'));
+      if (productId) void this.openSharedProduct(productId);
     });
 
     if (this.auth.isLoggedIn()) {
@@ -364,6 +370,19 @@ export class ShopPage implements OnInit {
 
   scrollToTop(): void {
     this.content?.scrollToTop(300);
+  }
+
+  // Fetches a single product straight from the API (rather than relying on
+  // it being present in whatever page/filter is currently loaded) and opens
+  // it the same way a tapped grid card would.
+  private async openSharedProduct(id: number): Promise<void> {
+    try {
+      const product = await this.productSvc.getOne(id);
+      await this.openProduct(product);
+    } catch {
+      // Product may have been removed since the link was shared — fail
+      // quietly and just leave the user on the Shop grid.
+    }
   }
 
   async openProduct(product: Product): Promise<void> {

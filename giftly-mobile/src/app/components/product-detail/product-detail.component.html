@@ -4,15 +4,20 @@
       <ion-icon name="close-outline"></ion-icon>
     </button>
     <img [src]="product.image | imgUrl" [alt]="product.name" class="product-image" />
-    <button
-      class="heart-btn"
-      *ngIf="mode === 'cart'"
-      [class.active]="isWishlisted()"
-      [class.pop]="justPopped()"
-      (click)="toggleWishlist()"
-    >
-      <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
-    </button>
+    <div class="top-right-actions">
+      <button class="share-btn" (click)="share()" aria-label="Share">
+        <ion-icon name="share-social-outline"></ion-icon>
+      </button>
+      <button
+        class="heart-btn"
+        *ngIf="mode === 'cart'"
+        [class.active]="isWishlisted()"
+        [class.pop]="justPopped()"
+        (click)="toggleWishlist()"
+      >
+        <ion-icon [name]="isWishlisted() ? 'heart' : 'heart-outline'"></ion-icon>
+      </button>
+    </div>
     <div class="out-of-stock-ribbon" *ngIf="!inStock()">Out of Stock</div>
     <div class="sale-ribbon" *ngIf="product.on_sale">SALE</div>
   </div>

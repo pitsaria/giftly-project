@@ -536,4 +536,20 @@ function catToastMsg(msg) {
     clearTimeout(t._t);
     t._t = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 2200);
 }
+
+// Shared-product links (mobile app's share button, or the Android App Link
+// fallback) land here as ?product=<id> — auto-open that product's quick-view
+// the same way clicking its card would, instead of just showing the grid.
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const sharedId = parseInt(params.get('product'), 10);
+    if (!sharedId) return;
+    fetch('product_open_data.php?id=' + sharedId)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) return;
+            catOpen(d.id, d.name, d.description, d.image, d.price, d.quantity, d.whatsInside, d.colors, d.sizes);
+        })
+        .catch(() => {});
+})();
 </script>

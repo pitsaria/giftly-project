@@ -22,6 +22,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App Links: a tapped https://giftly-project-g7xg.onrender.com/shop.php
+                 link (e.g. from the product-detail share button) opens straight into
+                 the app instead of the browser, once assetlinks.json verifies this
+                 app for that domain — see giftly_project/.well-known/assetlinks.json.
+                 autoVerify requires a fresh signed install to take effect. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="giftly-project-g7xg.onrender.com"
+                    android:pathPrefix="/shop.php" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonButton, IonIcon, IonContent, ModalController, ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, heart, heartOutline, removeOutline, addOutline, star } from 'ionicons/icons';
+import { closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline } from 'ionicons/icons';
+import { Share } from '@capacitor/share';
+import { environment } from '../../../environments/environment';
 import { Product } from '../../core/models';
 import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
@@ -48,7 +50,7 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedSize = signal<string | null>(null);
 
   constructor() {
-    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline, star });
+    addIcons({ closeOutline, heart, heartOutline, removeOutline, addOutline, star, shareSocialOutline });
   }
 
   ngOnInit(): void {
@@ -88,6 +90,22 @@ export class ProductDetailComponent implements OnInit {
   ratingStars(): number[] {
     const avg = Math.round(Number(this.displayAvgRating()));
     return Array.from({ length: Math.min(5, Math.max(0, avg)) });
+  }
+
+  // Opens the OS share sheet with a link back to this product. Wrapped in
+  // try/catch like every other native-plugin call in this app (push.service,
+  // notification.service) — sharing is a nicety, never allowed to break the
+  // sheet if the plugin/OS rejects it (e.g. user cancels the share sheet).
+  async share(): Promise<void> {
+    try {
+      await Share.share({
+        title: this.product.name,
+        text: `Check out ${this.product.name} on Giftly!`,
+        url: `${environment.siteUrl}/shop.php?product=${this.product.id}`,
+      });
+    } catch {
+      // No-op — includes the user simply cancelling the share sheet.
+    }
   }
 
   isWishlisted(): boolean {

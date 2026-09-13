@@ -1,8 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { IonApp, IonRouterOutlet } from '@ionic/angular';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App } from '@capacitor/app';
 import { AuthService } from './core/auth.service';
 
 const MIN_SPLASH_MS = 1100;
@@ -16,13 +18,32 @@ const FADE_MS = 350;
 })
 export class AppComponent {
   private auth = inject(AuthService);
+  private router = inject(Router);
 
   readonly showSplash = signal(true);
   readonly splashHiding = signal(false);
 
   constructor() {
     this.applyNativeChrome();
+    this.bindAppUrlOpen();
     this.init();
+  }
+
+  // Handles a shared product link (see product-detail's share()) tapped
+  // while the app is already running/backgrounded — a cold start via the
+  // same link is instead picked up by the router from the launch URL, which
+  // shop.page.ts's own query-param subscriber reacts to. No-op on the web
+  // build and on any link that isn't an Android App Link for this app.
+  private bindAppUrlOpen(): void {
+    if (!Capacitor.isNativePlatform()) return;
+    App.addListener('appUrlOpen', ({ url }) => {
+      try {
+        const productId = new URL(url).searchParams.get('product');
+        if (productId) void this.router.navigate(['/tabs/shop'], { queryParams: { product: productId } });
+      } catch {
+        // Malformed URL — ignore.
+      }
+    });
   }
 
   // Dark icons/text on the app's light toolbar; no status-bar overlay so
