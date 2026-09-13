@@ -63,7 +63,7 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
             <?php if (trim($my_review['comment']) !== ''): ?>
                 <div style="font-size:13px;color:#555;line-height:1.6;margin-top:6px;">“<?php echo nl2br(htmlspecialchars($my_review['comment'])); ?>”</div>
             <?php endif; ?>
-            <div style="font-size:11px;color:#9bbfa0;margin-top:6px;">Posted <?php echo date('M j, Y', strtotime($my_review['created_at'])); ?> · reviews can't be edited</div>
+            <div style="font-size:11px;color:#9bbfa0;margin-top:6px;">Posted <?php echo ph_datetime($my_review['created_at'], 'M j, Y'); ?> · reviews can't be edited</div>
         </div>
     <?php elseif ($eligible > 0): ?>
         <div class="rv-form">
@@ -89,7 +89,7 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
                 <div class="rv-item">
                     <div class="top">
                         <span class="who"><?php echo htmlspecialchars($rv['user_name']); ?></span>
-                        <span class="when"><?php echo date('M j, Y', strtotime($rv['created_at'])); ?></span>
+                        <span class="when"><?php echo ph_datetime($rv['created_at'], 'M j, Y'); ?></span>
                     </div>
                     <?php echo reviews_stars((int) $rv['rating']); ?>
                     <?php if (trim($rv['comment']) !== ''): ?>

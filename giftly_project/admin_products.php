@@ -101,8 +101,16 @@ function admin_edit_onclick($row, $bab_product_sizes, $opt_colors, $opt_sizes, $
           . $sale_price_js . ', '
           . json_encode((string) $sale_ends) . ', '
           . json_encode((string) ($row['whats_inside'] ?? '')) . ', '
-          . json_encode($opt_colors[$pid] ?? []) . ', '
-          . json_encode($opt_sizes[$pid] ?? [])
+          // openEditModal() calls JSON.parse() on these two args, so they must
+          // arrive as JS *strings* — double-encoding turns the JSON array into
+          // a quoted string literal. Encoding it only once (the previous bug)
+          // embedded a raw array literal instead, which JSON.parse() coerces
+          // to "[object Object]" (or "" when empty) and throws on — silently
+          // caught, leaving every edit's color/size rows blank regardless of
+          // what was actually saved, so "editing" always looked like it wiped
+          // or ignored the existing colors/sizes.
+          . json_encode(json_encode($opt_colors[$pid] ?? [])) . ', '
+          . json_encode(json_encode($opt_sizes[$pid] ?? []))
           . ')';
     return htmlspecialchars($call, ENT_QUOTES);
 }

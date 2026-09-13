@@ -40,6 +40,26 @@ session_start();
 // 3. Set timezone (if not already set)
 date_default_timezone_set('Asia/Manila');
 
+// Formats a TIMESTAMP column Postgres stores as UTC wall-clock time (every
+// `created_at DEFAULT CURRENT_TIMESTAMP` column, plus paid_at/received_at/etc.)
+// as Philippine local time for display. Plain strtotime()+date() silently
+// mis-reads these: date_default_timezone_set('Asia/Manila') above makes
+// strtotime() treat the raw UTC string as if it were ALREADY Manila time,
+// so it just echoes the UTC value back unconverted (an 11:05 AM order was
+// showing as 3:05 AM — 11:05 AM PHT is 3:05 AM UTC).
+if (!function_exists('ph_datetime')) {
+    function ph_datetime($utc_value, $format) {
+        if (!$utc_value) return '';
+        try {
+            $dt = new DateTime($utc_value, new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+            return $dt->format($format);
+        } catch (Exception $e) {
+            return '';
+        }
+    }
+}
+
 // 4. Error reporting (for development - remove in production)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

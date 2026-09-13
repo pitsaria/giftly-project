@@ -293,7 +293,7 @@ if ($result->num_rows > 0) {
                     <?php endif; ?>
                 </td>
                 <td style="color: #888;">
-                    <?php echo date('F j, Y', strtotime($row['created_at'])); ?>
+                    <?php echo ph_datetime($row['created_at'], 'F j, Y'); ?>
                     <?php
                     $pm = $row['payment_method'] ?? 'cod';
                     $ps = $row['payment_status'] ?? 'unpaid';

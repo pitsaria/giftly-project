@@ -166,10 +166,10 @@ $qs = '&search=' . urlencode($search) . '&role=' . urlencode($role_f);
                         <div class="u-muted" style="font-size:12px;"><?php echo htmlspecialchars($u['phone'] !== '' ? $u['phone'] : '—'); ?></div>
                     </td>
                     <td><span class="u-role <?php echo $u['role'] === 'admin' ? 'admin' : 'customer'; ?>"><?php echo ucfirst($u['role']); ?></span></td>
-                    <td><?php echo $u['created_at'] ? date('M j, Y', strtotime($u['created_at'])) : '—'; ?></td>
+                    <td><?php echo $u['created_at'] ? ph_datetime($u['created_at'], 'M j, Y') : '—'; ?></td>
                     <td style="text-align:center;"><?php echo (int) $u['order_count']; ?></td>
                     <td style="text-align:right;">PHP <?php echo number_format((float) $u['total_spent'], 2); ?></td>
-                    <td><?php echo $u['last_order'] ? date('M j, Y', strtotime($u['last_order'])) : '<span class="u-muted">—</span>'; ?></td>
+                    <td><?php echo $u['last_order'] ? ph_datetime($u['last_order'], 'M j, Y') : '<span class="u-muted">—</span>'; ?></td>
                     <td>
                         <?php if ((int) $u['order_count'] > 0): ?>
                             <a class="u-link" href="admin_orders.php">View orders</a>

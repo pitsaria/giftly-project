@@ -167,7 +167,7 @@ $awaiting_payment = ($order['payment_method'] ?? 'cod') !== 'cod' && ($order['pa
 
 <div style="margin-bottom: 20px;">
     <div class="order-detail-row"><span class="order-detail-label">Order ID</span><span class="order-detail-value">#<?php echo $order['id']; ?></span></div>
-    <div class="order-detail-row"><span class="order-detail-label">Order Date</span><span class="order-detail-value"><?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></span></div>
+    <div class="order-detail-row"><span class="order-detail-label">Order Date</span><span class="order-detail-value"><?php echo ph_datetime($order['created_at'], 'F j, Y g:i A'); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Status</span><span class="order-detail-value" style="text-transform:capitalize;"><?php echo $order['status']; ?></span></div>
     <?php if (!empty($order['discount_amount']) && (float)$order['discount_amount'] > 0): ?>
     <div class="order-detail-row"><span class="order-detail-label">Discount<?php echo !empty($order['promo_code']) ? ' (' . htmlspecialchars($order['promo_code']) . ')' : ''; ?></span><span class="order-detail-value" style="color:#2e7d32;">− PHP <?php echo number_format($order['discount_amount'], 2); ?></span></div>

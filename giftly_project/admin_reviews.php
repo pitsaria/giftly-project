@@ -154,7 +154,7 @@ function admin_stars($n) {
                 </div>
                 <div class="rvA-stars"><?php echo admin_stars((int) $r['rating']); ?></div>
             </div>
-            <div class="rvA-meta">by <strong><?php echo htmlspecialchars($r['user_name']); ?></strong> · <?php echo date('M j, Y', strtotime($r['created_at'])); ?><?php echo $r['order_id'] ? ' · order #' . (int) $r['order_id'] : ''; ?></div>
+            <div class="rvA-meta">by <strong><?php echo htmlspecialchars($r['user_name']); ?></strong> · <?php echo ph_datetime($r['created_at'], 'M j, Y'); ?><?php echo $r['order_id'] ? ' · order #' . (int) $r['order_id'] : ''; ?></div>
             <?php if (trim($r['comment']) !== ''): ?>
                 <div class="rvA-body"><?php echo htmlspecialchars($r['comment']); ?></div>
             <?php endif; ?>
