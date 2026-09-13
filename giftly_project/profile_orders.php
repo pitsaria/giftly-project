@@ -59,9 +59,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_cancel'])) {
 $order_flash = $_SESSION['order_flash'] ?? null;
 unset($_SESSION['order_flash']);
 
-// --- FETCH ALL ORDERS - DIRECT DATABASE ---
+// --- FETCH ORDERS - DIRECT DATABASE (paginated) ---
+$of_limit = 10;
+$of_page  = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+$of_total_rows = (int) ($conn->query("SELECT COUNT(*) AS c FROM orders WHERE user_id = $user_id")->fetch_assoc()['c'] ?? 0);
+$of_total_pages = max(1, (int) ceil($of_total_rows / $of_limit));
+if ($of_page > $of_total_pages) $of_page = $of_total_pages;
+$of_offset = ($of_page - 1) * $of_limit;
+$of_showing_from = $of_total_rows ? $of_offset + 1 : 0;
+$of_showing_to = min($of_offset + $of_limit, $of_total_rows);
+
 $orders = [];
-$sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY created_at DESC";
+$sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY created_at DESC LIMIT $of_limit OFFSET $of_offset";
 $result = $conn->query($sql);
 if ($result->num_rows > 0) {
     while($row = $result->fetch_assoc()) {
@@ -80,6 +89,11 @@ if ($result->num_rows > 0) {
     .of-search:focus-within { border-color: #ffc1cc; box-shadow: 0 0 0 3px rgba(255, 193, 204, 0.1); }
     .of-search i { color: #888; }
     .of-search input { border: none; outline: none; width: 100%; font-size: 14px; font-family: 'Poppins'; background: transparent; }
+    .pagination-wrapper { display: flex; justify-content: center; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+    .page-btn { padding: 8px 16px; border: 1.5px solid #eee; border-radius: 30px; background: #fff; color: #555; text-decoration: none; font-size: 14px; font-weight: 500; transition: 0.2s; font-family: 'Poppins'; }
+    .page-btn:hover { background: #ffc1cc; color: #fff; border-color: #ffc1cc; }
+    .page-btn.active { background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border-color: #FEA5B6; box-shadow: 0 4px 12px rgba(254, 165, 182, 0.3); }
+    .page-btn.disabled { opacity: 0.5; pointer-events: none; }
     .order-table { width: 100%; border-collapse: collapse; }
     .order-table th { text-align: left; padding: 12px 10px; border-bottom: 2px solid #f0f0f0; color: #444; font-weight: 600; font-size: 14px; }
     .order-table td { padding: 16px 10px; border-bottom: 1px solid #f5f5f5; font-size: 14px; color: #333; vertical-align: middle; }
@@ -369,6 +383,32 @@ if ($result->num_rows > 0) {
         </tbody>
     </table>
     <p id="myOrderSearchEmpty" style="display:none; text-align:center; color:#999; padding:24px 0;">No orders match your search.</p>
+
+    <div style="text-align:center; color:#999; font-size:13px; margin-top:20px;">
+        Showing <strong><?php echo $of_showing_from; ?>–<?php echo $of_showing_to; ?></strong> of <strong><?php echo $of_total_rows; ?></strong> order<?php echo $of_total_rows === 1 ? '' : 's'; ?>
+    </div>
+
+    <?php if ($of_total_pages > 1): ?>
+    <div class="pagination-wrapper">
+        <a href="profile.php?tab=orders&page=<?php echo max(1, $of_page - 1); ?>" class="page-btn <?php echo ($of_page <= 1) ? 'disabled' : ''; ?>">&larr; Prev</a>
+        <?php
+        $of_start = max(1, $of_page - 2);
+        $of_end   = min($of_total_pages, $of_page + 2);
+        if ($of_start > 1) {
+            echo '<a href="profile.php?tab=orders&page=1" class="page-btn">1</a>';
+            if ($of_start > 2) echo '<span class="page-btn disabled" style="border:none;background:transparent;">…</span>';
+        }
+        for ($i = $of_start; $i <= $of_end; $i++) {
+            echo '<a href="profile.php?tab=orders&page='.$i.'" class="page-btn '.($i == $of_page ? 'active' : '').'">'.$i.'</a>';
+        }
+        if ($of_end < $of_total_pages) {
+            if ($of_end < $of_total_pages - 1) echo '<span class="page-btn disabled" style="border:none;background:transparent;">…</span>';
+            echo '<a href="profile.php?tab=orders&page='.$of_total_pages.'" class="page-btn">'.$of_total_pages.'</a>';
+        }
+        ?>
+        <a href="profile.php?tab=orders&page=<?php echo min($of_total_pages, $of_page + 1); ?>" class="page-btn <?php echo ($of_page >= $of_total_pages) ? 'disabled' : ''; ?>">Next &rarr;</a>
+    </div>
+    <?php endif; ?>
 <?php else: ?>
     <p style="color:#888; text-align:center; padding:40px;">You haven't placed any orders yet. <a href="shop.php" style="color:#ff8ba7;">Start shopping!</a></p>
 <?php endif; ?>

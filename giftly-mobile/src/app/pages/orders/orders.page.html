@@ -1,9 +1,13 @@
 <app-top-bar></app-top-bar>
 
-<ion-content [fullscreen]="true">
+<ion-content [fullscreen]="true" [scrollEvents]="true" (ionScroll)="onContentScroll($event)">
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
+
+  <button class="back-to-top-btn" *ngIf="showBackToTop()" (click)="scrollToTop()" aria-label="Back to top">
+    <ion-icon name="chevron-up-outline"></ion-icon>
+  </button>
 
   <div class="page-title">My Orders</div>
 

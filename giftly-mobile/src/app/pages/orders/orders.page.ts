@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -17,7 +17,7 @@ import {
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { giftOutline, pricetagOutline } from 'ionicons/icons';
+import { giftOutline, pricetagOutline, chevronUpOutline } from 'ionicons/icons';
 import { Order } from '../../core/models';
 import { OrderService } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -58,6 +58,8 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   ],
 })
 export class OrdersPage implements OnInit {
+  @ViewChild(IonContent) private content?: IonContent;
+
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
   private modalCtrl = inject(ModalController);
@@ -66,9 +68,10 @@ export class OrdersPage implements OnInit {
   auth = inject(AuthService);
 
   constructor() {
-    addIcons({ giftOutline, pricetagOutline });
+    addIcons({ giftOutline, pricetagOutline, chevronUpOutline });
   }
 
+  readonly showBackToTop = signal(false);
   readonly orders = signal<Order[]>([]);
   readonly paying = signal<number | null>(null);
   readonly filter = signal<StatusFilter>('all');
@@ -104,6 +107,14 @@ export class OrdersPage implements OnInit {
 
   onSearch(value: string | null | undefined): void {
     this.search.set(value ?? '');
+  }
+
+  onContentScroll(ev: CustomEvent<{ scrollTop: number }>): void {
+    this.showBackToTop.set((ev.detail?.scrollTop ?? 0) > 400);
+  }
+
+  scrollToTop(): void {
+    this.content?.scrollToTop(300);
   }
 
   async ngOnInit(): Promise<void> {
