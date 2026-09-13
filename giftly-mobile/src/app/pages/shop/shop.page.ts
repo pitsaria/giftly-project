@@ -167,8 +167,19 @@ export class ShopPage implements OnInit {
   }
 
   stars(product: Product): number[] {
-    const avg = Math.round(Number(product.avg_rating ?? 0));
+    const avg = Math.round(Number(this.avgRating(product)));
     return Array.from({ length: Math.min(5, Math.max(0, avg)) });
+  }
+
+  // Reads through the shared review-summary store first — see ProductService —
+  // so a review submitted from the product-detail sheet updates this card
+  // immediately instead of only after the grid is refetched.
+  avgRating(product: Product): string {
+    return this.productSvc.reviewSummaryFor(product.id)?.avg ?? product.avg_rating ?? '0';
+  }
+
+  reviewCount(product: Product): number {
+    return this.productSvc.reviewSummaryFor(product.id)?.count ?? product.review_count ?? 0;
   }
 
   justAdded(productId: number): boolean {

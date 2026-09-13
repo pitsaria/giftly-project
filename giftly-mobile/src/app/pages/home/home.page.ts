@@ -363,6 +363,18 @@ export class HomePage implements OnInit {
     return Math.round((1 - now / list) * 100);
   }
 
+  // Reads through the shared review-summary store first, so a review
+  // submitted from the product-detail sheet updates this card immediately —
+  // the fetched Product's own avg_rating/review_count are just the snapshot
+  // from when Featured Products loaded.
+  avgRating(product: Product): string {
+    return this.productSvc.reviewSummaryFor(product.id)?.avg ?? product.avg_rating ?? '0';
+  }
+
+  reviewCount(product: Product): number {
+    return this.productSvc.reviewSummaryFor(product.id)?.count ?? product.review_count ?? 0;
+  }
+
   async quickAdd(product: Product, ev: Event): Promise<void> {
     ev.stopPropagation();
     if (!this.auth.isLoggedIn()) {

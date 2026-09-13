@@ -1,7 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { Category, Product, ProductType } from './models';
+
+export interface ReviewSummary {
+  avg: string;
+  count: number;
+}
 
 export interface ProductPage {
   products: Product[];
@@ -30,6 +35,23 @@ export interface ProductQuery {
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private api = inject(ApiService);
+
+  // Live review avg/count per product id, keyed by product id. A product's
+  // own avg_rating/review_count fields are a snapshot from whenever it was
+  // fetched (e.g. the Featured Products list), so once a review is
+  // submitted from the product-detail sheet this store lets every card and
+  // sheet showing that product pick up the new numbers immediately —
+  // signal writes trigger a re-render regardless of zone.js/zoneless setup,
+  // which a plain mutation on the fetched Product object would not.
+  private readonly reviewSummaries = signal<Record<number, ReviewSummary>>({});
+
+  updateReviewSummary(productId: number, avg: number, count: number): void {
+    this.reviewSummaries.update((map) => ({ ...map, [productId]: { avg: String(avg), count } }));
+  }
+
+  reviewSummaryFor(productId: number): ReviewSummary | undefined {
+    return this.reviewSummaries()[productId];
+  }
 
   async getAll(query: ProductQuery = {}): Promise<ProductPage> {
     const params: Record<string, string | number> = {

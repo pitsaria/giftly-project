@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -58,6 +58,11 @@ export class ProductReviewsComponent implements OnInit {
   // user can see which product they're reviewing.
   @Input() productName?: string;
   @Input() productImage?: string;
+  // Fired whenever the review summary for this product is (re)loaded, so a
+  // host holding the same Product object (e.g. the product-detail sheet)
+  // can sync its avg_rating/review_count — which keeps the Featured
+  // Products card behind it in sync too, since it's the same object.
+  @Output() summaryChange = new EventEmitter<{ avg: number; count: number }>();
 
   private reviewSvc = inject(ReviewService);
   auth = inject(AuthService);
@@ -100,7 +105,9 @@ export class ProductReviewsComponent implements OnInit {
   async reload(): Promise<void> {
     this.loading.set(true);
     try {
-      this.data.set(await this.reviewSvc.getReviews(this.productId));
+      const data = await this.reviewSvc.getReviews(this.productId);
+      this.data.set(data);
+      this.summaryChange.emit({ avg: data.avg, count: data.count });
     } catch {
       this.data.set(null);
     } finally {

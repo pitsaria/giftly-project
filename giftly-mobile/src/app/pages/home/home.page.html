@@ -96,9 +96,9 @@
         </div>
         <div class="f-name">{{ product.name }}</div>
         <div class="f-rating">
-          <ng-container *ngIf="product.review_count; else noReviews">
+          <ng-container *ngIf="reviewCount(product); else noReviews">
             <ion-icon name="star"></ion-icon>
-            <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+            <span>{{ avgRating(product) }} ({{ reviewCount(product) }})</span>
           </ng-container>
           <ng-template #noReviews><span class="f-rating-empty">No reviews yet</span></ng-template>
         </div>

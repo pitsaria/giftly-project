@@ -8,6 +8,7 @@ import { Product } from '../../core/models';
 import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { AuthService } from '../../core/auth.service';
+import { ProductService } from '../../core/product.service';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { ProductReviewsComponent } from '../product-reviews/product-reviews.component';
 
@@ -34,6 +35,7 @@ export class ProductDetailComponent implements OnInit {
   private toastCtrl = inject(ToastController);
   private cart = inject(CartService);
   private wishlist = inject(WishlistService);
+  private productSvc = inject(ProductService);
   auth = inject(AuthService);
 
   readonly quantity = signal(1);
@@ -68,8 +70,23 @@ export class ProductDetailComponent implements OnInit {
     return size ? size.price : this.product.price;
   }
 
+  // Pushes the fresh count into the shared store — read by this sheet's own
+  // rating line below and by whatever card opened it (Featured Products,
+  // Shop grid), so both update the moment a review is submitted.
+  onReviewsSummaryChange(summary: { avg: number; count: number }): void {
+    this.productSvc.updateReviewSummary(this.product.id, summary.avg, summary.count);
+  }
+
+  displayAvgRating(): string {
+    return this.productSvc.reviewSummaryFor(this.product.id)?.avg ?? this.product.avg_rating ?? '0';
+  }
+
+  displayReviewCount(): number {
+    return this.productSvc.reviewSummaryFor(this.product.id)?.count ?? this.product.review_count ?? 0;
+  }
+
   ratingStars(): number[] {
-    const avg = Math.round(Number(this.product.avg_rating ?? 0));
+    const avg = Math.round(Number(this.displayAvgRating()));
     return Array.from({ length: Math.min(5, Math.max(0, avg)) });
   }
 

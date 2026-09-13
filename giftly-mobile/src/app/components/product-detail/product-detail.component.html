@@ -18,9 +18,9 @@
   </div>
 
   <h1>{{ product.name }}</h1>
-  <div class="rating-line" *ngIf="product.review_count">
+  <div class="rating-line" *ngIf="displayReviewCount()">
     <ion-icon name="star" *ngFor="let s of ratingStars()"></ion-icon>
-    <span>{{ product.avg_rating }} ({{ product.review_count }})</span>
+    <span>{{ displayAvgRating() }} ({{ displayReviewCount() }})</span>
   </div>
   <div class="price" [class.on-sale]="product.on_sale && !product.sizes?.length">
     <span class="now">₱{{ displayPrice() }}</span>
@@ -96,5 +96,5 @@
     {{ !inStock() ? 'Out of Stock' : boxFull ? 'Box full' : inBoxQty > 0 ? 'Add one more' : 'Add to box' }}
   </ion-button>
 
-  <app-product-reviews [productId]="product.id"></app-product-reviews>
+  <app-product-reviews [productId]="product.id" (summaryChange)="onReviewsSummaryChange($event)"></app-product-reviews>
 </ion-content>
