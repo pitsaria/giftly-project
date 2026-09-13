@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { UpcomingOccasion } from './models';
+import { NotificationPrefsService } from './notification-prefs.service';
 
 // Fixed id bands so scheduling the "same" reminder twice (e.g. adding a
 // second item to the cart, or re-syncing occasions) overwrites the pending
@@ -21,6 +22,7 @@ const OCCASION_REMINDER_HOUR = 9;
 // attached to (adding to cart, placing an order, syncing recipients).
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
+  private prefs = inject(NotificationPrefsService);
   private permissionChecked = false;
   private permissionGranted = false;
 
@@ -42,10 +44,24 @@ export class NotificationService {
     return this.permissionGranted;
   }
 
+  // Wipes every pending local notification outright — called when the
+  // Settings toggle is switched off, so nothing already scheduled still
+  // fires after the user opted out.
+  async cancelAll(): Promise<void> {
+    try {
+      const pending = await LocalNotifications.getPending();
+      if (pending.notifications.length) {
+        await LocalNotifications.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+      }
+    } catch {
+      // No-op.
+    }
+  }
+
   // === Cart abandonment ===
 
   async scheduleCartReminder(itemCount: number): Promise<void> {
-    if (itemCount <= 0 || !(await this.ensurePermission())) return;
+    if (itemCount <= 0 || !(await this.prefs.load()) || !(await this.ensurePermission())) return;
     try {
       await LocalNotifications.schedule({
         notifications: [
@@ -82,7 +98,7 @@ export class NotificationService {
     recipientName?: string
   ): Promise<void> {
     const at = this.parseDeliveryDateTime(deliveryDate, deliveryTime);
-    if (!at || at.getTime() <= Date.now() || !(await this.ensurePermission())) return;
+    if (!at || at.getTime() <= Date.now() || !(await this.prefs.load()) || !(await this.ensurePermission())) return;
     try {
       await LocalNotifications.schedule({
         notifications: [
@@ -124,7 +140,7 @@ export class NotificationService {
   // present (removed, or since passed and not recurring) are left to expire
   // naturally; there's no "list all pending ids" API to diff against.
   async scheduleOccasionReminders(occasions: UpcomingOccasion[]): Promise<void> {
-    if (!occasions.length || !(await this.ensurePermission())) return;
+    if (!occasions.length || !(await this.prefs.load()) || !(await this.ensurePermission())) return;
     const notifications = occasions
       .map((o) => this.buildOccasionNotification(o))
       .filter((n): n is NonNullable<typeof n> => n !== null);

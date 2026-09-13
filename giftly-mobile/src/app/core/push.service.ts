@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { ApiService } from './api.service';
+import { NotificationPrefsService } from './notification-prefs.service';
 
 // Server-sent push (FCM) — for events that happen while the app may not even
 // be open, like an admin marking an order shipped/delivered. Distinct from
@@ -18,6 +19,7 @@ import { ApiService } from './api.service';
 export class PushService {
   private api = inject(ApiService);
   private router = inject(Router);
+  private prefs = inject(NotificationPrefsService);
 
   private listenersBound = false;
   private lastToken: string | null = null;
@@ -27,6 +29,7 @@ export class PushService {
   // the Bearer token to associate the device with this account.
   async init(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
+    if (!(await this.prefs.load())) return;
     try {
       const current = await PushNotifications.checkPermissions();
       let granted = current.receive === 'granted';

@@ -401,6 +401,14 @@
 
     <!-- MORE -->
     <div class="tab-panel more-links" *ngIf="tab() === 'settings' && profile() && !loading() && !error()">
+      <div class="notif-toggle-row">
+        <ion-icon name="notifications-outline"></ion-icon>
+        <div class="notif-toggle-text">
+          <span>Push Notifications</span>
+          <small>Order updates, cart and occasion reminders</small>
+        </div>
+        <ion-toggle [checked]="notificationPrefs.enabled()" (ionChange)="onNotificationsToggle($event.detail.checked)"></ion-toggle>
+      </div>
       <a routerLink="/about">
         <ion-icon name="information-circle-outline"></ion-icon> About Giftly
         <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>

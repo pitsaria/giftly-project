@@ -16,6 +16,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
+  IonToggle,
   AlertController,
   ToastController,
   ModalController,
@@ -39,6 +40,7 @@ import {
   peopleOutline,
   closeCircleOutline,
   cameraOutline,
+  notificationsOutline,
 } from 'ionicons/icons';
 import { Address, Box, Product, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
@@ -52,6 +54,8 @@ import { RecipientService, NewRecipient } from '../../core/recipient.service';
 import { GiftContextService } from '../../core/gift-context.service';
 import { HapticsService } from '../../core/haptics.service';
 import { NotificationService } from '../../core/notification.service';
+import { NotificationPrefsService } from '../../core/notification-prefs.service';
+import { PushService } from '../../core/push.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
@@ -91,6 +95,7 @@ const RECIPIENT_AVATAR_COLORS = ['#FEA5B6', '#8ec5fc', '#fcb69f', '#96e6a1', '#f
     IonSelect,
     IonSelectOption,
     IonCheckbox,
+    IonToggle,
     TopBarComponent,
     ImgUrlPipe,
     AddressSearchComponent,
@@ -107,6 +112,8 @@ export class ProfilePage implements OnInit {
   private giftContext = inject(GiftContextService);
   private haptics = inject(HapticsService);
   private notifications = inject(NotificationService);
+  private pushSvc = inject(PushService);
+  readonly notificationPrefs = inject(NotificationPrefsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private alertCtrl = inject(AlertController);
@@ -202,13 +209,27 @@ export class ProfilePage implements OnInit {
       peopleOutline,
       closeCircleOutline,
       cameraOutline,
+      notificationsOutline,
     });
   }
 
   async ngOnInit(): Promise<void> {
     this.applyTabQueryParam();
+    void this.notificationPrefs.load();
     if (this.auth.isLoggedIn()) {
       await this.loadTab(this.tab(), false);
+    }
+  }
+
+  // Settings > Notifications toggle — flips the app-wide switch every
+  // notification source checks before registering/scheduling anything.
+  async onNotificationsToggle(enabled: boolean): Promise<void> {
+    await this.notificationPrefs.set(enabled);
+    if (enabled) {
+      await this.pushSvc.init();
+    } else {
+      await this.pushSvc.teardown();
+      await this.notifications.cancelAll();
     }
   }
 
