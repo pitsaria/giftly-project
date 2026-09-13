@@ -55,6 +55,7 @@ import { BoxService } from '../../core/box.service';
 import { RecipientService, NewRecipient } from '../../core/recipient.service';
 import { GiftContextService } from '../../core/gift-context.service';
 import { HapticsService } from '../../core/haptics.service';
+import { NotificationService } from '../../core/notification.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
@@ -113,6 +114,7 @@ export class ProfilePage implements OnInit {
   private recipientSvc = inject(RecipientService);
   private giftContext = inject(GiftContextService);
   private haptics = inject(HapticsService);
+  private notifications = inject(NotificationService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private alertCtrl = inject(AlertController);
@@ -286,9 +288,7 @@ export class ProfilePage implements OnInit {
       } else if (tab === 'boxes') {
         this.boxes.set(await this.boxSvc.listBoxes());
       } else if (tab === 'relations') {
-        const { recipients, upcoming } = await this.recipientSvc.getAll();
-        this.recipients.set(recipients);
-        this.upcomingOccasions.set(upcoming);
+        await this.reloadRecipients();
       }
       // The profile header (avatar/name/email) is shown regardless of which
       // tab is active, so make sure it's loaded even when starting on a
@@ -524,6 +524,7 @@ export class ProfilePage implements OnInit {
     const { recipients, upcoming } = await this.recipientSvc.getAll();
     this.recipients.set(recipients);
     this.upcomingOccasions.set(upcoming);
+    void this.notifications.scheduleOccasionReminders(upcoming);
   }
 
   // Scrubs to digits only, capped at 11 — mirrors profile_relations.php's
@@ -631,6 +632,7 @@ export class ProfilePage implements OnInit {
   async deleteOccasion(id: number): Promise<void> {
     try {
       await this.recipientSvc.removeOccasion(id);
+      void this.notifications.cancelOccasionReminder(id);
       await this.reloadRecipients();
     } catch {
       await this.toast('Could not remove that occasion. Please try again.');

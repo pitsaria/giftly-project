@@ -29,6 +29,8 @@ import { CartService } from '../../core/cart.service';
 import { OrderService } from '../../core/order.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
+import { RecipientService } from '../../core/recipient.service';
+import { NotificationService } from '../../core/notification.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
 import { OrderDetailComponent } from '../../components/order-detail/order-detail.component';
 import { ProductDetailComponent } from '../../components/product-detail/product-detail.component';
@@ -94,6 +96,8 @@ export class HomePage implements OnInit {
   private cart = inject(CartService);
   private orderSvc = inject(OrderService);
   private promoSvc = inject(PromoService);
+  private recipientSvc = inject(RecipientService);
+  private notifications = inject(NotificationService);
   private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
   auth = inject(AuthService);
@@ -234,7 +238,13 @@ export class HomePage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.loadFeatured(), this.loadCategories(), this.loadRecentOrder(), this.loadPromos()]);
+    await Promise.all([
+      this.loadFeatured(),
+      this.loadCategories(),
+      this.loadRecentOrder(),
+      this.loadPromos(),
+      this.syncOccasionReminders(),
+    ]);
   }
 
   async loadPromos(): Promise<void> {
@@ -243,6 +253,19 @@ export class HomePage implements OnInit {
     } catch {
       // Non-critical — falls back to the static tiles.
       this.livePromos.set([]);
+    }
+  }
+
+  // Keeps birthday/anniversary reminders scheduled on every app open, not
+  // just when the user visits Profile > My Relations — so they still fire
+  // for someone who set up a recipient once and never goes back there.
+  async syncOccasionReminders(): Promise<void> {
+    if (!this.auth.isLoggedIn()) return;
+    try {
+      const { upcoming } = await this.recipientSvc.getAll();
+      await this.notifications.scheduleOccasionReminders(upcoming);
+    } catch {
+      // Non-critical — skip silently, Profile will retry next visit.
     }
   }
 

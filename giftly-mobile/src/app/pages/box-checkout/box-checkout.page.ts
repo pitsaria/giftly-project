@@ -27,6 +27,7 @@ import { PaymentsService } from '../../core/payments.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { HapticsService } from '../../core/haptics.service';
+import { NotificationService } from '../../core/notification.service';
 import { AddonService } from '../../core/addon.service';
 import { RecipientService } from '../../core/recipient.service';
 import { describeError } from '../../core/http-error';
@@ -69,6 +70,7 @@ export class BoxCheckoutPage implements OnInit {
   private payments = inject(PaymentsService);
   private promoSvc = inject(PromoService);
   private haptics = inject(HapticsService);
+  private notifications = inject(NotificationService);
   private auth = inject(AuthService);
   private addonSvc = inject(AddonService);
   private recipientSvc = inject(RecipientService);
@@ -339,6 +341,12 @@ export class BoxCheckoutPage implements OnInit {
           : {}),
       });
       await this.boxSvc.listBoxes().catch(() => []);
+      void this.notifications.scheduleDeliveryReminder(
+        res.order_id,
+        this.deliveryDate,
+        this.deliveryTime,
+        this.deliveryType === 'recipient' ? this.recipientName : undefined
+      );
 
       if (this.paymentMethod === 'online') {
         if (res.checkout_url) {

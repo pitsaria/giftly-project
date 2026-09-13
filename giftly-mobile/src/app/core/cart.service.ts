@@ -2,12 +2,14 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { HapticsService } from './haptics.service';
+import { NotificationService } from './notification.service';
 import { Cart } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private api = inject(ApiService);
   private haptics = inject(HapticsService);
+  private notifications = inject(NotificationService);
 
   // Badge count for the tab bar, mirrors the site's cart icon.
   readonly itemCount = signal(0);
@@ -32,11 +34,12 @@ export class CartService {
     if (color) body['color'] = color;
     if (size) body['size'] = size;
     await firstValueFrom(this.api.post('cart', body));
-    await this.getCart();
+    const cart = await this.getCart();
     this.haptics.light();
     this.justAddedId.set(productId);
     clearTimeout(this.justAddedTimer);
     this.justAddedTimer = setTimeout(() => this.justAddedId.set(null), 1200);
+    void this.notifications.scheduleCartReminder(cart.item_count);
   }
 
   async updateQuantity(cartId: number, action: 'increase' | 'decrease'): Promise<void> {
@@ -46,7 +49,8 @@ export class CartService {
 
   async removeItem(cartId: number): Promise<void> {
     await firstValueFrom(this.api.delete('cart/remove', { id: cartId }));
-    await this.getCart();
+    const cart = await this.getCart();
+    if (cart.item_count === 0) void this.notifications.cancelCartReminder();
   }
 
   async verifyStock(cartIds: number[]): Promise<{ can_proceed: boolean; has_issues: boolean; issues: unknown[] }> {

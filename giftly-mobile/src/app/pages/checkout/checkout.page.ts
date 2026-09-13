@@ -28,6 +28,7 @@ import { PaymentsService } from '../../core/payments.service';
 import { PromoService } from '../../core/promo.service';
 import { AuthService } from '../../core/auth.service';
 import { HapticsService } from '../../core/haptics.service';
+import { NotificationService } from '../../core/notification.service';
 import { AddonService } from '../../core/addon.service';
 import { RecipientService } from '../../core/recipient.service';
 import { GiftContextService } from '../../core/gift-context.service';
@@ -73,6 +74,7 @@ export class CheckoutPage implements OnInit {
   private payments = inject(PaymentsService);
   private promoSvc = inject(PromoService);
   private haptics = inject(HapticsService);
+  private notifications = inject(NotificationService);
   private auth = inject(AuthService);
   private addonSvc = inject(AddonService);
   private recipientSvc = inject(RecipientService);
@@ -395,8 +397,15 @@ export class CheckoutPage implements OnInit {
       });
 
       this.cart.selectedCartIds.set([]);
-      await this.cart.getCart();
+      const cart = await this.cart.getCart();
       this.giftContext.clear();
+      if (cart.item_count === 0) void this.notifications.cancelCartReminder();
+      void this.notifications.scheduleDeliveryReminder(
+        placed.orderId,
+        this.deliveryDate,
+        this.deliveryTime,
+        this.deliveryType === 'recipient' ? this.recipientName : undefined
+      );
 
       if (this.paymentMethod === 'online') {
         if (placed.checkoutUrl) {
