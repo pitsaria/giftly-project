@@ -22,6 +22,7 @@ import { addIcons } from 'ionicons';
 import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, pricetagOutline } from 'ionicons/icons';
 import { Address, CartItem, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
+import { ProfileService } from '../../core/profile.service';
 import { CartService } from '../../core/cart.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -69,6 +70,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
 })
 export class CheckoutPage implements OnInit {
   private addressSvc = inject(AddressService);
+  private profileSvc = inject(ProfileService);
   private cart = inject(CartService);
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
@@ -143,7 +145,7 @@ export class CheckoutPage implements OnInit {
     }, 6000);
 
     try {
-      const [addresses, cart, addons, recipients] = await Promise.all([
+      const [addresses, cart, addons, recipients, profile] = await Promise.all([
         this.addressSvc.getAll(),
         this.cart.getCart(),
         this.addonSvc.getAll().catch(() => []),
@@ -151,10 +153,14 @@ export class CheckoutPage implements OnInit {
           .getAll()
           .then((r) => r.recipients)
           .catch(() => []),
+        this.profileSvc.getProfile().catch(() => null),
       ]);
       if (token !== this.loadToken) return;
 
       this.addresses.set(addresses);
+      // Sender is the logged-in user by default — prefill their own number
+      // instead of making them retype it every checkout.
+      if (profile?.phone) this.senderPhoneDigits = phoneDigitsFromStored(profile.phone);
       const selectedIds = new Set(this.cart.selectedCartIds());
       this.cartItems.set(cart.items.filter((i) => selectedIds.has(i.cart_id)));
       this.addons.set(addons);

@@ -21,6 +21,7 @@ import { addIcons } from 'ionicons';
 import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline } from 'ionicons/icons';
 import { Address, Box, PromoEval, Addon, Recipient } from '../../core/models';
 import { AddressService } from '../../core/address.service';
+import { ProfileService } from '../../core/profile.service';
 import { BoxService } from '../../core/box.service';
 import { OrderService, PaymentMethod } from '../../core/order.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -65,6 +66,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
 })
 export class BoxCheckoutPage implements OnInit {
   private addressSvc = inject(AddressService);
+  private profileSvc = inject(ProfileService);
   private boxSvc = inject(BoxService);
   private orderSvc = inject(OrderService);
   private payments = inject(PaymentsService);
@@ -147,7 +149,7 @@ export class BoxCheckoutPage implements OnInit {
     this.error.set(null);
     try {
       if (!this.boxId) throw new Error('No box selected.');
-      const [box, addresses, addons, recipients] = await Promise.all([
+      const [box, addresses, addons, recipients, profile] = await Promise.all([
         this.boxSvc.getBox(this.boxId),
         this.addressSvc.getAll().catch(() => []),
         this.addonSvc.getAll().catch(() => []),
@@ -155,9 +157,13 @@ export class BoxCheckoutPage implements OnInit {
           .getAll()
           .then((r) => r.recipients)
           .catch(() => []),
+        this.profileSvc.getProfile().catch(() => null),
       ]);
       this.box.set(box);
       this.addresses.set(addresses);
+      // Sender is the logged-in user by default — prefill their own number
+      // instead of making them retype it every checkout.
+      if (profile?.phone) this.senderPhoneDigits = phoneDigitsFromStored(profile.phone);
       this.addons.set(addons);
       this.recipients.set(recipients);
       if (addresses.length) {
