@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.giftly.app",
+      "sha256_cert_fingerprints": [
+        "76:33:99:C3:B7:62:DA:4D:16:BA:4A:D6:A0:B6:72:14:DF:C7:F9:FF:30:FC:F8:92:9E:99:DD:39:B7:28:3E:04"
+      ]
+    }
+  }
+]
