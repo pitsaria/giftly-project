@@ -89,6 +89,25 @@ if (isset($_POST['reject_cancel'])) {
         ? ['ok', 'Cancellation request declined — the order continues.']
         : ['error', 'Could not decline this request.'];
 }
+
+// --- ARCHIVE / UNARCHIVE (delivered or cancelled orders only — tucks them
+// out of the default list without deleting or affecting any order counts) ---
+if (isset($_POST['archive_order']) && isset($_POST['order_id'])) {
+    $order_id = intval($_POST['order_id']);
+    $cur = $conn->query("SELECT status FROM orders WHERE id = $order_id");
+    $cur_status = $cur ? ($cur->fetch_assoc()['status'] ?? '') : '';
+    if (!in_array($cur_status, ['delivered', 'cancelled'], true)) {
+        $flash = ['error', 'Only delivered or cancelled orders can be archived.'];
+    } else {
+        $conn->query("UPDATE orders SET is_archived = TRUE WHERE id = $order_id");
+        $flash = ['ok', 'Order archived.'];
+    }
+}
+if (isset($_POST['unarchive_order']) && isset($_POST['order_id'])) {
+    $order_id = intval($_POST['order_id']);
+    $conn->query("UPDATE orders SET is_archived = FALSE WHERE id = $order_id");
+    $flash = ['ok', 'Order restored from archive.'];
+}
 // -------------------------------------------------
 
 include 'admin_header.php';
@@ -97,9 +116,10 @@ $pending_cancels = 0;
 $pc_res = $conn->query("SELECT COUNT(*) AS c FROM orders WHERE cancel_status = 'requested'");
 if ($pc_res) $pending_cancels = (int) $pc_res->fetch_assoc()['c'];
 
-$filter_status  = (isset($_GET['filter_status'])  && is_string($_GET['filter_status']))  ? preg_replace('/[^a-z_]/', '', $_GET['filter_status'])  : '';
-$filter_payment = (isset($_GET['filter_payment']) && is_string($_GET['filter_payment'])) ? preg_replace('/[^a-z]/', '', $_GET['filter_payment']) : '';
-$filter_mode    = (isset($_GET['filter_mode'])    && is_string($_GET['filter_mode']))    ? preg_replace('/[^a-z]/', '', $_GET['filter_mode'])    : '';
+$filter_status   = (isset($_GET['filter_status'])   && is_string($_GET['filter_status']))   ? preg_replace('/[^a-z_]/', '', $_GET['filter_status'])   : '';
+$filter_payment  = (isset($_GET['filter_payment'])  && is_string($_GET['filter_payment']))  ? preg_replace('/[^a-z]/', '', $_GET['filter_payment'])  : '';
+$filter_mode     = (isset($_GET['filter_mode'])     && is_string($_GET['filter_mode']))     ? preg_replace('/[^a-z]/', '', $_GET['filter_mode'])     : '';
+$filter_archived = (isset($_GET['filter_archived']) && is_string($_GET['filter_archived'])) ? preg_replace('/[^a-z]/', '', $_GET['filter_archived']) : '';
 
 // Shared WHERE fragment for the count + list
 $order_where = "";
@@ -115,6 +135,14 @@ if ($filter_mode === 'me') {
     $order_where .= " AND (orders.recipient_name IS NULL OR orders.recipient_name = '')";
 } elseif ($filter_mode === 'recipient') {
     $order_where .= " AND orders.recipient_name IS NOT NULL AND orders.recipient_name != ''";
+}
+// Archived orders are hidden from the default list (and every other filter)
+// unless explicitly asked for — this only changes what's *shown* here, never
+// COUNT(*) FROM orders (Dashboard's Total Orders / Analytics stay accurate).
+if ($filter_archived === 'archived') {
+    $order_where .= " AND orders.is_archived = TRUE";
+} elseif ($filter_archived !== 'all') {
+    $order_where .= " AND orders.is_archived = FALSE";
 }
 
 // --- PAGINATION LOGIC ---
@@ -259,8 +287,13 @@ $showing_to = min($offset + $limit, $total_rows);
                 <option value="me" <?php echo ($filter_mode == 'me') ? 'selected' : ''; ?>>Deliver to Me</option>
                 <option value="recipient" <?php echo ($filter_mode == 'recipient') ? 'selected' : ''; ?>>Deliver to Recipient</option>
             </select>
+            <select name="filter_archived" class="filter-select">
+                <option value="">Active Orders</option>
+                <option value="archived" <?php echo ($filter_archived == 'archived') ? 'selected' : ''; ?>>Archived</option>
+                <option value="all" <?php echo ($filter_archived == 'all') ? 'selected' : ''; ?>>All (incl. archived)</option>
+            </select>
             <button type="submit" class="filter-btn">Apply Filters</button>
-            <?php if($filter_status || $filter_payment || $filter_mode): ?>
+            <?php if($filter_status || $filter_payment || $filter_mode || $filter_archived): ?>
                 <a href="admin_orders.php" style="color: #ff8ba7; font-size: 14px; text-decoration: underline;">Clear Filters</a>
             <?php endif; ?>
         </form>
@@ -375,6 +408,22 @@ $showing_to = min($offset + $limit, $total_rows);
                                 . '</div>';
                         }
 
+                        // Archive/unarchive — only offered for a final (delivered/cancelled)
+                        // order, and never touches COUNT(*) FROM orders (Total Orders stat).
+                        $is_archived = !in_array($row['is_archived'], [false, 'f', '0', 0, null], true);
+                        if (in_array($row['status'], ['delivered', 'cancelled'], true)) {
+                            $archive_btn = $is_archived
+                                ? '<form action="admin_orders.php" method="POST" style="margin:6px 0 0;">'
+                                    . '<input type="hidden" name="order_id" value="'.$row['id'].'">'
+                                    . '<button type="submit" name="unarchive_order" value="1" class="btn-view-items" style="margin:0;background:#fff3e0;color:#e65100;"><i class="fas fa-box-open" style="margin-right:5px;"></i> Unarchive</button>'
+                                    . '</form>'
+                                : '<form action="admin_orders.php" method="POST" style="margin:6px 0 0;">'
+                                    . '<input type="hidden" name="order_id" value="'.$row['id'].'">'
+                                    . '<button type="submit" name="archive_order" value="1" class="btn-view-items" style="margin:0;" onclick="return confirm(\'Archive this order? It will be hidden from the default list but still counted in your totals.\')"><i class="fas fa-box-archive" style="margin-right:5px;"></i> Archive</button>'
+                                    . '</form>';
+                            $action_cell = '<div style="display:flex;flex-direction:column;align-items:center;">' . $action_cell . $archive_btn . '</div>';
+                        }
+
                         echo '
                         <tr class="search-row"'.$row_style.'>
                             <td><strong>#'.$row['id'].'</strong></td>
@@ -401,7 +450,7 @@ $showing_to = min($offset + $limit, $total_rows);
 
     <!-- --- PAGINATION --- -->
     <?php
-    $qs = '&filter_status=' . urlencode($filter_status) . '&filter_payment=' . urlencode($filter_payment) . '&filter_mode=' . urlencode($filter_mode);
+    $qs = '&filter_status=' . urlencode($filter_status) . '&filter_payment=' . urlencode($filter_payment) . '&filter_mode=' . urlencode($filter_mode) . '&filter_archived=' . urlencode($filter_archived);
     ?>
     <div style="text-align:center; color:#999; font-size:13px; margin-top:24px;">
         <?php if ($total_rows > 0): ?>

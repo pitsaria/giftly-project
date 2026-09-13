@@ -19,7 +19,7 @@ if (!function_exists('orders_ensure_schema')) {
         if ($done) return;
         $done = true;
 
-        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v5'])) {
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['orders_schema_ok_v6'])) {
             return;
         }
 
@@ -52,8 +52,14 @@ if (!function_exists('orders_ensure_schema')) {
         }
         $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_item_product_id INTEGER");
 
+        // Lets an admin tuck a completed/cancelled order out of the main list
+        // without deleting it — COUNT(*) FROM orders (Dashboard's "Total
+        // Orders", Analytics) is intentionally left unfiltered by this, so
+        // archiving never changes those totals.
+        $conn->query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE");
+
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['orders_schema_ok_v5'] = true;
+            $_SESSION['orders_schema_ok_v6'] = true;
         }
     }
 

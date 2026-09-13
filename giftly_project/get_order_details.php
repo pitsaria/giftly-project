@@ -2,8 +2,10 @@
 include 'db_connect.php';
 include_once 'orders_lib.php';
 include_once 'reviews_lib.php';
+include_once 'catalog_lib.php';
 orders_ensure_schema($conn);
 reviews_ensure_schema($conn);
+catalog_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     exit('Unauthorized');
@@ -20,8 +22,14 @@ if (!$order) {
     exit();
 }
 
-// Fetch Items
-$items = $conn->query("SELECT oi.*, p.name, p.image FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $order_id");
+// Fetch Items — same color-photo swap as CartService::getCart()/checkout_selected.php, and
+// includes each item's own "What's Inside" list (Occasion Boxes & Baskets).
+$items = $conn->query("SELECT oi.*, p.name, p.image, p.whats_inside, pc.image AS color_image
+                        FROM order_items oi
+                        JOIN products p ON oi.product_id = p.id
+                        LEFT JOIN product_colors pc ON pc.product_id = oi.product_id
+                           AND pc.color_name = oi.selected_color AND oi.selected_color <> ''
+                        WHERE oi.order_id = $order_id");
 ?>
 
 <style>
@@ -159,6 +167,7 @@ $awaiting_payment = ($order['payment_method'] ?? 'cod') !== 'cod' && ($order['pa
 
 <div style="margin-bottom: 20px;">
     <div class="order-detail-row"><span class="order-detail-label">Order ID</span><span class="order-detail-value">#<?php echo $order['id']; ?></span></div>
+    <div class="order-detail-row"><span class="order-detail-label">Order Date</span><span class="order-detail-value"><?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Status</span><span class="order-detail-value" style="text-transform:capitalize;"><?php echo $order['status']; ?></span></div>
     <?php if (!empty($order['discount_amount']) && (float)$order['discount_amount'] > 0): ?>
     <div class="order-detail-row"><span class="order-detail-label">Discount<?php echo !empty($order['promo_code']) ? ' (' . htmlspecialchars($order['promo_code']) . ')' : ''; ?></span><span class="order-detail-value" style="color:#2e7d32;">− PHP <?php echo number_format($order['discount_amount'], 2); ?></span></div>
@@ -168,11 +177,18 @@ $awaiting_payment = ($order['payment_method'] ?? 'cod') !== 'cod' && ($order['pa
     <div class="order-detail-row"><span class="order-detail-label">Delivery Date</span><span class="order-detail-value"><?php echo date('F j, Y', strtotime($order['delivery_date'])); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Delivery Time</span><span class="order-detail-value"><?php echo date('g:i A', strtotime($order['delivery_time'])); ?></span></div>
     <div class="order-detail-row"><span class="order-detail-label">Shipping Address</span><span class="order-detail-value"><?php echo $order['address'] . ', ' . $order['city']; ?></span></div>
-    
+    <div class="order-detail-row"><span class="order-detail-label">Sent By</span><span class="order-detail-value"><?php echo htmlspecialchars($order['fullname']); ?></span></div>
+    <?php if (!empty($order['sender_phone'])): ?>
+        <div class="order-detail-row"><span class="order-detail-label">Sender Phone</span><span class="order-detail-value"><?php echo htmlspecialchars($order['sender_phone']); ?></span></div>
+    <?php endif; ?>
+
     <?php if($order['recipient_name']): ?>
         <div class="order-detail-row"><span class="order-detail-label">Recipient</span><span class="order-detail-value"><?php echo $order['recipient_name']; ?></span></div>
     <?php endif; ?>
-    
+    <?php if (!empty($order['recipient_phone'])): ?>
+        <div class="order-detail-row"><span class="order-detail-label">Recipient Phone</span><span class="order-detail-value"><?php echo htmlspecialchars($order['recipient_phone']); ?></span></div>
+    <?php endif; ?>
+
     <?php if($order['gift_message']): ?>
         <div class="order-detail-row" style="flex-direction: column; align-items: flex-start; padding: 8px 0;">
             <span class="order-detail-label" style="margin-bottom: 5px;">Gift Message</span>
@@ -189,15 +205,39 @@ $awaiting_payment = ($order['payment_method'] ?? 'cod') !== 'cod' && ($order['pa
         <tr><th>Product</th><th>Qty</th><th>Price</th></tr>
     </thead>
     <tbody>
-        <?php while($item = $items->fetch_assoc()): ?>
+        <?php while($item = $items->fetch_assoc()):
+            // A chosen color shows its own photo instead of the product's base image.
+            $item_image = !empty($item['color_image']) ? $item['color_image'] : $item['image'];
+            $item_whats_inside = catalog_whats_inside_lines($item['whats_inside'] ?? '');
+        ?>
             <tr>
                 <td>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <?php if($item['image']): ?>
-                            <img src="<?php echo htmlspecialchars(img_url($item['image'])); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:8px;">
+                        <?php if($item_image): ?>
+                            <img src="<?php echo htmlspecialchars(img_url($item_image)); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:8px;">
                         <?php endif; ?>
-                        <?php echo htmlspecialchars($item['name']); ?>
-                        <?php if ((float)$item['price'] <= 0): ?><span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:1px 7px;border-radius:20px;">FREE GIFT</span><?php endif; ?>
+                        <div>
+                            <div>
+                                <?php echo htmlspecialchars($item['name']); ?>
+                                <?php if ((float)$item['price'] <= 0): ?><span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:1px 7px;border-radius:20px;">FREE GIFT</span><?php endif; ?>
+                            </div>
+                            <?php if (!empty($item['selected_color']) || !empty($item['selected_size'])): ?>
+                                <div style="font-size:11.5px;color:#888;margin-top:2px;">
+                                    <?php
+                                        $variant_bits = [];
+                                        if (!empty($item['selected_color'])) $variant_bits[] = 'Color: ' . htmlspecialchars($item['selected_color']);
+                                        if (!empty($item['selected_size'])) $variant_bits[] = 'Size: ' . htmlspecialchars($item['selected_size']);
+                                        echo implode(' · ', $variant_bits);
+                                    ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($item_whats_inside)): ?>
+                                <div style="font-size:11.5px;color:#999;margin-top:4px;">
+                                    <strong style="color:#777;">What's Inside:</strong>
+                                    <?php echo htmlspecialchars(implode(', ', $item_whats_inside)); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </td>
                 <td><?php echo $item['quantity']; ?></td>

@@ -590,7 +590,7 @@ unset($_SESSION['box_checkout_error']);
                 <div class="addon-grid">
                     <?php foreach ($addons as $a): ?>
                         <label class="addon-card">
-                            <input type="checkbox" name="addon_ids[]" value="<?php echo (int) $a['id']; ?>" class="addon-checkbox" data-price="<?php echo (float) $a['price']; ?>" onchange="updateAddonsTotal()">
+                            <input type="checkbox" name="addon_ids[]" value="<?php echo (int) $a['id']; ?>" class="addon-checkbox" data-price="<?php echo (float) $a['price']; ?>" data-name="<?php echo htmlspecialchars($a['name']); ?>" onchange="updateAddonsTotal()">
                             <img src="<?php echo htmlspecialchars(img_url($a['image'])); ?>" alt="">
                             <div class="addon-info">
                                 <div class="addon-name"><?php echo htmlspecialchars($a['name']); ?></div>
@@ -714,10 +714,7 @@ unset($_SESSION['box_checkout_error']);
                 <div class="r"><span>Box</span><span>PHP <?php echo number_format($box_price, 2); ?></span></div>
                 <?php endif; ?>
                 <div class="r"><span>Shipping</span><span id="poShipping"><?php echo $shipping_fee == 0 ? 'FREE' : 'PHP ' . number_format($shipping_fee, 2); ?></span></div>
-                <div class="r" id="addonsTotalRow" style="color:#ff8ba7; display:none;">
-                    <span><i class="fas fa-gift" style="margin-right:4px;"></i> Gift Wrapping &amp; Add-ons</span>
-                    <span id="addonsTotalAmount">PHP 0.00</span>
-                </div>
+                <div id="addonsLines"></div>
                 <div class="r g"><span>Total</span><span id="poTotal">PHP <?php echo number_format($grand, 2); ?></span></div>
             </div>
 
@@ -985,18 +982,22 @@ unset($_SESSION['box_checkout_error']);
     })();
 
     /* --- GIFT WRAPPING & ADD-ONS --- */
+    // Lists each selected add-on by name in the order summary, instead of
+    // just one combined "Gift Wrapping & Add-ons" total.
     window.__addonsTotal = 0;
     function updateAddonsTotal() {
         var sum = 0;
+        var lines = '';
         document.querySelectorAll('.addon-checkbox:checked').forEach(function (cb) {
-            sum += parseFloat(cb.dataset.price) || 0;
+            var price = parseFloat(cb.dataset.price) || 0;
+            sum += price;
+            lines += '<div class="r" style="color:#ff8ba7;">'
+                   + '<span><i class="fas fa-gift" style="margin-right:4px;"></i> ' + cb.dataset.name + '</span>'
+                   + '<span>PHP ' + price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '</span></div>';
         });
         window.__addonsTotal = sum;
-        var row = document.getElementById('addonsTotalRow');
-        if (row) {
-            row.style.display = sum > 0 ? 'flex' : 'none';
-            document.getElementById('addonsTotalAmount').innerText = 'PHP ' + sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        }
+        var container = document.getElementById('addonsLines');
+        if (container) container.innerHTML = lines;
         if (window.__refreshBoxTotal) window.__refreshBoxTotal();
     }
 </script>

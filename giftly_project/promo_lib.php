@@ -76,12 +76,22 @@ if (!function_exists('promo_ensure_schema')) {
             $conn->query("INSERT INTO promos (code, name, type, value, auto, first_order_only, applies_to)
                           VALUES (NULL, 'First order · 10% off', 'percent', 10, TRUE, TRUE, 'all')");
             $conn->query("INSERT INTO promos (code, name, type, value, auto, min_spend, applies_to)
-                          VALUES (NULL, 'Free shipping over PHP 250', 'free_shipping', 0, TRUE, 250, 'all')");
+                          VALUES (NULL, 'Free shipping over PHP 300', 'free_shipping', 0, TRUE, 300, 'all')");
             $conn->query("INSERT INTO promos (code, name, type, value, min_spend, per_user_limit, applies_to)
                           VALUES ('GIFTLY10', 'GIFTLY10 · 10% off', 'percent', 10, 500, 1, 'all')");
             $conn->query("INSERT INTO promos (code, name, type, value, min_spend, per_user_limit, applies_to)
                           VALUES ('WELCOME50', 'WELCOME50 · PHP 50 off', 'fixed', 50, 300, 1, 'all')");
         }
+
+        // One-time correction for databases seeded before the free-shipping
+        // threshold above was fixed from 250 to 300 — every actual shipping-fee
+        // calculation in the codebase (checkout_selected.php, box_checkout.php,
+        // the mobile app) has always used 300, so the auto-promo's old 250
+        // made shipping go free a full PHP 50 earlier than the site advertises.
+        // Narrow WHERE so an admin who deliberately retuned this promo is untouched.
+        $conn->query("UPDATE promos SET min_spend = 300, name = 'Free shipping over PHP 300'
+                      WHERE type = 'free_shipping' AND auto = TRUE
+                        AND min_spend = 250 AND name = 'Free shipping over PHP 250'");
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             $_SESSION['promo_schema_ok_v1'] = true;

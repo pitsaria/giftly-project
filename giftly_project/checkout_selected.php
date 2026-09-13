@@ -461,9 +461,11 @@ if(empty($selected_ids)) {
 $ids_string = implode(',', array_map('intval', $selected_ids));
 $items_query = $conn->query("SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
                                     p.price AS list_price, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price,
-                                    p.image, p.quantity as stock_quantity, p.is_active
+                                    p.image, pc.image AS color_image, p.quantity as stock_quantity, p.is_active
                              FROM carts c
                              JOIN products p ON c.product_id = p.id
+                             LEFT JOIN product_colors pc ON pc.product_id = c.product_id
+                                AND pc.color_name = c.selected_color AND c.selected_color <> ''
                              WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
 
 $total_sum = 0;
@@ -478,6 +480,11 @@ while($row = $items_query->fetch_assoc()){
     if ($row['variant_price'] !== null && $row['variant_price'] !== '') {
         $row['list_price'] = $row['price'];
     }
+    // A chosen color shows its own photo instead of the product's base image.
+    if (!empty($row['color_image'])) {
+        $row['image'] = $row['color_image'];
+    }
+    unset($row['color_image']);
     $row['subtotal'] = $row['price'] * $row['quantity'];
     $total_sum += $row['subtotal'];
     $items_list[] = $row;
@@ -1288,7 +1295,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                 <div class="addon-grid">
                     <?php foreach ($addons as $a): ?>
                         <label class="addon-card">
-                            <input type="checkbox" name="addon_ids[]" value="<?php echo (int) $a['id']; ?>" class="addon-checkbox" data-price="<?php echo (float) $a['price']; ?>" onchange="updateAddonsTotal()">
+                            <input type="checkbox" name="addon_ids[]" value="<?php echo (int) $a['id']; ?>" class="addon-checkbox" data-price="<?php echo (float) $a['price']; ?>" data-name="<?php echo htmlspecialchars($a['name']); ?>" onchange="updateAddonsTotal()">
                             <img src="<?php echo htmlspecialchars(img_url($a['image'])); ?>" alt="">
                             <div class="addon-info">
                                 <div class="addon-name"><?php echo htmlspecialchars($a['name']); ?></div>
@@ -1444,10 +1451,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
         Free shipping on orders over <strong>PHP 300</strong>
     </div>
 
-    <div class="os-total-row" id="addonsTotalRow" style="color: #ff8ba7; display:none;">
-        <span><i class="fas fa-gift" style="margin-right:4px;"></i> Gift Wrapping &amp; Add-ons</span>
-        <span id="addonsTotalAmount">PHP 0.00</span>
-    </div>
+    <div id="addonsLines"></div>
 
     <div class="os-total-row" style="border-top: 1px solid #f0f0f0; padding-top: 15px; margin-top: 5px;">
         <span class="os-grand-total">Total</span>
@@ -1996,18 +2000,22 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
     }
 
     /* --- GIFT WRAPPING & ADD-ONS --- */
+    // Lists each selected add-on by name in the order summary, instead of
+    // just one combined "Gift Wrapping & Add-ons" total.
     window.__addonsTotal = 0;
     function updateAddonsTotal() {
         var sum = 0;
+        var lines = '';
         document.querySelectorAll('.addon-checkbox:checked').forEach(function (cb) {
-            sum += parseFloat(cb.dataset.price) || 0;
+            var price = parseFloat(cb.dataset.price) || 0;
+            sum += price;
+            lines += '<div class="os-total-row" style="color: #ff8ba7;">'
+                   + '<span><i class="fas fa-gift" style="margin-right:4px;"></i> ' + cb.dataset.name + '</span>'
+                   + '<span>' + pesoFmt(price) + '</span></div>';
         });
         window.__addonsTotal = sum;
-        var row = document.getElementById('addonsTotalRow');
-        if (row) {
-            row.style.display = sum > 0 ? 'flex' : 'none';
-            document.getElementById('addonsTotalAmount').innerText = pesoFmt(sum);
-        }
+        var container = document.getElementById('addonsLines');
+        if (container) container.innerHTML = lines;
         updateCheckoutTotal(); // re-runs the existing subtotal + promo + shipping refresh chain
     }
 
