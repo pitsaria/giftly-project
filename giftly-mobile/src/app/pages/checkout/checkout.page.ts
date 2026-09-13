@@ -289,6 +289,16 @@ export class CheckoutPage implements OnInit {
     return this.cartItems().reduce((sum, i) => sum + i.subtotal, 0);
   }
 
+  // Same split/trim/filter as catalog_whats_inside_lines() in catalog_lib.php —
+  // Occasion Box / Basket items carry their own "What's Inside" list.
+  whatsInsideLines(item: CartItem): string[] {
+    if (!item.whats_inside) return [];
+    return item.whats_inside
+      .split(/\r\n|\r|\n/)
+      .map((l) => l.trim())
+      .filter((l) => l !== '');
+  }
+
   shippingFee(): number {
     const eval_ = this.promoEval();
     if (eval_) return eval_.shipping_fee;

@@ -77,6 +77,8 @@ export interface CartItem {
   // Occasion Box variant chosen when this line was added — '' means none.
   selected_color?: string;
   selected_size?: string;
+  // Raw "What's Inside" textarea (one line per item) — Occasion Boxes & Baskets.
+  whats_inside?: string;
 }
 
 export interface Cart {

@@ -212,6 +212,9 @@
           x{{ item.quantity }} · ₱{{ item.price | number: '1.2-2' }}
           <span class="oi-was" *ngIf="item.on_sale">₱{{ item.list_price | number: '1.2-2' }}</span>
         </span>
+        <span class="oi-whats-inside" *ngIf="whatsInsideLines(item).length">
+          <strong>What's Inside:</strong> {{ whatsInsideLines(item).join(', ') }}
+        </span>
       </div>
       <span class="oi-sub">₱{{ item.subtotal | number: '1.2-2' }}</span>
     </div>

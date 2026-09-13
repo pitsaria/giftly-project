@@ -36,10 +36,17 @@ class OrderService {
             pay_sweep_stale($this->conn);
         }
 
-        $limit = isset($params['limit']) ? intval($params['limit']) : 10;
+        // No cap unless the caller explicitly asks for a page — mirrors
+        // profile_orders.php's own unlimited "SELECT * FROM orders" on the
+        // website. The mobile app's My Orders never passed limit/offset, so
+        // this silently capped everyone's order history at 10.
+        $limit = isset($params['limit']) ? intval($params['limit']) : null;
         $offset = isset($params['offset']) ? intval($params['offset']) : 0;
 
-        $sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
+        $sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY created_at DESC";
+        if ($limit !== null) {
+            $sql .= " LIMIT $limit OFFSET $offset";
+        }
         $result = $this->conn->query($sql);
         
         $orders = [];

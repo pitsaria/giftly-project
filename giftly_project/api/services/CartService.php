@@ -24,7 +24,7 @@ class CartService {
 
         $sql = "SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size,
                        p.id, p.name, p.description, p.price, p.sale_price, p.sale_ends, p.image, pc.image AS color_image, p.category_id,
-                       p.quantity as stock, p.is_active,
+                       p.quantity as stock, p.is_active, p.whats_inside,
                        COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS variant_effective_price
                 FROM carts c
                 JOIN products p ON c.product_id = p.id
