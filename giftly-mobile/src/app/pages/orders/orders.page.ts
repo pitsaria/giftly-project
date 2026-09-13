@@ -1,10 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import {
   IonContent,
   IonRefresher,
   IonRefresherContent,
+  IonSearchbar,
   IonChip,
   IonLabel,
   IonIcon,
@@ -41,10 +43,12 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   styleUrls: ['orders.page.scss'],
   imports: [
     CommonModule,
+    FormsModule,
     RouterLink,
     IonContent,
     IonRefresher,
     IonRefresherContent,
+    IonSearchbar,
     IonChip,
     IonLabel,
     IonIcon,
@@ -68,6 +72,7 @@ export class OrdersPage implements OnInit {
   readonly orders = signal<Order[]>([]);
   readonly paying = signal<number | null>(null);
   readonly filter = signal<StatusFilter>('all');
+  readonly search = signal('');
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly slowLoad = signal(false);
@@ -77,8 +82,29 @@ export class OrdersPage implements OnInit {
 
   readonly filtered = computed(() => {
     const f = this.filter();
-    return f === 'all' ? this.orders() : this.orders().filter((o) => o.status === f);
+    const byStatus = f === 'all' ? this.orders() : this.orders().filter((o) => o.status === f);
+    const q = this.search().trim().toLowerCase();
+    if (!q) return byStatus;
+    return byStatus.filter((o) => {
+      const haystack = [
+        `gly-${o.id}`,
+        String(o.id),
+        o.total_amount,
+        this.statusLabel(o.status),
+        o.recipient_name,
+        o.fullname,
+        o.promo_code,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
   });
+
+  onSearch(value: string | null | undefined): void {
+    this.search.set(value ?? '');
+  }
 
   async ngOnInit(): Promise<void> {
     if (this.auth.isLoggedIn()) {

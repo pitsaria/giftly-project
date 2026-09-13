@@ -13,6 +13,12 @@
   </div>
 
   <ng-container *ngIf="auth.isLoggedIn()">
+    <ion-searchbar
+      placeholder="Search by order #, status, or recipient..."
+      [debounce]="300"
+      (ionInput)="onSearch($event.detail.value)"
+    ></ion-searchbar>
+
     <div class="filter-row">
       <ion-chip [outline]="filter() !== 'all'" [color]="filter() === 'all' ? 'primary' : undefined" (click)="setFilter('all')">
         <ion-label>All Orders</ion-label>
@@ -80,7 +86,9 @@
           <ion-button size="small" fill="outline" class="track-btn" (click)="trackOrder(o)">Track Order</ion-button>
         </div>
       </div>
-      <p class="empty-msg" *ngIf="!filtered().length">No orders in this category yet.</p>
+      <p class="empty-msg" *ngIf="!filtered().length">
+        {{ search().trim() ? 'No orders match your search.' : 'No orders in this category yet.' }}
+      </p>
     </div>
   </ng-container>
 </ion-content>

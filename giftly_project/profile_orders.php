@@ -71,6 +71,15 @@ if ($result->num_rows > 0) {
 ?>
 
 <style>
+    .of-search {
+        display: flex; align-items: center; gap: 12px;
+        background: #fff; border: 1.5px solid #eee; border-radius: 30px;
+        padding: 12px 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        transition: 0.3s;
+    }
+    .of-search:focus-within { border-color: #ffc1cc; box-shadow: 0 0 0 3px rgba(255, 193, 204, 0.1); }
+    .of-search i { color: #888; }
+    .of-search input { border: none; outline: none; width: 100%; font-size: 14px; font-family: 'Poppins'; background: transparent; }
     .order-table { width: 100%; border-collapse: collapse; }
     .order-table th { text-align: left; padding: 12px 10px; border-bottom: 2px solid #f0f0f0; color: #444; font-weight: 600; font-size: 14px; }
     .order-table td { padding: 16px 10px; border-bottom: 1px solid #f5f5f5; font-size: 14px; color: #333; vertical-align: middle; }
@@ -242,6 +251,13 @@ if ($result->num_rows > 0) {
 
 <div class="page-title">Order History</div>
 
+<?php if (!empty($orders)): ?>
+    <div class="of-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="myOrderSearch" placeholder="Search by order #, item, status or date...">
+    </div>
+<?php endif; ?>
+
 <?php if ($order_flash): ?>
     <div class="of-flash <?php echo $order_flash['type'] === 'ok' ? 'ok' : 'error'; ?>">
         <i class="fas fa-<?php echo $order_flash['type'] === 'ok' ? 'circle-check' : 'circle-exclamation'; ?>" style="margin-right:6px;"></i>
@@ -267,8 +283,16 @@ if ($result->num_rows > 0) {
                 $can_request = ($row['status'] === 'pending' && in_array($cs, ['none', 'rejected'], true));
                 $delivered = ($row['status'] === 'delivered');
                 $received  = $delivered && !empty($row['received_at']);
+
+                // Item names, so searching also matches "what's in this order" —
+                // not shown in the table itself, just carried on the row for the search filter below.
+                $item_names = [];
+                $items_res = $conn->query("SELECT p.name FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = " . (int) $row['id']);
+                if ($items_res) {
+                    while ($item_row = $items_res->fetch_assoc()) { $item_names[] = $item_row['name']; }
+                }
             ?>
-            <tr>
+            <tr class="search-row" data-items="<?php echo htmlspecialchars(implode(', ', $item_names)); ?>">
                 <td><strong>#<?php echo $row['id']; ?></strong></td>
                 <td>
                     <strong>PHP <?php echo number_format($row['total_amount'], 2); ?></strong>
@@ -344,6 +368,7 @@ if ($result->num_rows > 0) {
             <?php endforeach; ?>
         </tbody>
     </table>
+    <p id="myOrderSearchEmpty" style="display:none; text-align:center; color:#999; padding:24px 0;">No orders match your search.</p>
 <?php else: ?>
     <p style="color:#888; text-align:center; padding:40px;">You haven't placed any orders yet. <a href="shop.php" style="color:#ff8ba7;">Start shopping!</a></p>
 <?php endif; ?>
@@ -389,6 +414,32 @@ if ($result->num_rows > 0) {
 </div>
 
 <script>
+    /* --- LIVE ORDER SEARCH --- */
+    (function () {
+        const input = document.getElementById('myOrderSearch');
+        if (!input) return;
+        input.addEventListener('keyup', function () {
+            const filter = this.value.toLowerCase();
+            const rows = document.getElementsByClassName('search-row');
+            let anyVisible = false;
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const haystack = (
+                    row.cells[0].innerText + ' ' +
+                    row.cells[1].innerText + ' ' +
+                    row.cells[2].innerText + ' ' +
+                    row.cells[3].innerText + ' ' +
+                    (row.dataset.items || '')
+                ).toLowerCase();
+                const match = haystack.indexOf(filter) > -1;
+                row.style.display = match ? '' : 'none';
+                if (match) anyVisible = true;
+            }
+            const empty = document.getElementById('myOrderSearchEmpty');
+            if (empty) empty.style.display = anyVisible ? 'none' : '';
+        });
+    })();
+
     /* --- ORDER DETAILS MODAL --- */
     function openOrderModal(orderId) {
         document.getElementById('orderModal').style.display = 'flex';
