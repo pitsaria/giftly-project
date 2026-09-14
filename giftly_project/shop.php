@@ -871,7 +871,19 @@ $api_url .= '&page=' . $page . '&limit=' . $limit;
         $disc_pct = ($is_on_sale && (float)$row['price'] > 0)
             ? (int) round(((float)$row['price'] - $eff_price) / (float)$row['price'] * 100)
             : 0;
-        $onClick = $isInStock ? "openModal(".$row['id'].", '".addslashes($row['name'])."', '".addslashes($row['description'])."', '".addslashes(img_url($row['image']))."', ".$eff_price.", ".$row['quantity'].", ".(float)$row['price'].")" : "";
+        // Quick-view data travels as a JSON blob in a data-attribute (never as
+        // hand-built JS-in-an-onclick-string) so a product name/description
+        // can contain absolutely anything — quotes, HTML, backslashes,
+        // emoji — and the modal still opens. See js-quick-view below.
+        $modalData = $isInStock ? htmlspecialchars(json_encode([
+            'id'          => (int) $row['id'],
+            'name'        => (string) $row['name'],
+            'description' => (string) $row['description'],
+            'image'       => img_url($row['image']),
+            'price'       => (float) $eff_price,
+            'quantity'    => (int) $row['quantity'],
+            'listPrice'   => (float) $row['price'],
+        ], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') : '';
         $cardClass = $isInStock ? 'product-card' : 'product-card out-of-stock-product';
 
         // Check if product is in wishlist
@@ -888,34 +900,34 @@ $heartClass = $isInWishlist ? 'active' : '';
         }
 
         echo '
-        <div class="'.$cardClass.'">
-            
-            <div class="p-image-container" onclick="'.$onClick.'">
-                <img src="'.htmlspecialchars(img_url($row['image'])).'" class="p-image" alt="'.$row['name'].'">
-                
+        <div class="'.$cardClass.'" data-modal="'.$modalData.'">
+
+            <div class="p-image-container js-quick-view">
+                <img src="'.htmlspecialchars(img_url($row['image'])).'" class="p-image" alt="'.htmlspecialchars($row['name']).'">
+
                 <!-- 🚀 WISHLIST HEART BUTTON -->
                 <button class="p-image-heart '.$heartClass.'" onclick="event.stopPropagation(); toggleWishlist(this, '.$row['id'].')" data-product-id="'.$row['id'].'">
                     <i class="fas fa-heart"></i>
                     <i class="far fa-heart"></i>
                 </button>
-                
+
                 ' . (!$isInStock ? '<div class="out-of-stock-ribbon">Out of Stock</div>' : '') . '
-                
+
                 ' . (!$isInStock ? '
                 <div class="out-of-stock-overlay">
                     <i class="fas fa-times-circle"></i>
                     <span>Out of Stock</span>
                 </div>' : '') . '
-                
+
                 ' . ($totalSold > 10 ? '<div class="p-image-badge">Best Seller</div>' : '') . '
                 ' . ($is_on_sale ? '<div class="p-image-sale">Sale' . ($disc_pct > 0 ? ' <small>-' . $disc_pct . '%</small>' : '') . '</div>' : '') . '
             </div>
 
-            <div class="p-name" onclick="'.$onClick.'">'.$row['name'].'</div>
+            <div class="p-name js-quick-view">'.htmlspecialchars($row['name']).'</div>
             ' . (((int)($row['review_count'] ?? 0)) > 0 ? '
-            <div class="p-rating" onclick="'.$onClick.'">' . shop_stars((float)$row['avg_rating']) . ' <span>('.(int)$row['review_count'].')</span></div>' : '') . '
+            <div class="p-rating js-quick-view">' . shop_stars((float)$row['avg_rating']) . ' <span>('.(int)$row['review_count'].')</span></div>' : '') . '
             <div class="p-bottom-row">
-                <div class="p-price'.($is_on_sale ? ' on-sale' : '').'" onclick="'.$onClick.'"><span class="p-now">PHP '.number_format($eff_price, 2).'</span>'.($is_on_sale ? '<span class="p-was">PHP '.number_format($row['price'], 2).'</span>' : '').'</div>
+                <div class="p-price js-quick-view'.($is_on_sale ? ' on-sale' : '').'"><span class="p-now">PHP '.number_format($eff_price, 2).'</span>'.($is_on_sale ? '<span class="p-was">PHP '.number_format($row['price'], 2).'</span>' : '').'</div>
 
                 ' . ($isInStock ? '
                 <button class="btn-action" onclick="event.stopPropagation(); quickAdd('.$row['id'].')">
@@ -1061,6 +1073,26 @@ $heartClass = $isInWishlist ? 'active' : '';
     let currentModalId = 0;
     let currentQty = 1;
     let currentStock = 0;
+
+    // Quick-view click handling is delegated off a JSON blob in the card's
+    // data-modal attribute (set in the PHP loop above) instead of building
+    // an onclick="openModal(...)" string per card — that older approach broke
+    // for any product whose name/description contained a double-quote (it
+    // terminated the HTML attribute early). Reading from a data-attribute via
+    // JSON.parse has no such limit, so this works no matter what an admin
+    // types into a product's name or description, now or in any future category.
+    document.querySelectorAll('.product-grid').forEach(function (grid) {
+        grid.addEventListener('click', function (e) {
+            const trigger = e.target.closest('.js-quick-view');
+            if (!trigger) return;
+            const card = trigger.closest('.product-card');
+            const raw = card ? card.dataset.modal : '';
+            if (!raw) return;
+            let d;
+            try { d = JSON.parse(raw); } catch (err) { return; }
+            openModal(d.id, d.name, d.description, d.image, d.price, d.quantity, d.listPrice);
+        });
+    });
 
     function openModal(id, name, desc, image, price, stock, listPrice) {
         currentModalId = id;
