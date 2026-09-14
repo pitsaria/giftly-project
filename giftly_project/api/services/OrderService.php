@@ -172,6 +172,28 @@ class OrderService {
         $card_last4_sql = $card_last4 !== null ? "'" . $card_last4 . "'" : 'NULL';
         $card_holder_sql = $card_holder !== null ? "'" . $card_holder . "'" : 'NULL';
 
+        // 🚨 Authoritative stock check: lock the product rows for the rest of
+        // this request so two shoppers racing for the last unit can't both
+        // succeed — the cart fetch above only reads and isn't atomic, and
+        // (unlike checkout_selected.php) never compared quantity to stock at all.
+        $product_ids = array_values(array_unique(array_map(function ($it) { return (int) $it['product_id']; }, $items)));
+        $pid_list = implode(',', $product_ids);
+        $this->conn->begin_transaction();
+        $lock_res = $this->conn->query("SELECT id, name, quantity FROM products WHERE id IN ($pid_list) FOR UPDATE");
+        $stock_by_id = [];
+        while ($lock_res && $r = $lock_res->fetch_assoc()) {
+            $stock_by_id[(int) $r['id']] = $r;
+        }
+        foreach ($items as $item) {
+            $pid = (int) $item['product_id'];
+            $available = isset($stock_by_id[$pid]) ? (int) $stock_by_id[$pid]['quantity'] : 0;
+            if ((int) $item['quantity'] > $available) {
+                $this->conn->rollback();
+                $name = $stock_by_id[$pid]['name'] ?? ($item['name'] ?? 'An item');
+                sendError("$name: only $available left in stock. Please update your cart and try again.");
+            }
+        }
+
         // Insert order
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city,
                                     payment_method, delivery_date, delivery_time, gift_message,
@@ -221,6 +243,8 @@ class OrderService {
             // Clear cart
             $this->conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
 
+            $this->conn->commit();
+
             // --- ONLINE PAYMENT: open a PayMongo hosted checkout ---
             $checkout_url = '';
             $pay_error = '';
@@ -248,6 +272,7 @@ class OrderService {
                 'free_item_name'   => $free_item_name,
             ], 'Order placed successfully!');
         } else {
+            $this->conn->rollback();
             sendError('Failed to place order: ' . $this->conn->error);
         }
     }

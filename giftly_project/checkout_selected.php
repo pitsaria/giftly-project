@@ -189,26 +189,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     }
 
     $ids_string = implode(',', array_map('intval', $selected_ids));
+
+    // 🚨 Authoritative stock check: lock the product rows for the rest of this
+    // request so two shoppers racing for the last unit can't both succeed —
+    // the earlier check above is only a friendly heads-up and isn't atomic.
+    $conn->begin_transaction();
     $cart_result = $conn->query("SELECT c.product_id, c.quantity, c.selected_color, c.selected_size,
-                                        COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price
+                                        COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price,
+                                        p.name, p.quantity AS available_stock, p.is_active
                                  FROM carts c
                                  JOIN products p ON c.product_id = p.id
-                                 WHERE c.user_id = $user_id AND c.id IN ($ids_string)");
-    
+                                 WHERE c.user_id = $user_id AND c.id IN ($ids_string)
+                                 FOR UPDATE");
+
     $total_amount = 0;
     $items = [];
+    $race_errors = [];
     while($row = $cart_result->fetch_assoc()){
+        if (!catalog_is_active($row['is_active'] ?? true) || intval($row['quantity']) > intval($row['available_stock'])) {
+            $race_errors[] = $row['name'];
+            continue;
+        }
         $total_amount += $row['price'] * $row['quantity'];
         $items[] = $row;
     }
 
     // Don't create an order with nothing in it.
     if (count($items) === 0 || $total_amount <= 0) {
+        $conn->rollback();
         echo '<div style="max-width:520px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
            . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-cart-shopping"></i></div>'
            . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Your cart is empty</h2>'
            . '<p style="color:#888;line-height:1.6;margin-bottom:22px;">Add at least one item before checking out.</p>'
            . '<a href="shop.php" style="padding:13px 30px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">Go to Shop</a>'
+           . '</div>';
+        include 'footer.php';
+        exit();
+    }
+
+    // Someone else grabbed the stock between the earlier check and this lock
+    // (or the item went inactive) — bail out cleanly instead of overselling.
+    if (!empty($race_errors)) {
+        $conn->rollback();
+        echo '<div style="max-width:600px;margin:130px auto 60px;padding:40px;background:#fff;border-radius:30px;box-shadow:0 10px 40px rgba(0,0,0,0.04);text-align:center;font-family:Poppins,sans-serif;">'
+           . '<div style="font-size:60px;color:#f9a825;margin-bottom:20px;"><i class="fas fa-exclamation-triangle"></i></div>'
+           . '<div style="font-size:24px;font-weight:700;color:#222;margin-bottom:10px;">Stock Update Needed!</div>'
+           . '<p style="color:#888;margin-bottom:15px;">' . htmlspecialchars(implode(', ', $race_errors)) . ' just sold out while you were checking out.</p>'
+           . '<a href="cart.php" style="padding:14px 40px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;display:inline-block;"><i class="fas fa-arrow-left" style="margin-right:8px;"></i> Return to Cart</a>'
            . '</div>';
         include 'footer.php';
         exit();
@@ -274,6 +301,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         unset($_SESSION['promo_code_products']);
 
         $conn->query("DELETE FROM carts WHERE user_id = $user_id AND id IN ($ids_string)");
+
+        $conn->commit();
 
         // COD order confirmation email (no-op if email isn't configured)
         if ($payment === 'cod' && function_exists('send_order_email')) {
@@ -450,6 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
 include 'footer.php';
 exit();
     } else {
+        $conn->rollback();
         die("Database Error: " . $conn->error);
     }
 }
