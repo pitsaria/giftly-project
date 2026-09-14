@@ -123,8 +123,8 @@ export class BoxCheckoutPage implements OnInit {
   readonly shippingFee = computed(() => {
     const ev = this.promoEval();
     if (ev) return ev.shipping_fee;
-    const sub = this.box()?.subtotal ?? 0;
-    return sub > 0 && sub < 300 ? 50 : 0;
+    const basis = (this.box()?.subtotal ?? 0) + (this.box()?.box_price ?? 0) + this.addonsTotal();
+    return basis > 0 && basis < 300 ? 50 : 0;
   });
   // The order summary lists each selected add-on by name rather than just
   // the combined total.
@@ -193,7 +193,11 @@ export class BoxCheckoutPage implements OnInit {
       this.promoEval.set(null);
       return;
     }
-    const result = await this.promoSvc.evaluate('box', { code, boxId: this.boxId });
+    const result = await this.promoSvc.evaluate('box', {
+      code,
+      boxId: this.boxId,
+      addonIds: this.selectedAddonIds(),
+    });
     this.promoEval.set(result);
   }
 
@@ -270,6 +274,9 @@ export class BoxCheckoutPage implements OnInit {
   toggleAddon(id: number): void {
     const current = this.selectedAddonIds();
     this.selectedAddonIds.set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+    // Re-evaluate shipping/discounts now that the add-on total changed —
+    // add-ons (and the box price) count toward the free-shipping threshold.
+    this.evaluatePromo(this.promoEval()?.code || '').catch(() => {});
   }
 
   // "Saved Person" quick-fill — mirrors box_checkout.php's My Relations dropdown.

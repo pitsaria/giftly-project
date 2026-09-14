@@ -7,6 +7,7 @@ export interface PromoEvaluateOptions {
   code?: string;
   selectedIds?: number[];
   boxId?: number;
+  addonIds?: number[];
 }
 
 // Thin wrapper over api/index.php's promo/evaluate + promos/active routes.
@@ -21,6 +22,7 @@ export class PromoService {
     if (opts.code !== undefined) body['code'] = opts.code;
     if (opts.selectedIds) body['selected_ids'] = opts.selectedIds;
     if (opts.boxId) body['box_id'] = opts.boxId;
+    if (opts.addonIds) body['addon_ids'] = opts.addonIds;
     const res = await firstValueFrom(this.api.post<PromoEval>('promo/evaluate', body));
     return res.data;
   }

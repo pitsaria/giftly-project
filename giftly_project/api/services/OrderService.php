@@ -151,8 +151,11 @@ class OrderService {
         [$addon_rows, $addon_total] = addons_resolve($this->conn, $input['addon_ids'] ?? []);
 
         // --- promos / discounts (re-evaluated server-side from the real cart) ---
+        // Add-ons count toward the free-shipping threshold even though they're
+        // never discounted — a PHP 199 flower plus a PHP 130 add-on is PHP 329.
         $item_count = array_sum(array_column($items, 'quantity'));
-        $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
+        $ship_basis = $total_amount + $addon_total;
+        $base_shipping_fee = ($ship_basis > 0 && $ship_basis < 300) ? 50 : 0;
         $promo_code_input = isset($input['promo_code']) ? trim((string) $input['promo_code']) : null;
         $promo_eval = promo_evaluate($this->conn, $user_id, [
             'scope'        => 'products',

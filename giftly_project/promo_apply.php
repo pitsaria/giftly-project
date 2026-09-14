@@ -16,9 +16,11 @@ header('Content-Type: application/json');
 include 'db_connect.php';
 include_once 'catalog_lib.php';
 include_once 'promo_lib.php';
+include_once 'addons_lib.php';
 catalog_ensure_schema($conn);
 cart_ensure_schema($conn);
 promo_ensure_schema($conn);
+addons_ensure_schema($conn);
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['ok' => false, 'message' => 'Please sign in again.']);
@@ -62,7 +64,13 @@ if ($scope === 'box') {
     }
 }
 $subtotal = round($subtotal, 2);
-$base_ship = ($subtotal > 0 && $subtotal < 300) ? 50.0 : 0.0;
+
+// Gift wrapping & add-ons (and, for a box, the box price itself) count toward
+// the free-shipping threshold even though they're never discounted — a
+// PHP 199 flower plus a PHP 130 add-on is a PHP 329 order either way.
+[, $addon_total] = addons_resolve($conn, explode(',', $_POST['addon_ids'] ?? ''));
+$ship_basis = $subtotal + $addon_total + $box_price;
+$base_ship = ($ship_basis > 0 && $ship_basis < 300) ? 50.0 : 0.0;
 
 // ---- manage the session-held code ----
 if ($action === 'remove') {

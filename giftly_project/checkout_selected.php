@@ -219,10 +219,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     [$addon_rows, $addon_total] = addons_resolve($conn, $_POST['addon_ids'] ?? []);
 
     // --- promos / discounts (re-evaluated server-side from the real cart) ---
+    // Add-ons count toward the free-shipping threshold even though they're
+    // never discounted — a PHP 199 flower plus a PHP 130 add-on is PHP 329.
+    $ship_basis = $total_amount + $addon_total;
     $promo_eval = promo_evaluate($conn, $user_id, [
         'scope'        => 'products',
         'subtotal'     => $total_amount,
-        'shipping_fee' => ($total_amount > 0 && $total_amount < 300) ? 50 : 0,
+        'shipping_fee' => ($ship_basis > 0 && $ship_basis < 300) ? 50 : 0,
         'item_count'   => array_sum(array_column($items, 'quantity')),
         'code'         => $_SESSION['promo_code_products'] ?? null,
     ]);
@@ -1986,6 +1989,12 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         });
     }
 
+    function currentAddonIds() {
+        var ids = [];
+        document.querySelectorAll('.addon-checkbox:checked').forEach(function (cb) { ids.push(cb.value); });
+        return ids;
+    }
+
     function updateCheckoutTotal() {
         let subtotals = document.querySelectorAll('.os-subtotal');
         let total = 0;
@@ -2077,7 +2086,8 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         promoBusy = true;
         var btn = document.getElementById('promoApplyBtn');
         if (btn) btn.disabled = true;
-        var body = 'scope=products&action=' + action + '&ids=' + encodeURIComponent(currentCartIds().join(','));
+        var body = 'scope=products&action=' + action + '&ids=' + encodeURIComponent(currentCartIds().join(','))
+            + '&addon_ids=' + encodeURIComponent(currentAddonIds().join(','));
         if (code) body += '&code=' + encodeURIComponent(code);
         fetch('promo_apply.php', {
             method: 'POST',

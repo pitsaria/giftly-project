@@ -133,10 +133,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         [$addon_rows, $addon_total] = addons_resolve($conn, $_POST['addon_ids'] ?? []);
 
         // --- promos / discounts (re-evaluated server-side) ---
+        // Box price + add-ons count toward the free-shipping threshold even
+        // though neither is ever discounted.
+        $ship_basis = $total_amount + $addon_total + floatval($box['box_price']);
         $promo_eval = promo_evaluate($conn, $user_id, [
             'scope'        => 'box',
             'subtotal'     => $total_amount,
-            'shipping_fee' => ($total_amount > 0 && $total_amount < 300) ? 50 : 0,
+            'shipping_fee' => ($ship_basis > 0 && $ship_basis < 300) ? 50 : 0,
             'item_count'   => $box_item_qty,
             'code'         => $_SESSION['promo_code_box'] ?? null,
         ]);
@@ -336,7 +339,9 @@ $saved_recipients = recip_list_for_user($conn, $user_id);
 
 $subtotal = $data['subtotal'];
 $box_price = floatval($data['box']['box_price']);
-$base_shipping_fee = ($subtotal > 0 && $subtotal < 300) ? 50 : 0;
+// The box price counts toward the free-shipping threshold — it's a real
+// cost of the order, same as any other item (add-ons are folded in via JS/AJAX).
+$base_shipping_fee = (($subtotal + $box_price) > 0 && ($subtotal + $box_price) < 300) ? 50 : 0;
 
 $promo_eval = promo_evaluate($conn, $user_id, [
     'scope'        => 'box',
@@ -963,7 +968,11 @@ unset($_SESSION['box_checkout_error']);
             busy = true;
             var btn = document.getElementById('promoApplyBtn');
             if (btn) btn.disabled = true;
-            var body = 'scope=box&action=' + action + '&box_id=' + BOX_ID + (code ? '&code=' + encodeURIComponent(code) : '');
+            var addonIds = [];
+            document.querySelectorAll('.addon-checkbox:checked').forEach(function (cb) { addonIds.push(cb.value); });
+            var body = 'scope=box&action=' + action + '&box_id=' + BOX_ID
+                + '&addon_ids=' + encodeURIComponent(addonIds.join(','))
+                + (code ? '&code=' + encodeURIComponent(code) : '');
             fetch('promo_apply.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

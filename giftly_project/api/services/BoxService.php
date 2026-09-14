@@ -400,10 +400,13 @@ class BoxService {
                 $total_amount += $it['price'] * $it['quantity'];
                 $box_item_qty += (int) $it['quantity'];
             }
-            $base_shipping_fee = ($total_amount > 0 && $total_amount < 300) ? 50 : 0;
-
             // --- gift wrapping & add-ons (price always re-checked server-side, never trusted from input) ---
             [$addon_rows, $addon_total] = addons_resolve($this->conn, $input['addon_ids'] ?? []);
+
+            // Box price + add-ons count toward the free-shipping threshold even
+            // though neither is ever discounted.
+            $ship_basis = $total_amount + $addon_total + floatval($box['box_price']);
+            $base_shipping_fee = ($ship_basis > 0 && $ship_basis < 300) ? 50 : 0;
 
             // --- promos / discounts (re-evaluated server-side) ---
             $promo_code_input = isset($input['promo_code']) ? trim((string) $input['promo_code']) : null;

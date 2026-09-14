@@ -11,6 +11,7 @@ require_once __DIR__ . '/AuthHelper.php';
 require_once __DIR__ . '/../../promo_lib.php';
 require_once __DIR__ . '/../../catalog_lib.php';
 require_once __DIR__ . '/../../build_a_box_lib.php';
+require_once __DIR__ . '/../../addons_lib.php';
 
 class PromoService {
     private $conn;
@@ -20,6 +21,7 @@ class PromoService {
         promo_ensure_schema($conn);
         catalog_ensure_schema($conn);
         bab_ensure_schema($conn);
+        addons_ensure_schema($conn);
     }
 
     private function getUserId($headers) {
@@ -69,7 +71,13 @@ class PromoService {
         }
 
         $subtotal = round($subtotal, 2);
-        $base_ship = ($subtotal > 0 && $subtotal < 300) ? 50.0 : 0.0;
+
+        // Gift wrapping & add-ons (and, for a box, the box price itself) count
+        // toward the free-shipping threshold even though neither is ever
+        // discounted — a PHP 199 flower plus a PHP 130 add-on is PHP 329.
+        [, $addon_total] = addons_resolve($this->conn, isset($input['addon_ids']) ? $input['addon_ids'] : []);
+        $ship_basis = $subtotal + $addon_total + $box_price;
+        $base_ship = ($ship_basis > 0 && $ship_basis < 300) ? 50.0 : 0.0;
 
         $eval = promo_evaluate($this->conn, $user_id, [
             'scope' => $scope, 'subtotal' => $subtotal,

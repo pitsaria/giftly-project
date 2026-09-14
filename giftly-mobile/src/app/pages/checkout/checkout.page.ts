@@ -217,6 +217,7 @@ export class CheckoutPage implements OnInit {
     const result = await this.promoSvc.evaluate('products', {
       code,
       selectedIds: items.map((i) => i.cart_id),
+      addonIds: this.selectedAddonIds(),
     });
     this.promoEval.set(result);
   }
@@ -302,7 +303,7 @@ export class CheckoutPage implements OnInit {
   shippingFee(): number {
     const eval_ = this.promoEval();
     if (eval_) return eval_.shipping_fee;
-    const t = this.total();
+    const t = this.total() + this.addonsTotal();
     return t > 0 && t < 300 ? 50 : 0;
   }
 
@@ -315,6 +316,9 @@ export class CheckoutPage implements OnInit {
   toggleAddon(id: number): void {
     const current = this.selectedAddonIds();
     this.selectedAddonIds.set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+    // Re-evaluate shipping/discounts now that the add-on total changed —
+    // add-ons count toward the free-shipping threshold (see shippingFee()).
+    this.evaluatePromo(this.promoEval()?.code || '').catch(() => {});
   }
 
   addonsTotal(): number {
