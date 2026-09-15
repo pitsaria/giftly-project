@@ -977,7 +977,16 @@ function babSubmit(mode) {
     if (!BAB.loggedIn) { babToast('Please log in to continue'); if (window.openLoginModal) setTimeout(openLoginModal, 250); return; }
     if (BAB.state.items.length === 0) { babToast('Add at least one gift'); return; }
 
-    const status = (mode === 'checkout') ? 'in_cart' : mode;
+    // A box with just a few items is often a mistake — check before checkout.
+    if (mode === 'checkout') {
+        const n = babCount();
+        if (n >= 1 && n <= 3) {
+            babConfirm('Just checking...', 'You only have ' + n + ' item' + (n === 1 ? '' : 's') + ' in your box. Proceed to checkout?', function () { babSubmit('__checkout_confirmed'); });
+            return;
+        }
+    }
+
+    const status = (mode === 'checkout' || mode === '__checkout_confirmed') ? 'in_cart' : mode;
     const payload = new URLSearchParams();
     payload.append('action', 'save');
     payload.append('box_id', BAB.state.boxId || 0);
@@ -1001,7 +1010,7 @@ function babSubmit(mode) {
             }
             BAB.state.boxId = d.box_id;
             babClean();
-            if (mode === 'checkout') {
+            if (mode === 'checkout' || mode === '__checkout_confirmed') {
                 window.location.href = 'box_checkout.php?box_id=' + d.box_id;
             } else if (mode === 'in_cart') {
                 babToast('Box added to cart 🎁');

@@ -431,6 +431,28 @@ unset($_SESSION['box_checkout_error']);
     .co-letter { background: #fff5f7; border-left: 3px solid #ff8ba7; border-radius: 12px; padding: 12px 16px; font-style: italic; color: #555; font-size: 13px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; margin-top: 8px; max-height: 140px; overflow-y: auto; }
     .co-alert { background: #fdeded; border: 1px solid #ffc1cc; color: #d32f2f; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; }
     @media (max-width: 880px) { .co-right { width: 100%; } .co-card { position: static; } }
+
+    /* --- CONFIRM ORDER MODAL --- */
+    .confirm-modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(6px);
+        display: none; justify-content: center; align-items: center;
+        z-index: 999998; padding: 20px;
+    }
+    .confirm-modal-box {
+        background: #ffffff; border-radius: 30px; padding: 40px;
+        max-width: 400px; width: 90%; text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        animation: fadeUp 0.3s ease;
+    }
+    .confirm-icon { font-size: 50px; margin-bottom: 15px; }
+    .confirm-title { font-size: 22px; font-weight: 700; color: #222; margin-bottom: 5px; }
+    .confirm-sub { font-size: 14px; color: #888; margin-bottom: 25px; line-height: 1.5; }
+    .confirm-buttons { display: flex; gap: 15px; justify-content: center; }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
 <div class="co-wrap">
@@ -723,12 +745,25 @@ unset($_SESSION['box_checkout_error']);
                 <div class="r g"><span>Total</span><span id="poTotal">PHP <?php echo number_format($grand, 2); ?></span></div>
             </div>
 
-            <button type="submit" form="boxOrderForm" class="co-btn" <?php echo $blocked ? 'disabled' : ''; ?>>
+            <button type="button" class="co-btn" <?php echo $blocked ? 'disabled' : ''; ?> onclick="openBoxConfirmModal()">
                 <i class="fas fa-lock"></i> Place Order
             </button>
             <a href="build-a-box.php?box_id=<?php echo $box_id; ?>" class="co-edit-box">
                 <i class="fas fa-pen-to-square"></i> Edit this box
             </a>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM ORDER MODAL -->
+<div class="confirm-modal-overlay" id="boxConfirmModal">
+    <div class="confirm-modal-box">
+        <div class="confirm-icon"><i class="fas fa-shield-alt" style="color: #ff8ba7; background: #fff0f5; padding: 20px; border-radius: 50%; box-shadow: 0 4px 15px rgba(255,139,167,0.1);"></i></div>
+        <div class="confirm-title">Confirm Your Order</div>
+        <div class="confirm-sub">Are you sure you want to place this order? This action cannot be undone.</div>
+        <div class="confirm-buttons">
+            <button onclick="closeBoxConfirmModal()" style="flex: 1; padding: 14px; border: none; border-radius: 50px; background: #eaeaea; color: #555; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; font-family: 'Poppins';">Cancel</button>
+            <button class="btn-modal-confirm" onclick="submitBoxOrder()" style="flex: 1; padding: 14px; border: none; border-radius: 50px; background: linear-gradient(135deg, #ff8ba7 0%, #e6738f 100%); color: white; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; font-family: 'Poppins'; box-shadow: 0 4px 12px rgba(230, 115, 143, 0.2);">Yes, Place Order</button>
         </div>
     </div>
 </div>
@@ -835,10 +870,17 @@ unset($_SESSION['box_checkout_error']);
         });
     })();
 
-    document.getElementById('boxOrderForm').addEventListener('submit', function (e) {
+    /* --- CONFIRM ORDER MODAL --- */
+    function openBoxConfirmModal() {
+        const form = document.getElementById('boxOrderForm');
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
         const t = document.getElementById('coTime').value;
         if (t && (t < '08:00' || t > '20:00')) {
-            e.preventDefault();
             alert('Delivery time must be between 8:00 AM and 8:00 PM.');
             return;
         }
@@ -847,13 +889,23 @@ unset($_SESSION['box_checkout_error']);
             const expv = (document.getElementById('cardExpiry').value || '').trim();
             const cvcv = (document.getElementById('cardCvc').value || '').replace(/\D/g, '');
             const holder = (document.getElementById('cardHolder').value || '').trim();
-            if (!holder) { e.preventDefault(); alert('Please enter the name on the card.'); return; }
-            if (digits.length < 13 || digits.length > 19) { e.preventDefault(); alert('Please enter a valid card number.'); return; }
-            if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expv)) { e.preventDefault(); alert('Card expiry must be in MM/YY format.'); return; }
-            if (cvcv.length < 3 || cvcv.length > 4) { e.preventDefault(); alert('Please enter a valid CVC.'); return; }
+            if (!holder) { alert('Please enter the name on the card.'); return; }
+            if (digits.length < 13 || digits.length > 19) { alert('Please enter a valid card number.'); return; }
+            if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expv)) { alert('Card expiry must be in MM/YY format.'); return; }
+            if (cvcv.length < 3 || cvcv.length > 4) { alert('Please enter a valid CVC.'); return; }
         }
+
+        document.getElementById('boxConfirmModal').style.display = 'flex';
+    }
+
+    function closeBoxConfirmModal() {
+        document.getElementById('boxConfirmModal').style.display = 'none';
+    }
+
+    function submitBoxOrder() {
         if (window.__clearBoxCheckout) window.__clearBoxCheckout();
-    });
+        document.getElementById('boxOrderForm').submit();
+    }
 
     /* --- keep what the customer typed if they pop back to edit the box --- */
     (function () {

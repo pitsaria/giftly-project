@@ -22,6 +22,7 @@ import {
   IonInfiniteScrollContent,
   ModalController,
   ToastController,
+  AlertController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
@@ -94,6 +95,7 @@ export class BuildABoxPage implements OnInit {
   private route = inject(ActivatedRoute);
   private modalCtrl = inject(ModalController);
   private toastCtrl = inject(ToastController);
+  private alertCtrl = inject(AlertController);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -377,6 +379,12 @@ export class BuildABoxPage implements OnInit {
     if (!this.selectedSize()) return this.toast('Choose a box size first.');
     if (!this.items().length) return this.toast('Add at least one item to your box.');
 
+    // A box with just a few items is often a mistake — check before checkout.
+    if (action === 'checkout') {
+      const n = this.itemCount();
+      if (n >= 1 && n <= 3 && !(await this.confirmFewItems(n))) return;
+    }
+
     this.saving.set(true);
     try {
       if (action === 'checkout') {
@@ -404,5 +412,20 @@ export class BuildABoxPage implements OnInit {
   private async toast(message: string): Promise<void> {
     const t = await this.toastCtrl.create({ message, duration: 1800, position: 'bottom' });
     await t.present();
+  }
+
+  // Mirrors build-a-box.php's babConfirm() nudge for a nearly-empty box.
+  private async confirmFewItems(n: number): Promise<boolean> {
+    const alert = await this.alertCtrl.create({
+      header: 'Just checking...',
+      message: `You only have ${n} item${n === 1 ? '' : 's'} in your box. Proceed to checkout?`,
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Proceed', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm';
   }
 }

@@ -16,6 +16,7 @@ import {
   IonSelectOption,
   IonSpinner,
   ToastController,
+  AlertController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { personOutline, giftOutline, cardOutline, cashOutline, lockClosedOutline, createOutline, pricetagOutline, timeOutline, hourglassOutline } from 'ionicons/icons';
@@ -79,6 +80,7 @@ export class BoxCheckoutPage implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastCtrl = inject(ToastController);
+  private alertCtrl = inject(AlertController);
 
   readonly box = signal<Box | null>(null);
   readonly addresses = signal<Address[]>([]);
@@ -344,6 +346,8 @@ export class BoxCheckoutPage implements OnInit {
       }
     }
 
+    if (!(await this.confirmPlaceOrder())) return;
+
     const senderPhone = `63${this.senderPhoneDigits}`;
     const recipientPhone = this.deliveryType === 'recipient' ? `63${this.recipientPhoneDigits}` : undefined;
 
@@ -417,5 +421,21 @@ export class BoxCheckoutPage implements OnInit {
   private async toast(message: string): Promise<void> {
     const t = await this.toastCtrl.create({ message, duration: 2200, position: 'bottom' });
     await t.present();
+  }
+
+  // Mirrors box_checkout.php's "Confirm Your Order" modal — makes sure a
+  // stray tap doesn't place an order nobody meant to place.
+  private async confirmPlaceOrder(): Promise<boolean> {
+    const alert = await this.alertCtrl.create({
+      header: 'Confirm Your Order',
+      message: 'Are you sure you want to place this order? This action cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Yes, Place Order', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm';
   }
 }
