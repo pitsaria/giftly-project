@@ -1,5 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { PushService } from './push.service';
@@ -165,6 +167,15 @@ export class AuthService {
       await firstValueFrom(this.api.post('auth/logout', {}));
     } catch {
       // Ignore network errors on logout — clear the local session regardless.
+    }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        // Android keeps the Google account silently signed in otherwise, so
+        // "Continue with Google" just re-signs into it instead of prompting.
+        await GoogleSignIn.signOut();
+      } catch {
+        // Ignore — e.g. the user never actually signed in with Google.
+      }
     }
     await this.clearSession();
   }
