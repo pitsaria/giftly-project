@@ -9,7 +9,15 @@
 
   <ion-content>
     <div class="menu-profile" *ngIf="auth.isLoggedIn(); else loggedOutHeader">
-      <ion-icon name="person-circle-outline" class="menu-avatar"></ion-icon>
+      <img
+        *ngIf="profileSvc.currentPicture() as pic; else avatarIcon"
+        [src]="pic | imgUrl"
+        alt=""
+        class="menu-avatar menu-avatar-img"
+      />
+      <ng-template #avatarIcon>
+        <ion-icon name="person-circle-outline" class="menu-avatar"></ion-icon>
+      </ng-template>
       <div class="menu-profile-text">
         <strong>{{ auth.user()?.name }}</strong>
         <span>{{ auth.user()?.email }}</span>

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import {
@@ -26,6 +26,8 @@ import {
   mailOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../../core/auth.service';
+import { ProfileService } from '../../core/profile.service';
+import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // App-wide side menu (the sidebar the bottom tab bar doesn't cover): opened
 // from Home's top bar, it holds account actions plus the info pages split
@@ -49,10 +51,12 @@ import { AuthService } from '../../core/auth.service';
     IonIcon,
     IonMenuToggle,
     IonFooter,
+    ImgUrlPipe,
   ],
 })
 export class SideMenuComponent {
   auth = inject(AuthService);
+  profileSvc = inject(ProfileService);
   private router = inject(Router);
   private alertCtrl = inject(AlertController);
 
@@ -64,6 +68,16 @@ export class SideMenuComponent {
       phonePortraitOutline,
       codeSlashOutline,
       mailOutline,
+    });
+
+    // Fetch once per login so the avatar is right even if the user never
+    // visits the Profile tab this session — ProfileService.getProfile()
+    // itself keeps currentPicture in sync after that (see uploadPicture /
+    // removePicture), including edits made from the Profile page.
+    effect(() => {
+      if (this.auth.isLoggedIn()) {
+        void this.profileSvc.getProfile().catch(() => {});
+      }
     });
   }
 

@@ -5,6 +5,7 @@ import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { PushService } from './push.service';
+import { ProfileService } from './profile.service';
 import { User } from './models';
 
 const TOKEN_KEY = 'giftly_token';
@@ -27,6 +28,7 @@ export function isOtpChallenge(r: LoginResult): r is OtpChallenge {
 export class AuthService {
   private api = inject(ApiService);
   private push = inject(PushService);
+  private profileSvc = inject(ProfileService);
 
   private tokenValue: string | null = null;
   readonly user = signal<User | null>(null);
@@ -193,6 +195,7 @@ export class AuthService {
     this.tokenValue = null;
     this.user.set(null);
     this.isLoggedIn.set(false);
+    this.profileSvc.currentPicture.set(null);
     await Preferences.remove({ key: TOKEN_KEY });
     await Preferences.remove({ key: USER_KEY });
   }
