@@ -3,10 +3,16 @@ include 'db_connect.php';
 include 'reviews_lib.php';
 include_once 'catalog_lib.php';
 include_once 'promo_lib.php';
+include_once 'recipients_lib.php';
+include_once 'holidays_lib.php';
 reviews_ensure_schema($conn);
 catalog_ensure_schema($conn);
 promo_ensure_schema($conn);
+recip_ensure_schema($conn);
 include 'header.php';
+
+// --- "Coming up": upcoming gift-worthy dates (Nager.Date holidays + the user's saved birthdays) ---
+$home_occasions = occasions_upcoming($conn, (int) ($_SESSION['user_id'] ?? 0));
 
 // --- live promos for the "Special Promotions" section ---
 $home_promos = [];
@@ -453,6 +459,65 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         
     </div>
 </div>
+
+<?php if (!empty($home_occasions)): ?>
+<!-- 1b. COMING UP (Nager.Date holidays + saved birthdays) -->
+<style>
+    .occ-wrap { padding-bottom: 0; }
+    .occ-sub { text-align: center; color: #888; font-size: 15px; margin: -12px 0 28px; }
+    .occ-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+    .occ-card {
+        flex: 1 1 180px; max-width: 210px;
+        display: flex; flex-direction: column; gap: 3px;
+        padding: 22px; text-decoration: none; color: #333;
+        background: #fff; border: 1px solid #f5f5f5; border-radius: 30px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .occ-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(255, 139, 167, 0.25); }
+    .occ-card.next {
+        color: #fff; border-color: transparent;
+        background: linear-gradient(135deg, #fea5b6 0%, #ff8ba7 100%);
+        box-shadow: 0 12px 30px rgba(254, 165, 182, 0.45);
+    }
+    .occ-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .occ-emoji { font-size: 32px; line-height: 1; }
+    .occ-when { font-size: 11px; font-weight: 700; color: #ff8ba7; background: #fff0f5; padding: 4px 11px; border-radius: 50px; white-space: nowrap; }
+    .occ-card.next .occ-when { background: rgba(255, 255, 255, 0.28); color: #fff; }
+    .occ-name { font-size: 17px; font-weight: 700; color: #222; line-height: 1.25; }
+    .occ-date { font-size: 13px; font-weight: 600; color: #999; }
+    .occ-tag { font-size: 14px; color: #888; line-height: 1.45; margin-top: 4px; flex: 1; }
+    .occ-card.next .occ-name, .occ-card.next .occ-date, .occ-card.next .occ-tag { color: #fff; }
+    .occ-card.next .occ-date, .occ-card.next .occ-tag { opacity: 0.92; }
+    .occ-foot { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #f0dfe4; }
+    .occ-card.next .occ-foot { border-top-color: rgba(255, 255, 255, 0.4); }
+    .occ-order { font-size: 12px; font-weight: 600; color: #b0a8ab; }
+    .occ-card.next .occ-order { color: rgba(255, 255, 255, 0.95); }
+    .occ-cta { font-size: 14px; font-weight: 700; color: #ff8ba7; }
+    .occ-card.next .occ-cta { color: #fff; }
+</style>
+<div class="container occ-wrap">
+    <h2 class="section-header">Coming Up</h2>
+    <p class="occ-sub">Plan ahead &mdash; order a few days early so it arrives on time.</p>
+    <div class="occ-grid">
+        <?php foreach ($home_occasions as $__i => $__o): ?>
+        <a class="occ-card<?php echo $__i === 0 ? ' next' : ''; ?>" href="<?php echo htmlspecialchars($__o['href']); ?>">
+            <div class="occ-top">
+                <span class="occ-emoji"><?php echo $__o['emoji']; ?></span>
+                <span class="occ-when"><?php echo htmlspecialchars(occasions_countdown($__o['days_away'])); ?></span>
+            </div>
+            <div class="occ-name"><?php echo htmlspecialchars($__o['name']); ?></div>
+            <div class="occ-date"><?php echo $__o['date']->format('D, M j'); ?></div>
+            <div class="occ-tag"><?php echo htmlspecialchars($__o['tagline']); ?></div>
+            <div class="occ-foot">
+                <?php if ($__o['order_by']): ?><span class="occ-order">Order by <?php echo $__o['order_by']->format('M j'); ?></span><?php endif; ?>
+                <span class="occ-cta"><?php echo $__o['personal'] ? 'Plan a gift' : 'Shop gifts'; ?> &rarr;</span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- 2. FEATURED PRODUCTS -->
 <div class="container">
