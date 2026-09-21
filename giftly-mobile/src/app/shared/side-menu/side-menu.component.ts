@@ -17,10 +17,7 @@ import {
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
-  personCircleOutline,
-  settingsOutline,
   logOutOutline,
-  logInOutline,
   timeOutline,
   sparklesOutline,
   phonePortraitOutline,
@@ -59,10 +56,7 @@ export class SideMenuComponent {
 
   constructor() {
     addIcons({
-      personCircleOutline,
-      settingsOutline,
       logOutOutline,
-      logInOutline,
       timeOutline,
       sparklesOutline,
       phonePortraitOutline,
