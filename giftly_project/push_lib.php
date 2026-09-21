@@ -19,6 +19,8 @@
  * server-key API this used to use was shut down by Google in 2024).
  */
 
+include_once __DIR__ . '/notif_lib.php';
+
 if (!function_exists('push_ensure_schema')) {
 
     function push_ensure_schema($conn) {
@@ -225,7 +227,7 @@ if (!function_exists('push_ensure_schema')) {
             $body  = "Order #GLY-$order_id has been marked delivered. We hope you love it!";
         }
 
-        return push_send_to_user($conn, $order['user_id'], $title, $body, [
+        return notif_create($conn, $order['user_id'], 'order', $title, $body, [
             'type'     => 'order_status',
             'order_id' => $order_id,
             'status'   => $status,

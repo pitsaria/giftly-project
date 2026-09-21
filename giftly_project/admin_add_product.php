@@ -2,8 +2,10 @@
 include 'db_connect.php';
 include 'build_a_box_lib.php';
 include 'catalog_lib.php';
+include 'notif_lib.php';
 bab_ensure_schema($conn);
 catalog_ensure_schema($conn);
+notif_ensure_schema($conn);
 
 if (isset($_POST['add_product'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -147,6 +149,21 @@ if ($quantity > 9999) {
             }
             catalog_save_colors($conn, $new_pid, $color_names, $color_images);
             catalog_save_sizes($conn, $new_pid, $size_names, $size_prices);
+
+            if ($is_active === 'TRUE') {
+                // Raw value, not the already-escaped $name.
+                $product_name = trim($_POST['name'] ?? '');
+                $notif_title = 'New arrival! ✨';
+                $notif_body = "\"$product_name\" just landed in the shop — check it out.";
+
+                $users = $conn->query("SELECT id FROM users WHERE role = 'customer'");
+                while ($users && $u = $users->fetch_assoc()) {
+                    notif_create($conn, $u['id'], 'product', $notif_title, $notif_body, [
+                        'type' => 'product',
+                        'product_id' => $new_pid,
+                    ]);
+                }
+            }
         }
         $_SESSION['product_added'] = true;
         header("Location: admin_add_product.php");

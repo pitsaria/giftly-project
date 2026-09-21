@@ -15,6 +15,11 @@
         <ion-icon slot="icon-only" name="person-circle-outline"></ion-icon>
       </ion-button>
 
+      <ion-button *ngIf="auth.isLoggedIn()" fill="clear" class="icon-btn bell-btn" routerLink="/notifications">
+        <ion-icon slot="icon-only" name="notifications-outline"></ion-icon>
+        <ion-badge *ngIf="notifInbox.unreadCount() > 0">{{ notifInbox.unreadCount() }}</ion-badge>
+      </ion-button>
+
       <ion-button fill="clear" class="icon-btn" (click)="onSearch()">
         <ion-icon slot="icon-only" name="search-outline"></ion-icon>
       </ion-button>

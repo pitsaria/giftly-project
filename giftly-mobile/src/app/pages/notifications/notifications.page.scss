@@ -1,0 +1,149 @@
+ion-segment {
+  padding: 0 12px 10px;
+}
+
+.mark-all-btn {
+  --color: var(--ion-color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.loading-spinner {
+  padding-top: 60px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  color: #b0a8ab;
+
+  ion-icon {
+    font-size: 42px;
+    margin-bottom: 10px;
+  }
+
+  p {
+    font-size: 14px;
+  }
+}
+
+.notif-list {
+  padding: 12px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #b0a8ab;
+  margin: 10px 2px 2px;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.notif-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #f5f5f5;
+  border-radius: var(--giftly-card-radius);
+  padding: 14px 16px 14px 19px;
+  box-shadow: var(--giftly-shadow-1);
+  overflow: hidden;
+
+  &.unread {
+    background: #fff8fa;
+    border-color: #ffe1e8;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--giftly-gradient);
+    }
+
+    .notif-title {
+      font-weight: 800;
+    }
+  }
+}
+
+.notif-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff0f5;
+  color: var(--ion-color-primary);
+
+  ion-icon {
+    font-size: 19px;
+  }
+
+  // Category color-coding so items are scannable by type at a glance.
+  &.order {
+    background: #eaf2fd;
+    color: #4f8fdb;
+  }
+
+  &.promo {
+    background: #fff0f5;
+    color: var(--ion-color-primary);
+  }
+
+  &.product {
+    background: #f3effc;
+    color: #9b7fe0;
+  }
+}
+
+.notif-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.notif-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 2px;
+}
+
+.notif-body {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: #b0a8ab;
+  margin-top: 6px;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ion-color-primary);
+}
+
+.load-more-btn {
+  margin-top: 4px;
+}

@@ -511,6 +511,47 @@ case 'cart/verify-stock':
         }
         break;
 
+    // === NOTIFICATIONS (in-app history) ===
+    case 'notifications':
+        require_once 'services/NotificationService.php';
+        $notifSvc = new NotificationService($conn);
+        if ($method == 'GET') {
+            $notifSvc->getAll($headers, $_GET);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'notifications/unread-count':
+        require_once 'services/NotificationService.php';
+        $notifSvc = new NotificationService($conn);
+        if ($method == 'GET') {
+            $notifSvc->getUnreadCount($headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
+    case 'notifications/read':
+        require_once 'services/NotificationService.php';
+        $notifSvc = new NotificationService($conn);
+        if ($method == 'PUT' && isset($_GET['id'])) {
+            $notifSvc->markRead($_GET['id'], $headers);
+        } else {
+            sendError('Missing notification ID or method not allowed', 400);
+        }
+        break;
+
+    case 'notifications/read-all':
+        require_once 'services/NotificationService.php';
+        $notifSvc = new NotificationService($conn);
+        if ($method == 'POST') {
+            $notifSvc->markAllRead($headers);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === PUSH NOTIFICATIONS (device token registry) ===
     case 'push/register':
         require_once 'services/PushService.php';

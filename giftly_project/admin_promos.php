@@ -1,6 +1,7 @@
 <?php
 include 'db_connect.php';
 include_once 'promo_lib.php';
+include_once 'notif_lib.php';
 
 // --- admin gate ---
 if (!isset($_SESSION['user_id'])) { header("Location: login.php"); exit(); }
@@ -9,6 +10,7 @@ $me = $conn->query("SELECT role FROM users WHERE id = $user_id")->fetch_assoc();
 if (!$me || $me['role'] !== 'admin') { header("Location: shop.php"); exit(); }
 
 promo_ensure_schema($conn);
+notif_ensure_schema($conn);
 
 $TYPES = ['percent' => 'Percent off', 'fixed' => 'Fixed amount off', 'free_shipping' => 'Free shipping', 'free_item' => 'Free item (buy N, get 1 free)'];
 $SCOPES = ['all' => 'Products & boxes', 'products' => 'Products only', 'box' => 'Gift boxes only'];
@@ -107,6 +109,29 @@ if (isset($_POST['add_promo'])) {
         VALUES ({$d['code_sql']}, '{$d['name']}', '{$d['type']}', {$d['value']}, {$d['auto']}, {$d['min_spend']},
                 {$d['first_order_only']}, '{$d['applies_to']}', {$d['max_discount_sql']}, {$d['usage_limit_sql']},
                 {$d['per_user_limit']}, {$d['starts_sql']}, {$d['ends_sql']}, {$d['active']}, {$d['free_item_product_sql']}, {$d['free_item_min_qty']})");
+
+    $new_promo_id = intval($conn->insert_id);
+    if ($d['active'] === 'TRUE' && $new_promo_id > 0) {
+        // Raw $_POST values here, not $d['name']/$d['code_sql'] — those were
+        // already real_escape_string()'d for the INSERT above, and
+        // notif_create() escapes its own inputs, so re-reading $_POST avoids
+        // guessing at this project's escape format.
+        $promo_name = trim($_POST['name'] ?? '');
+        $promo_code = strtoupper(trim($_POST['code'] ?? ''));
+        $notif_title = 'New promo available! 🎁';
+        $notif_body = $promo_code !== ''
+            ? "Use code $promo_code — $promo_name is now live."
+            : "$promo_name is now live — the discount applies automatically at checkout.";
+
+        $users = $conn->query("SELECT id FROM users WHERE role = 'customer'");
+        while ($users && $u = $users->fetch_assoc()) {
+            notif_create($conn, $u['id'], 'promo', $notif_title, $notif_body, [
+                'type' => 'promo',
+                'promo_id' => $new_promo_id,
+            ]);
+        }
+    }
+
     header("Location: admin_promos.php?msg=added");
     exit();
 }

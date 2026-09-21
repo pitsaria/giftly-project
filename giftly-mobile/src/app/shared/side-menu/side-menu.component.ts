@@ -27,6 +27,7 @@ import {
 } from 'ionicons/icons';
 import { AuthService } from '../../core/auth.service';
 import { ProfileService } from '../../core/profile.service';
+import { NotificationInboxService } from '../../core/notification-inbox.service';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // App-wide side menu (the sidebar the bottom tab bar doesn't cover): opened
@@ -57,6 +58,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
 export class SideMenuComponent {
   auth = inject(AuthService);
   profileSvc = inject(ProfileService);
+  private notifSvc = inject(NotificationInboxService);
   private router = inject(Router);
   private alertCtrl = inject(AlertController);
 
@@ -70,13 +72,15 @@ export class SideMenuComponent {
       mailOutline,
     });
 
-    // Fetch once per login so the avatar is right even if the user never
-    // visits the Profile tab this session — ProfileService.getProfile()
-    // itself keeps currentPicture in sync after that (see uploadPicture /
-    // removePicture), including edits made from the Profile page.
+    // Fetch once per login so the avatar and notification badge are right
+    // even if the user never visits the Profile/Notifications page this
+    // session — ProfileService.getProfile() keeps currentPicture in sync
+    // after that (see uploadPicture/removePicture), and NotificationsPage
+    // resyncs unreadCount itself whenever it's opened/left.
     effect(() => {
       if (this.auth.isLoggedIn()) {
         void this.profileSvc.getProfile().catch(() => {});
+        void this.notifSvc.refreshUnreadCount().catch(() => {});
       }
     });
   }

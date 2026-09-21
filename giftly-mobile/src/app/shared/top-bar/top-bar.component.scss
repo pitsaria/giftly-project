@@ -47,7 +47,8 @@
       }
     }
 
-    .cart-btn ion-badge {
+    .cart-btn ion-badge,
+    .bell-btn ion-badge {
       top: -1px;
       right: -1px;
     }
@@ -114,7 +115,8 @@
   margin-inline-end: 2px;
 }
 
-.cart-btn ion-badge {
+.cart-btn ion-badge,
+.bell-btn ion-badge {
   position: absolute;
   top: 2px;
   right: 2px;

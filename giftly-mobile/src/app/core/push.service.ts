@@ -77,10 +77,15 @@ export class PushService {
 
     // Tapping the system notification (app backgrounded/closed) lands on the
     // Orders tab — there's no deep link straight into the order-detail sheet,
-    // but this gets the customer to the right list in one tap.
+    // but this gets the customer to the right list in one tap. Promo/product
+    // pushes have no single detail screen to land on, so they open the
+    // notification inbox instead.
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      if (action.notification.data?.type === 'order_status') {
+      const type = action.notification.data?.type;
+      if (type === 'order_status') {
         void this.router.navigate(['/tabs/profile'], { queryParams: { tab: 'orders' } });
+      } else if (type === 'promo' || type === 'product') {
+        void this.router.navigate(['/notifications']);
       }
     });
   }

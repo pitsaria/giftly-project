@@ -4,10 +4,11 @@ import { RouterLink } from '@angular/router';
 import { Router } from '@angular/router';
 import { IonHeader, IonToolbar, IonButtons, IonButton, IonIcon, IonBadge, MenuController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline } from 'ionicons/icons';
+import { searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline, notificationsOutline } from 'ionicons/icons';
 import { AuthService } from '../../core/auth.service';
 import { CartService } from '../../core/cart.service';
 import { GiftContextService } from '../../core/gift-context.service';
+import { NotificationInboxService } from '../../core/notification-inbox.service';
 
 // Shared header reused across every tab page (Home/Shop/Orders/Profile) so the
 // brand, search, cart and login/profile entry points stay identical and in sync.
@@ -21,6 +22,7 @@ export class TopBarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
   giftContext = inject(GiftContextService);
+  notifInbox = inject(NotificationInboxService);
   menuCtrl = inject(MenuController);
   private router = inject(Router);
 
@@ -47,7 +49,7 @@ export class TopBarComponent {
   private bumpTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    addIcons({ searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline });
+    addIcons({ searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline, notificationsOutline });
 
     let prevCount = this.cart.itemCount();
     effect(() => {
