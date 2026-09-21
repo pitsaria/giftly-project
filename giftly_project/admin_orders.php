@@ -76,8 +76,25 @@ if (isset($_POST['approve_cancel'])) {
         error_log("cancel-approved email order #$cx_id: " . ($sent ? 'sent' : 'skipped/failed - ' . mail_last_error()));
     }
     // was it an online payment that now needs refunding?
-    $rr = $ok ? $conn->query("SELECT payment_status FROM orders WHERE id = $cx_id") : null;
-    $was_refund = $rr && ($rr->fetch_assoc()['payment_status'] ?? '') === 'refunded';
+    $rr = $ok ? $conn->query("SELECT user_id, payment_status FROM orders WHERE id = $cx_id") : null;
+    $order_row = $rr ? $rr->fetch_assoc() : null;
+    $was_refund = $order_row && ($order_row['payment_status'] ?? '') === 'refunded';
+
+    if ($ok && $order_row && function_exists('notif_create')) {
+        $owner_id = (int) ($order_row['user_id'] ?? 0);
+        if ($owner_id > 0) {
+            $notif_title = 'Your order was cancelled';
+            $notif_body = $was_refund
+                ? "Order #GLY-$cx_id has been cancelled and your refund is being processed."
+                : "Order #GLY-$cx_id has been cancelled, as requested.";
+            notif_create($conn, $owner_id, 'order', $notif_title, $notif_body, [
+                'type'     => 'order_status',
+                'order_id' => $cx_id,
+                'status'   => 'cancelled',
+            ]);
+        }
+    }
+
     $flash = $ok
         ? ['ok', 'Cancellation approved — the order is cancelled and stock restored.'
             . ($was_refund ? ' The customer was emailed about the refund — process it in the PayMongo dashboard.' : '')]
