@@ -33,7 +33,13 @@
     <ion-spinner name="crescent"></ion-spinner>
   </div>
 
-  <div class="empty-state" *ngIf="!loading() && !items().length">
+  <div class="empty-state error" *ngIf="!loading() && error()">
+    <ion-icon name="notifications-off-outline"></ion-icon>
+    <p>{{ error() }}</p>
+    <ion-button fill="outline" size="small" (click)="reload()">Try again</ion-button>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading() && !error() && !items().length">
     <ion-icon name="notifications-off-outline"></ion-icon>
     <p>No notifications here yet.</p>
   </div>

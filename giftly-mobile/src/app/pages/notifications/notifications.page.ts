@@ -19,6 +19,7 @@ import {
 import { addIcons } from 'ionicons';
 import { receiptOutline, pricetagOutline, bagHandleOutline, notificationsOffOutline } from 'ionicons/icons';
 import { NotificationInboxService, NotificationCategory, NotificationItem } from '../../core/notification-inbox.service';
+import { describeError } from '../../core/http-error';
 
 type CategoryTab = 'all' | NotificationCategory;
 
@@ -65,6 +66,7 @@ export class NotificationsPage {
   readonly loading = signal(false);
   readonly loadingMore = signal(false);
   readonly hasMore = signal(true);
+  readonly error = signal<string | null>(null);
   private offset = 0;
 
   readonly hasUnread = computed(() => this.items().some((i) => !i.is_read));
@@ -157,8 +159,9 @@ export class NotificationsPage {
     return new Date(iso.replace(' ', 'T') + 'Z').toLocaleDateString();
   }
 
-  private async reload(): Promise<void> {
+  async reload(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     this.offset = 0;
     this.hasMore.set(true);
     try {
@@ -166,6 +169,10 @@ export class NotificationsPage {
       this.items.set(first);
       this.offset = first.length;
       this.hasMore.set(first.length > 0);
+    } catch (err) {
+      this.items.set([]);
+      this.hasMore.set(false);
+      this.error.set(describeError(err));
     } finally {
       this.loading.set(false);
     }

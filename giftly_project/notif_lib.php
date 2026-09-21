@@ -12,18 +12,27 @@ if (!function_exists('notif_ensure_schema')) {
         static $done = false;
         if ($done) return;
         $done = true;
-        $conn->query("CREATE TABLE IF NOT EXISTS notifications (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            category VARCHAR(20) NOT NULL,
-            title TEXT NOT NULL,
-            body TEXT NOT NULL,
-            data TEXT,
-            read_at TIMESTAMP,
-            created_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
-        )");
-        $conn->query("CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC)");
-        $conn->query("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, read_at) WHERE read_at IS NULL");
+        // The DB shim runs PDO in silent-error mode, so a failed DDL/INSERT
+        // returns false instead of throwing — log it or it's invisible.
+        $steps = [
+            "CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category VARCHAR(20) NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                data TEXT,
+                read_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
+            )",
+            "CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, read_at) WHERE read_at IS NULL",
+        ];
+        foreach ($steps as $sql) {
+            if ($conn->query($sql) === false) {
+                error_log('notif_ensure_schema failed: ' . $conn->error);
+            }
+        }
     }
 
     /**
@@ -44,8 +53,11 @@ if (!function_exists('notif_ensure_schema')) {
         $title_esc = $conn->real_escape_string($title);
         $body_esc = $conn->real_escape_string($body);
         $data_esc = $conn->real_escape_string(json_encode($data));
-        $conn->query("INSERT INTO notifications (user_id, category, title, body, data)
+        $inserted = $conn->query("INSERT INTO notifications (user_id, category, title, body, data)
                       VALUES ($user_id, '$cat_esc', '$title_esc', '$body_esc', '$data_esc')");
+        if ($inserted === false) {
+            error_log("notif_create insert failed (user $user_id, $category): " . $conn->error);
+        }
 
         if (function_exists('push_send_to_user')) {
             return push_send_to_user($conn, $user_id, $title, $body, $data);
