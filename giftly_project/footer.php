@@ -15,12 +15,12 @@
                 <h4 style="font-size: 20px; font-weight: 600; color: #111; margin-bottom: 15px;">Company</h4>
                 <ul style="list-style: none; padding: 0;">
                     <li style="margin-bottom: 12px;">
-                        <a href="about.php" style="color: #222; text-decoration: none; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
+                        <a href="company-history.php" style="color: #222; text-decoration: none; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
                             <i class="far fa-user" style="font-size: 16px;"></i> About Us
                         </a>
                     </li>
                     <li style="margin-bottom: 12px;">
-                        <a href="about.php" style="color: #222; text-decoration: none; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
+                        <a href="services.php" style="color: #222; text-decoration: none; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
                             <i class="fas fa-gift" style="font-size: 16px;"></i> Our Mission
                         </a>
                     </li>
