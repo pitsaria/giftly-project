@@ -2,8 +2,10 @@
 include 'db_connect.php';
 include 'build_a_box_lib.php';
 include 'catalog_lib.php';
+include 'notif_lib.php';
 bab_ensure_schema($conn);
 catalog_ensure_schema($conn);
+notif_ensure_schema($conn);
 
 // Security Check
 if (!isset($_SESSION['user_id'])) {
@@ -34,6 +36,14 @@ function admin_products_return_url($extra = []) {
 
 if (isset($_POST['update_product'])) {
     $id = $_POST['id'];
+
+    // Snapshot whether this product was already on sale, before the UPDATE
+    // below overwrites it — used to only notify on the not-on-sale -> on-sale
+    // transition, not on every subsequent edit of an already-discounted item.
+    $prev_pid = intval($id);
+    $prev = $conn->query("SELECT sale_price FROM products WHERE id = $prev_pid")->fetch_assoc();
+    $was_on_sale = $prev && $prev['sale_price'] !== null && $prev['sale_price'] !== '';
+
     $name = $_POST['name'];
     $desc = $_POST['description'];
     $price = floatval($_POST['price']);
@@ -177,6 +187,22 @@ if (isset($_POST['update_product'])) {
         }
         catalog_save_colors($conn, $pid, $color_names, $color_images);
         catalog_save_sizes($conn, $pid, $size_names, $size_prices);
+
+        if (!$was_on_sale && $sale_sql !== 'NULL' && function_exists('notif_create')) {
+            // Raw value, not the already-escaped $name.
+            $product_name = trim($_POST['name'] ?? '');
+            $notif_title = 'Now on sale! 🏷️';
+            $notif_body = "\"$product_name\" just went on sale — check it out before it's gone.";
+
+            $users = $conn->query("SELECT id FROM users WHERE role = 'customer'");
+            while ($users && $u = $users->fetch_assoc()) {
+                notif_create($conn, $u['id'], 'product', $notif_title, $notif_body, [
+                    'type' => 'product',
+                    'product_id' => $pid,
+                ]);
+            }
+        }
+
         $_SESSION['product_updated'] = true;
         header("Location: " . admin_products_return_url());
         exit();
