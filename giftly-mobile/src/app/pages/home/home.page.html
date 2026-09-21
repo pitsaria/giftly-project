@@ -1,4 +1,4 @@
-<app-top-bar [transparent]="heroAtTop()" [showProfileIcon]="false"></app-top-bar>
+<app-top-bar [transparent]="heroAtTop()" [showProfileIcon]="false" [showMenuButton]="true"></app-top-bar>
 
 <ion-content [fullscreen]="true" [scrollEvents]="true" (ionScroll)="onContentScroll($any($event))">
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">

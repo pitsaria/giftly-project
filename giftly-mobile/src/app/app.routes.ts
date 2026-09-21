@@ -59,8 +59,21 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'about',
-    loadComponent: () => import('./pages/about/about.page').then((m) => m.AboutPage),
+    path: 'company-history',
+    loadComponent: () =>
+      import('./pages/company-history/company-history.page').then((m) => m.CompanyHistoryPage),
+  },
+  {
+    path: 'services',
+    loadComponent: () => import('./pages/services/services.page').then((m) => m.ServicesPage),
+  },
+  {
+    path: 'about-app',
+    loadComponent: () => import('./pages/about-app/about-app.page').then((m) => m.AboutAppPage),
+  },
+  {
+    path: 'developers',
+    loadComponent: () => import('./pages/developers/developers.page').then((m) => m.DevelopersPage),
   },
   {
     path: 'contact',

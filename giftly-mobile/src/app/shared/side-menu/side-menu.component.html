@@ -1,0 +1,77 @@
+<ion-menu contentId="main-content" side="start" class="giftly-side-menu">
+  <ion-header [translucent]="true">
+    <ion-toolbar>
+      <ion-title>
+        <img src="assets/giftly/giftly-logo.png" alt="Giftly" class="menu-logo" />
+      </ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content>
+    <ion-list lines="none" class="menu-list">
+      <ion-list-header>Account</ion-list-header>
+
+      <ng-container *ngIf="auth.isLoggedIn(); else loggedOut">
+        <ion-menu-toggle auto-hide="false">
+          <ion-item button routerLink="/tabs/profile" detail="false">
+            <ion-icon slot="start" name="person-circle-outline"></ion-icon>
+            <ion-label>Profile</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+        <ion-menu-toggle auto-hide="false">
+          <ion-item button routerLink="/tabs/profile" [queryParams]="{ tab: 'settings' }" detail="false">
+            <ion-icon slot="start" name="settings-outline"></ion-icon>
+            <ion-label>Settings</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+        <ion-menu-toggle auto-hide="false">
+          <ion-item button detail="false" (click)="logout()">
+            <ion-icon slot="start" name="log-out-outline"></ion-icon>
+            <ion-label>Logout</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+      </ng-container>
+      <ng-template #loggedOut>
+        <ion-menu-toggle auto-hide="false">
+          <ion-item button routerLink="/login" detail="false">
+            <ion-icon slot="start" name="log-in-outline"></ion-icon>
+            <ion-label>Login</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+      </ng-template>
+
+      <ion-list-header>Company</ion-list-header>
+
+      <ion-menu-toggle auto-hide="false">
+        <ion-item button routerLink="/company-history" detail="false">
+          <ion-icon slot="start" name="time-outline"></ion-icon>
+          <ion-label>Company History</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+      <ion-menu-toggle auto-hide="false">
+        <ion-item button routerLink="/services" detail="false">
+          <ion-icon slot="start" name="sparkles-outline"></ion-icon>
+          <ion-label>Services</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+      <ion-menu-toggle auto-hide="false">
+        <ion-item button routerLink="/about-app" detail="false">
+          <ion-icon slot="start" name="phone-portrait-outline"></ion-icon>
+          <ion-label>About the App</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+      <ion-menu-toggle auto-hide="false">
+        <ion-item button routerLink="/developers" detail="false">
+          <ion-icon slot="start" name="code-slash-outline"></ion-icon>
+          <ion-label>Developers</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+      <ion-menu-toggle auto-hide="false">
+        <ion-item button routerLink="/contact" detail="false">
+          <ion-icon slot="start" name="mail-outline"></ion-icon>
+          <ion-label>Contact Us</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+    </ion-list>
+  </ion-content>
+</ion-menu>

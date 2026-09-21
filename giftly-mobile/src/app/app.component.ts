@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App } from '@capacitor/app';
 import { AuthService } from './core/auth.service';
+import { SideMenuComponent } from './shared/side-menu/side-menu.component';
 
 const MIN_SPLASH_MS = 1100;
 const FADE_MS = 350;
@@ -14,7 +15,7 @@ const FADE_MS = 350;
   selector: 'app-root',
   templateUrl: 'app.component.html',
   styleUrls: ['app.component.scss'],
-  imports: [CommonModule, IonApp, IonRouterOutlet],
+  imports: [CommonModule, IonApp, IonRouterOutlet, SideMenuComponent],
 })
 export class AppComponent {
   private auth = inject(AuthService);

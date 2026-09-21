@@ -1,0 +1,27 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>About the App</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ab-hero">
+    <span class="kicker">The Giftly App</span>
+    <h1>Everything you need to <span>gift well</span>.</h1>
+    <p>The app puts the whole gifting experience in your pocket — from browsing to Build-a-Box to tracking what's on its way.</p>
+  </div>
+
+  <section class="ab-section">
+    <h2>What you can do</h2>
+    <div class="values">
+      <div class="value" *ngFor="let f of features">
+        <ion-icon [name]="f.icon"></ion-icon>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.text }}</p>
+      </div>
+    </div>
+  </section>
+</ion-content>

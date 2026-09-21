@@ -1,0 +1,38 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Services</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ab-hero">
+    <span class="kicker">What We Offer</span>
+    <h1>Gifting, <span>handled</span>.</h1>
+    <p>From ready-made boxes to ones you build yourself, every order is curated, wrapped and delivered with the same care.</p>
+  </div>
+
+  <section class="ab-section">
+    <h2>What you can order</h2>
+    <div class="values">
+      <div class="value" *ngFor="let o of offerings">
+        <ion-icon [name]="o.icon"></ion-icon>
+        <h3>{{ o.title }}</h3>
+        <p>{{ o.text }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ab-section">
+    <h2>What we care about</h2>
+    <div class="values">
+      <div class="value" *ngFor="let v of values">
+        <ion-icon [name]="v.icon"></ion-icon>
+        <h3>{{ v.title }}</h3>
+        <p>{{ v.text }}</p>
+      </div>
+    </div>
+  </section>
+</ion-content>

@@ -1,0 +1,29 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/profile" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Developers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="ab-hero">
+    <span class="kicker">The Team</span>
+    <h1>The people behind <span>Giftly</span>.</h1>
+    <p>A small team building boxes we'd be proud to receive ourselves.</p>
+  </div>
+
+  <section class="ab-section">
+    <div class="owners">
+      <div class="owner" *ngFor="let o of owners">
+        <div class="avatar">
+          <img [src]="o.img" [alt]="o.name" />
+        </div>
+        <h3>{{ o.name }}</h3>
+        <div class="role">{{ o.role }}</div>
+        <p>{{ o.bio }}</p>
+      </div>
+    </div>
+  </section>
+</ion-content>

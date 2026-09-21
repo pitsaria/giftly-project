@@ -409,8 +409,20 @@
         </div>
         <ion-toggle [checked]="notificationPrefs.enabled()" (ionChange)="onNotificationsToggle($event.detail.checked)"></ion-toggle>
       </div>
-      <a routerLink="/about">
-        <ion-icon name="information-circle-outline"></ion-icon> About Giftly
+      <a routerLink="/company-history">
+        <ion-icon name="time-outline"></ion-icon> Company History
+        <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
+      </a>
+      <a routerLink="/services">
+        <ion-icon name="sparkles-outline"></ion-icon> Services
+        <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
+      </a>
+      <a routerLink="/about-app">
+        <ion-icon name="phone-portrait-outline"></ion-icon> About the App
+        <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
+      </a>
+      <a routerLink="/developers">
+        <ion-icon name="code-slash-outline"></ion-icon> Developers
         <ion-icon class="chev" name="chevron-forward-outline"></ion-icon>
       </a>
       <a routerLink="/contact">

@@ -1,6 +1,7 @@
 <ion-app>
+  <app-side-menu></app-side-menu>
   <div class="splash-screen" *ngIf="showSplash()" [class.hiding]="splashHiding()">
     <img src="assets/giftly/giftly-logo.png" alt="Giftly" class="splash-logo" />
   </div>
-  <ion-router-outlet></ion-router-outlet>
+  <ion-router-outlet id="main-content"></ion-router-outlet>
 </ion-app>
