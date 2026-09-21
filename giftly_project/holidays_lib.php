@@ -171,7 +171,7 @@ if (!function_exists('holidays_all')) {
                     $row['recipient_name'] . "'s " . strtolower(recip_occasion_label($row)),
                     recip_occasion_icon($row['occasion_type']),
                     $row['relationship'],
-                    $date, true, 'profile_relations.php');
+                    $date, true, 'profile.php?tab=relations');
             }
         }
 

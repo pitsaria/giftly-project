@@ -262,6 +262,16 @@ if (isset($_SESSION['user_id'])) {
     if ($__cc) $header_cart_count = (int) $__cc->fetch_assoc()['c'];
 }
 ?>
+<?php
+// Unread notification count for the bell. If the table doesn't exist yet (it's
+// created when the first notification is written) the query just fails -> 0.
+$header_notif_count = 0;
+if (isset($_SESSION['user_id'])) {
+    $__nc = $conn->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id = " . (int) $_SESSION['user_id'] . " AND read_at IS NULL");
+    if ($__nc) $header_notif_count = (int) $__nc->fetch_assoc()['c'];
+?>
+<a href="notifications.php" class="cart-icon-link" aria-label="Notifications"><i class="fas fa-bell"></i><span class="cart-badge <?php echo $header_notif_count > 0 ? 'show' : ''; ?>" id="bellBadge"><?php echo $header_notif_count > 99 ? '99+' : $header_notif_count; ?></span></a>
+<?php } ?>
 <a href="javascript:void(0)" onclick="openCartWithCheck()" class="cart-icon-link" aria-label="Cart"><i class="fas fa-shopping-cart"></i><span class="cart-badge <?php echo $header_cart_count > 0 ? 'show' : ''; ?>" id="cartBadge"><?php echo $header_cart_count; ?></span></a>
             <?php if (isset($_SESSION['user_id'])): ?>
                 <!-- User is Logged In -->
