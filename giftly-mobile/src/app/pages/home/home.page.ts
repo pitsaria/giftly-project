@@ -32,6 +32,7 @@ import { AuthService } from '../../core/auth.service';
 import { RecipientService } from '../../core/recipient.service';
 import { NotificationService } from '../../core/notification.service';
 import { TopBarComponent } from '../../shared/top-bar/top-bar.component';
+import { OccasionsStripComponent } from '../../shared/occasions-strip/occasions-strip.component';
 import { OrderDetailComponent } from '../../components/order-detail/order-detail.component';
 import { ProductDetailComponent } from '../../components/product-detail/product-detail.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
@@ -87,6 +88,7 @@ interface PromoCardVm {
     IonRefresher,
     IonRefresherContent,
     TopBarComponent,
+    OccasionsStripComponent,
     ImgUrlPipe,
   ],
 })

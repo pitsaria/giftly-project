@@ -511,6 +511,17 @@ case 'cart/verify-stock':
         }
         break;
 
+    // === HOLIDAYS (Nager.Date public holidays, cached server-side) ===
+    case 'holidays':
+        require_once 'services/HolidayService.php';
+        $holidaySvc = new HolidayService();
+        if ($method == 'GET') {
+            $holidaySvc->get();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+
     // === NOTIFICATIONS (in-app history) ===
     case 'notifications':
         require_once 'services/NotificationService.php';

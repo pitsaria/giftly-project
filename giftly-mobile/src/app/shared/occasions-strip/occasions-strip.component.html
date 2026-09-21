@@ -1,0 +1,28 @@
+<div class="section-block" *ngIf="occasions().length">
+  <div class="section-head">
+    <h2>Coming up</h2>
+    <span class="hint">Plan ahead</span>
+  </div>
+
+  <div class="strip">
+    <a
+      class="occ-card"
+      *ngFor="let o of occasions(); let i = index"
+      [class.next]="i === 0"
+      [routerLink]="o.link"
+      [queryParams]="o.queryParams || null"
+    >
+      <div class="occ-top">
+        <span class="occ-emoji">{{ o.emoji }}</span>
+        <span class="occ-when">{{ countdown(o) }}</span>
+      </div>
+      <div class="occ-name">{{ o.name }}</div>
+      <div class="occ-date">{{ o.date | date: 'EEE, MMM d' }}</div>
+      <div class="occ-tag">{{ o.tagline }}</div>
+      <div class="occ-foot">
+        <span class="occ-order" *ngIf="o.orderBy">Order by {{ o.orderBy | date: 'MMM d' }}</span>
+        <span class="occ-cta">{{ o.personal ? 'Plan a gift' : 'Shop gifts' }} &rarr;</span>
+      </div>
+    </a>
+  </div>
+</div>
