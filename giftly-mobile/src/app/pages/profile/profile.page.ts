@@ -40,10 +40,6 @@ import {
   closeCircleOutline,
   cameraOutline,
   notificationsOutline,
-  timeOutline,
-  sparklesOutline,
-  phonePortraitOutline,
-  codeSlashOutline,
 } from 'ionicons/icons';
 import { Address, Box, Product, Profile, Recipient, UpcomingOccasion, WishlistData } from '../../core/models';
 import { describeError } from '../../core/http-error';
@@ -212,10 +208,6 @@ export class ProfilePage implements OnInit {
       closeCircleOutline,
       cameraOutline,
       notificationsOutline,
-      timeOutline,
-      sparklesOutline,
-      phonePortraitOutline,
-      codeSlashOutline,
     });
   }
 
