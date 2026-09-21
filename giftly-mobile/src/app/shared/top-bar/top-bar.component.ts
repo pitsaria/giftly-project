@@ -4,14 +4,14 @@ import { RouterLink } from '@angular/router';
 import { Router } from '@angular/router';
 import { IonHeader, IonToolbar, IonButtons, IonButton, IonIcon, IonBadge, MenuController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline, notificationsOutline } from 'ionicons/icons';
+import { searchOutline, cartOutline, giftOutline, menuOutline, notificationsOutline } from 'ionicons/icons';
 import { AuthService } from '../../core/auth.service';
 import { CartService } from '../../core/cart.service';
 import { GiftContextService } from '../../core/gift-context.service';
 import { NotificationInboxService } from '../../core/notification-inbox.service';
 
 // Shared header reused across every tab page (Home/Shop/Orders/Profile) so the
-// brand, search, cart and login/profile entry points stay identical and in sync.
+// brand, notifications, search, cart and login entry points stay identical and in sync.
 @Component({
   selector: 'app-top-bar',
   templateUrl: 'top-bar.component.html',
@@ -35,10 +35,6 @@ export class TopBarComponent {
   // Home flips it back to false once the page is scrolled past the hero.
   @Input() transparent = false;
 
-  // Home already surfaces Profile via the bottom tab bar, so it hides this
-  // duplicate entry point; every other tab page keeps showing it.
-  @Input() showProfileIcon = true;
-
   // Only Home shows the hamburger that opens the side menu — every other tab
   // page keeps its current toolbar as-is.
   @Input() showMenuButton = false;
@@ -49,7 +45,7 @@ export class TopBarComponent {
   private bumpTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    addIcons({ searchOutline, cartOutline, personCircleOutline, giftOutline, menuOutline, notificationsOutline });
+    addIcons({ searchOutline, cartOutline, giftOutline, menuOutline, notificationsOutline });
 
     let prevCount = this.cart.itemCount();
     effect(() => {
