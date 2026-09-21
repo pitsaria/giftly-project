@@ -13,26 +13,29 @@
     <h1>Wrapped with intention, sent with <span>love</span>.</h1>
     <p>
       Giftly began with one badly-wrapped present and a simple conviction: the way a gift arrives is
-      part of the gift. It started at a kitchen table with a glue gun, a roll of ribbon, and a handful
-      of orders from friends who kept asking where we got our wrapping done.
-    </p>
-    <p>
-      Word spread faster than we expected, and the kitchen table became a small studio — the one
-      pictured below — where every box is still cut, folded and tied by hand. As orders grew past what
-      any of us could track on paper, we built the Giftly app so customers could put together their own
-      box, follow it from checkout to doorstep, and never forget an occasion again.
-    </p>
-    <p>
-      We're still a small team today, but the conviction hasn't changed: the way a gift arrives is part
-      of the gift.
+      part of the gift.
     </p>
   </div>
+
+  <section class="ab-section">
+    <h2>How we got here</h2>
+    <div class="timeline">
+      <div class="step" *ngFor="let c of chapters; let i = index">
+        <div class="dot">{{ i + 1 }}</div>
+        <div class="step-body">
+          <h3>{{ c.title }}</h3>
+          <p>{{ c.text }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section class="ab-section">
     <h2>Inside the studio</h2>
     <div class="gallery">
       <div class="shot" *ngFor="let s of shots; let i = index" [class.big]="i === 0">
         <img [src]="s.img" [alt]="s.alt" />
+        <span class="caption" aria-hidden="true">{{ s.alt }}</span>
       </div>
     </div>
   </section>

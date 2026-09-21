@@ -31,8 +31,6 @@
     font-size: 14px;
     color: #888;
     line-height: 1.7;
-    text-align: left;
-    margin-bottom: 12px;
   }
 }
 
@@ -44,24 +42,88 @@
     font-size: 19px;
     font-weight: 700;
     color: #222;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
   }
 }
 
+.timeline {
+  padding: 0 4px;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding-bottom: 22px;
+
+  // Connector line running down from each numbered dot to the next one.
+  &:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 34px;
+    bottom: 2px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #ffb9c8, #ffe3ea);
+  }
+
+  &:last-child {
+    padding-bottom: 4px;
+  }
+
+  .dot {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--giftly-gradient);
+    box-shadow: 0 4px 10px rgba(254, 165, 182, 0.4);
+  }
+
+  .step-body {
+    min-width: 0;
+    padding-top: 4px;
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #222;
+      margin: 0 0 4px;
+    }
+
+    p {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.65;
+      margin: 0;
+    }
+  }
+}
+
+// One wide hero shot, then the other three side by side — no orphaned cell.
 .gallery {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 100px;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 96px;
   gap: 10px;
 }
 
 .shot {
+  position: relative;
+  grid-column: span 2;
   border-radius: 16px;
   overflow: hidden;
   background: #f4f4f6;
 
   &.big {
-    grid-column: span 2;
+    grid-column: span 6;
     grid-row: span 2;
   }
 
@@ -70,6 +132,23 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  .caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 18px 8px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+  }
+
+  &.big .caption {
+    padding: 26px 12px 9px;
+    font-size: 12px;
   }
 }
 

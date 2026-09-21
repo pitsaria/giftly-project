@@ -20,9 +20,11 @@
         <div class="avatar">
           <img [src]="o.img" [alt]="o.name" />
         </div>
-        <h3>{{ o.name }}</h3>
-        <div class="role">{{ o.role }}</div>
-        <p>{{ o.bio }}</p>
+        <div class="owner-text">
+          <h3>{{ o.name }}</h3>
+          <span class="role">{{ o.role }}</span>
+          <p>{{ o.bio }}</p>
+        </div>
       </div>
     </div>
   </section>
