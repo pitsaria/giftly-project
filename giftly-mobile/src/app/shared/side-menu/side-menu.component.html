@@ -8,6 +8,23 @@
   </ion-header>
 
   <ion-content>
+    <div class="menu-profile" *ngIf="auth.isLoggedIn(); else loggedOutHeader">
+      <ion-icon name="person-circle-outline" class="menu-avatar"></ion-icon>
+      <div class="menu-profile-text">
+        <strong>{{ auth.user()?.name }}</strong>
+        <span>{{ auth.user()?.email }}</span>
+      </div>
+    </div>
+    <ng-template #loggedOutHeader>
+      <div class="menu-profile menu-profile-guest">
+        <ion-icon name="person-circle-outline" class="menu-avatar"></ion-icon>
+        <div class="menu-profile-text">
+          <strong>Welcome to Giftly</strong>
+          <span>Log in to see your profile</span>
+        </div>
+      </div>
+    </ng-template>
+
     <ion-list lines="none" class="menu-list">
       <ng-container *ngIf="auth.isLoggedIn()">
         <ion-list-header>Account</ion-list-header>
@@ -53,4 +70,8 @@
       </ion-menu-toggle>
     </ion-list>
   </ion-content>
+
+  <ion-footer class="menu-footer">
+    <div class="menu-version">Giftly v1.0.0</div>
+  </ion-footer>
 </ion-menu>

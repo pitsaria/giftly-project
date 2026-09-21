@@ -13,6 +13,7 @@ import {
   IonLabel,
   IonIcon,
   IonMenuToggle,
+  IonFooter,
   AlertController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -47,6 +48,7 @@ import { AuthService } from '../../core/auth.service';
     IonLabel,
     IonIcon,
     IonMenuToggle,
+    IonFooter,
   ],
 })
 export class SideMenuComponent {
