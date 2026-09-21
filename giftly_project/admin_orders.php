@@ -190,7 +190,8 @@ $showing_to = min($offset + $limit, $total_rows);
     
     .status-select { border: none; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none; font-family: 'Poppins'; transition: 0.2s; background: #f3f3f3; color: #333; }
     .status-select:focus { box-shadow: 0 0 0 2px #ffc1cc; }
-    .btn-view-items { background: #f3f3f3; border: none; padding: 6px 16px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; margin-left: 8px; }
+    .btn-view-items { background: #f3f3f3; border: none; padding: 6px 16px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; min-width: 112px; font-family: 'Poppins', sans-serif; }
+    .btn-view-items i { margin: 0 !important; }
     .btn-view-items:hover { background: #ffc1cc; color: white; }
     
     /* --- SEARCH BAR (NEW!) --- */
