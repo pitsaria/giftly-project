@@ -74,6 +74,46 @@ $vp_claimed_count = count(array_filter($vp_list, function ($v) { return $v['clai
         if (typeof applyPromo === 'function') applyPromo();
     }
 
+    // Called with the `vouchers` list promo_apply.php returns after every cart change
+    // (quantity +/-, add-ons, ...): turns a voucher's "Apply" button on or off and
+    // updates its "spend at least..." note, so a voucher that becomes eligible can be
+    // applied straight away instead of only copied.
+    function voucherSync(list) {
+        if (!list) return;
+        list.forEach(function (v) {
+            var row = document.querySelector('.v-row[data-id="' + v.id + '"]');
+            if (!row) return;
+            var actions = row.querySelector('.v-actions');
+            var body = row.querySelector('.v-body');
+            var useBtn = row.querySelector('.v-use');
+            var reason = row.querySelector('.v-reason');
+            row.classList.toggle('v-off', !v.usable);
+            if (v.usable) {
+                if (!useBtn) {
+                    useBtn = document.createElement('button');
+                    useBtn.type = 'button';
+                    useBtn.className = 'v-btn v-use';
+                    useBtn.textContent = 'Apply';
+                    useBtn.onclick = function () { voucherUse(useBtn); };
+                    actions.insertBefore(useBtn, actions.firstChild);
+                }
+                if (reason) reason.remove();
+            } else {
+                if (useBtn) useBtn.remove();
+                if (v.reason) {
+                    if (!reason) {
+                        reason = document.createElement('div');
+                        reason.className = 'v-reason';
+                        body.appendChild(reason);
+                    }
+                    reason.textContent = v.reason;
+                } else if (reason) {
+                    reason.remove();
+                }
+            }
+        });
+    }
+
     function voucherCopy(btn) {
         var code = voucherCode(btn);
         var done = function () {

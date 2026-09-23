@@ -1,7 +1,6 @@
 <?php
 // get_order_status.php
-session_start();
-include 'db_connection.php'; // Your database connection file
+include 'db_connect.php'; // also starts the session
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);

@@ -12,7 +12,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$order_id = isset($_GET['order_id']) ? $_GET['order_id'] : 0;
+$order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+$user_id = (int) $user_id;
 
 // Fetch Order Info
 $order = $conn->query("SELECT * FROM orders WHERE id = $order_id AND user_id = $user_id")->fetch_assoc();

@@ -35,7 +35,7 @@ function admin_products_return_url($extra = []) {
 }
 
 if (isset($_POST['update_product'])) {
-    $id = $_POST['id'];
+    $id = intval($_POST['id']);
 
     // Snapshot whether this product was already on sale, before the UPDATE
     // below overwrites it — used to only notify on the not-on-sale -> on-sale

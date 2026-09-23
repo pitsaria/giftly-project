@@ -16,7 +16,7 @@ if ($user_data['role'] !== 'admin') {
 
 // Check if the product ID is passed in the URL
 if (isset($_GET['id'])) {
-    $id = $_GET['id'];
+    $id = intval($_GET['id']);
 
     // 1. Get the image filename from the database so we can delete it from the folder too
     $sql_img = "SELECT image FROM products WHERE id = $id";

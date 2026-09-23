@@ -7,6 +7,18 @@ bab_ensure_schema($conn);
 catalog_ensure_schema($conn);
 notif_ensure_schema($conn);
 
+// Admin only — this page creates products, uploads images and notifies every customer.
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+$__admin_uid = (int) $_SESSION['user_id'];
+$__admin_res = $conn->query("SELECT role FROM users WHERE id = $__admin_uid");
+if (!$__admin_res || ($__admin_res->fetch_assoc()['role'] ?? '') !== 'admin') {
+    header("Location: shop.php");
+    exit();
+}
+
 if (isset($_POST['add_product'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $desc = mysqli_real_escape_string($conn, $_POST['description']);

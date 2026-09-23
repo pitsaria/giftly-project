@@ -26,7 +26,7 @@ if (isset($_POST['add_category'])) {
 
 // Handle DELETE category
 if (isset($_GET['delete'])) {
-    $id = $_GET['delete'];
+    $id = intval($_GET['delete']);
     $conn->query("DELETE FROM categories WHERE id = $id");
     header("Location: admin_categories.php?msg=deleted");
     exit();
@@ -34,7 +34,7 @@ if (isset($_GET['delete'])) {
 
 // Handle UPDATE (RENAME) category
 if (isset($_POST['update_category'])) {
-    $id = $_POST['cat_id'];
+    $id = intval($_POST['cat_id']);
     $new_name = mysqli_real_escape_string($conn, $_POST['cat_name']);
     $conn->query("UPDATE categories SET name = '$new_name' WHERE id = $id");
     header("Location: admin_categories.php?msg=updated");

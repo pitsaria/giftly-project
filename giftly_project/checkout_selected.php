@@ -2186,6 +2186,9 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
         else { err.style.display = 'none'; }
 
+        // Vouchers panel: re-check which vouchers this (possibly changed) cart now qualifies for
+        if (window.voucherSync) voucherSync(d.vouchers);
+
         var nudge = document.getElementById('promoNudge');
         if (nudge) {
             if (d.free_item_nudge) {
@@ -2200,8 +2203,14 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
         }
     }
 
+    var promoRefreshQueued = false;
     function promoRequest(action, code) {
-        if (promoBusy) return;
+        if (promoBusy) {
+            // A refresh asked for mid-request (e.g. a fast second tap on +) must not be dropped,
+            // or the totals and vouchers would stay on the older quantity.
+            if (action === 'refresh') promoRefreshQueued = true;
+            return;
+        }
         promoBusy = true;
         var btn = document.getElementById('promoApplyBtn');
         if (btn) btn.disabled = true;
@@ -2216,7 +2225,11 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
             .then(function (r) { return r.json(); })
             .then(function (d) { renderPromoSummary(d); })
             .catch(function () {})
-            .finally(function () { promoBusy = false; if (btn) btn.disabled = false; });
+            .finally(function () {
+                promoBusy = false;
+                if (btn) btn.disabled = false;
+                if (promoRefreshQueued) { promoRefreshQueued = false; promoRequest('refresh'); }
+            });
     }
     function applyPromo() {
         var code = (document.getElementById('promoCodeInput').value || '').trim();

@@ -91,7 +91,9 @@ if ($action === 'remove') {
                 'shipping_fee' => $base_ship, 'item_count' => $item_count,
                 'code' => $_SESSION[$skey] ?? null,
             ]);
-            echo json_encode(promo_summary_json($eval, $scope, $box_price, $item_count, $test['code_error']));
+            $out = promo_summary_json($eval, $scope, $box_price, $item_count, $test['code_error']);
+            $out['vouchers'] = promo_apply_vouchers($conn, $user_id, $scope, $subtotal, $item_count);
+            echo json_encode($out);
             exit();
         }
         $_SESSION[$skey] = $code;
@@ -108,8 +110,22 @@ if (($_SESSION[$skey] ?? '') !== '' && $eval['code'] === '' && $eval['code_error
     unset($_SESSION[$skey]);
 }
 
-echo json_encode(promo_summary_json($eval, $scope, $box_price, $item_count, ''));
+$out = promo_summary_json($eval, $scope, $box_price, $item_count, '');
+$out['vouchers'] = promo_apply_vouchers($conn, $user_id, $scope, $subtotal, $item_count);
+echo json_encode($out);
 
+/**
+ * Which listed vouchers this cart/box qualifies for right now, so the checkout's
+ * Vouchers panel can flip a voucher from "Copy only" to "Apply" as the quantity
+ * (and so the subtotal) changes, without a page reload.
+ */
+function promo_apply_vouchers($conn, $user_id, $scope, $subtotal, $item_count) {
+    $rows = [];
+    foreach (promo_vouchers_for_user($conn, $user_id, $scope, $subtotal, $item_count) as $v) {
+        $rows[] = ['id' => (int) $v['id'], 'usable' => (bool) $v['usable'], 'reason' => (string) $v['reason']];
+    }
+    return $rows;
+}
 
 function promo_summary_json($eval, $scope, $box_price, $item_count, $error_override) {
     $grand = $eval['final_total'] + (($scope === 'box') ? round((float) $box_price, 2) : 0.0);

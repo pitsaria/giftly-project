@@ -1,8 +1,17 @@
 <?php
 include 'db_connect.php';
 
+// Admin-only (only admin_orders.php / admin_delivery_schedule.php call this): it returns
+// the customer's name, address, phone and gift message for ANY order id.
+$__uid = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+$__role = $__uid > 0 ? $conn->query("SELECT role FROM users WHERE id = $__uid") : false;
+if (!$__role || ($__role->fetch_assoc()['role'] ?? '') !== 'admin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
 if (isset($_GET['order_id'])) {
-    $order_id = $_GET['order_id'];
+    $order_id = intval($_GET['order_id']);
     
     // 1. GET ORDER DETAILS (Address, Recipient, Payment, Gift Message)
     $info_sql = "SELECT orders.*, users.name as customer_name 

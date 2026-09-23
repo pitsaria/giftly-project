@@ -1013,6 +1013,8 @@ unset($_SESSION['box_checkout_error']);
             if (d.code_error) { err.textContent = d.code_error; err.style.display = 'block'; }
             else { err.style.display = 'none'; }
 
+            if (window.voucherSync) voucherSync(d.vouchers);
+
             var nudge = document.getElementById('promoNudge');
             if (nudge) {
                 if (d.free_item_nudge) {

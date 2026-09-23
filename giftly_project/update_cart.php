@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 if (isset($_GET['action']) && isset($_GET['id'])) {
-    $cart_id = $_GET['id'];
+    $cart_id = intval($_GET['id']);
     
     // Check if this cart item belongs to this user (security check)
     $check = $conn->query("SELECT * FROM carts WHERE id = $cart_id AND user_id = $user_id");
