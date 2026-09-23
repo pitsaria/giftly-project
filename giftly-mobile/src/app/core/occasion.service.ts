@@ -41,17 +41,17 @@ const PERSONAL_WINDOW_DAYS = 45;
 // Public holidays (from Nager.Date, matched on its English name) that people
 // actually give gifts for — the API also returns Rizal Day, Day of Valor etc.
 const GIFT_HOLIDAYS: Record<string, Omit<Def, 'key' | 'name'>> = {
-  'christmas day': { emoji: '🎄', tagline: 'Wrap up something merry' },
-  "new year's day": { emoji: '🎆', tagline: 'Start the year with a treat' },
-  'chinese new year': { emoji: '🧧', tagline: 'Lucky little surprises' },
+  'christmas day': { emoji: '🎄', tagline: "The season's biggest gift day" },
+  "new year's day": { emoji: '🎆', tagline: 'Kick off the year with something sweet' },
+  'chinese new year': { emoji: '🧧', tagline: 'Red envelopes & lucky treats' },
 };
 
 // Gifting occasions that aren't public holidays, so Nager.Date doesn't list
 // them — computed from their date rules instead.
 const OBSERVANCES: (Def & { on: (year: number) => Date })[] = [
-  { key: 'valentines', name: "Valentine's Day", emoji: '💝', tagline: 'Say it with a box', on: (y) => new Date(y, 1, 14) },
-  { key: 'mothers-day', name: "Mother's Day", emoji: '🌷', tagline: 'For the one who does it all', on: (y) => nthWeekday(y, 4, 0, 2) },
-  { key: 'fathers-day', name: "Father's Day", emoji: '👔', tagline: 'Gifts Dad will actually use', on: (y) => nthWeekday(y, 5, 0, 3) },
+  { key: 'valentines', name: "Valentine's Day", emoji: '💝', tagline: 'Make their heart skip a beat', on: (y) => new Date(y, 1, 14) },
+  { key: 'mothers-day', name: "Mother's Day", emoji: '🌷', tagline: 'Spoil the woman who spoils you', on: (y) => nthWeekday(y, 4, 0, 2) },
+  { key: 'fathers-day', name: "Father's Day", emoji: '👔', tagline: 'Something Dad will actually use', on: (y) => nthWeekday(y, 5, 0, 3) },
 ];
 
 const PERSONAL_EMOJI: Record<string, string> = { birthday: '🎂', anniversary: '💞', other: '✨' };

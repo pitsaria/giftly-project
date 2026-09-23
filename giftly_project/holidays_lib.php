@@ -102,9 +102,9 @@ if (!function_exists('holidays_all')) {
     /** Nager.Date holidays (keyed by lowercase English name) people actually give gifts for. */
     function occasions_gift_holidays() {
         return [
-            'christmas day'    => ['🎄', 'Wrap up something merry'],
-            "new year's day"   => ['🎆', 'Start the year with a treat'],
-            'chinese new year' => ['🧧', 'Lucky little surprises'],
+            'christmas day'    => ['🎄', "The season's biggest gift day"],
+            "new year's day"   => ['🎆', 'Kick off the year with something sweet'],
+            'chinese new year' => ['🧧', 'Red envelopes & lucky treats'],
         ];
     }
 
@@ -154,11 +154,11 @@ if (!function_exists('holidays_all')) {
         // Gifting occasions that aren't public holidays, so Nager doesn't list them.
         $thisYear = (int) $today->format('Y');
         foreach ([$thisYear, $thisYear + 1] as $year) {
-            $add("valentines-$year", "Valentine's Day", '💝', 'Say it with a box',
+            $add("valentines-$year", "Valentine's Day", '💝', 'Make their heart skip a beat',
                 new DateTime("$year-02-14"), false, 'shop.php');
-            $add("mothers-day-$year", "Mother's Day", '🌷', 'For the one who does it all',
+            $add("mothers-day-$year", "Mother's Day", '🌷', 'Spoil the woman who spoils you',
                 (new DateTime("second sunday of may $year"))->setTime(0, 0, 0), false, 'shop.php');
-            $add("fathers-day-$year", "Father's Day", '👔', 'Gifts Dad will actually use',
+            $add("fathers-day-$year", "Father's Day", '👔', 'Something Dad will actually use',
                 (new DateTime("third sunday of june $year"))->setTime(0, 0, 0), false, 'shop.php');
         }
 
