@@ -19,7 +19,7 @@ import {
 import { addIcons } from 'ionicons';
 import { star, starOutline, starHalf, closeOutline } from 'ionicons/icons';
 import { Review, ReviewData } from '../../core/models';
-import { ReviewService } from '../../core/review.service';
+import { ReviewService, REVIEW_COMMENT_MAX } from '../../core/review.service';
 import { AuthService } from '../../core/auth.service';
 import { describeError } from '../../core/http-error';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
@@ -75,6 +75,7 @@ export class ProductReviewsComponent implements OnInit {
 
   myRating = 0;
   myComment = '';
+  readonly maxComment = REVIEW_COMMENT_MAX;
 
   readonly fullStars = [1, 2, 3, 4, 5];
 

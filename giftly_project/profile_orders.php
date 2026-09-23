@@ -238,6 +238,8 @@ if ($result->num_rows > 0) {
     .rvm-pick i.on { color: #ffb400; }
     .rvm-item textarea { width: 100%; min-height: 54px; border: 1.5px solid #eee; border-radius: 12px; padding: 9px 12px; font-family: 'Poppins'; font-size: 13px; resize: vertical; outline: none; background: #fafafa; }
     .rvm-item textarea:focus { border-color: #ffc1cc; background: #fff; }
+    .rvm-chars { text-align: right; font-size: 11.5px; color: #999; margin: 3px 2px 6px; }
+    .rvm-chars.near { color: #e6738f; font-weight: 600; }
     .rvm-item .save { margin-top: 8px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; border-radius: 50px; padding: 7px 18px; font-family: 'Poppins'; font-weight: 600; font-size: 12px; cursor: pointer; }
     .rvm-item .st { font-size: 11px; margin-left: 10px; }
     .rvm-close { margin-top: 8px; width: 100%; padding: 12px; border: none; border-radius: 50px; background: #eaeaea; color: #555; font-family: 'Poppins'; font-weight: 600; cursor: pointer; }
@@ -527,6 +529,18 @@ if ($result->num_rows > 0) {
     document.getElementById('reviewModal').addEventListener('click', function (e) { if (e.target === this) closeReviewModal(); });
 
     function rvmBindStars() {
+        // Live "0/1500" counter under each review box (limit comes from the textarea's maxlength).
+        document.querySelectorAll('#rvmBody .rvm-item textarea').forEach(function (ta) {
+            const counter = ta.nextElementSibling;
+            if (!counter || !counter.classList.contains('rvm-chars')) return;
+            const max = parseInt(ta.getAttribute('maxlength'), 10) || 0;
+            const update = function () {
+                counter.textContent = ta.value.length + '/' + max;
+                counter.classList.toggle('near', max > 0 && ta.value.length >= max * 0.9);
+            };
+            ta.addEventListener('input', update);
+            update();
+        });
         document.querySelectorAll('#rvmBody .rvm-pick').forEach(function (pick) {
             const stars = pick.querySelectorAll('i');
             const input = pick.parentElement.querySelector('.rvm-rating');

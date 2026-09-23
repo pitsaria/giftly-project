@@ -111,6 +111,16 @@ class CartService {
             $cr = $this->conn->query("SELECT id FROM product_colors WHERE product_id = $product_id AND color_name = '$color_esc'");
             if (!$cr || $cr->num_rows === 0) $color = ''; // not a real color option — ignore it
         }
+        // A product with color/size options can't go in the cart without them —
+        // otherwise the customer has a box and no idea which size/color it is.
+        $has_colors = $this->conn->query("SELECT 1 FROM product_colors WHERE product_id = $product_id LIMIT 1");
+        $has_sizes  = $this->conn->query("SELECT 1 FROM product_sizes WHERE product_id = $product_id LIMIT 1");
+        if (($color === '' && $has_colors && $has_colors->num_rows > 0)
+            || ($size === '' && $has_sizes && $has_sizes->num_rows > 0)) {
+            sendError('Please choose a size and color for this item');
+            return;
+        }
+
         $color_esc = $this->conn->real_escape_string($color);
         $size_esc  = $this->conn->real_escape_string($size);
         $variant_price_sql = $variant_price !== null ? (float) $variant_price : 'NULL';

@@ -131,13 +131,15 @@
           <div class="promo-title">{{ promo.headline }}</div>
           <div class="promo-desc">{{ promo.cond }}</div>
           <ng-container *ngIf="promo.isLive">
-            <button
-              class="promo-code-chip"
-              *ngIf="promo.code"
-              (click)="copyPromoCode(promo.code)"
-            >
-              <ion-icon name="pricetag-outline"></ion-icon> {{ promo.code }}
-            </button>
+            <div class="promo-actions" *ngIf="promo.code">
+              <button class="promo-code-chip" (click)="copyPromoCode(promo.code)">
+                <ion-icon name="pricetag-outline"></ion-icon> {{ promo.code }}
+              </button>
+              <button class="promo-claim-btn" [class.claimed]="promo.claimed" [disabled]="promo.claimed" (click)="claimPromo(promo)">
+                <ion-icon [name]="promo.claimed ? 'checkmark-circle' : 'ticket-outline'"></ion-icon>
+                {{ promo.claimed ? 'Claimed' : 'Claim' }}
+              </button>
+            </div>
             <div class="promo-auto-chip" *ngIf="!promo.code">Applied automatically at checkout</div>
           </ng-container>
         </div>

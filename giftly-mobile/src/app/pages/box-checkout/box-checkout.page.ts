@@ -36,6 +36,7 @@ import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { phoneDigitsFromStored } from '../../core/phone-format';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
+import { VoucherListComponent } from '../../shared/voucher-list/voucher-list.component';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
@@ -61,6 +62,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
     IonSelectOption,
     IonSpinner,
     PhPhoneInputComponent,
+    VoucherListComponent,
     AddressSearchComponent,
     ImgUrlPipe,
   ],
@@ -217,6 +219,12 @@ export class BoxCheckoutPage implements OnInit {
     } finally {
       this.applyingCode.set(false);
     }
+  }
+
+  // A voucher's "Apply" — runs the same flow as typing the code and tapping Apply.
+  useVoucher(code: string): void {
+    this.promoCodeInput = code;
+    void this.applyPromoCode();
   }
 
   async removePromoCode(): Promise<void> {

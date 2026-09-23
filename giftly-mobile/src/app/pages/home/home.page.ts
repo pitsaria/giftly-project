@@ -20,6 +20,7 @@ import {
   carOutline,
   leafOutline,
   pricetagOutline,
+  ticketOutline,
   star,
   arrowForward,
 } from 'ionicons/icons';
@@ -64,6 +65,8 @@ interface HeroSlide {
 }
 
 interface PromoCardVm {
+  id?: number;
+  claimed?: boolean;
   headline: string;
   cond: string;
   code: string;
@@ -208,6 +211,8 @@ export class HomePage implements OnInit {
     const live = this.livePromos();
     if (!live.length) return this.fallbackPromos;
     return live.map((p, i) => ({
+      id: p.id,
+      claimed: p.claimed,
       headline: p.headline,
       cond: p.cond,
       code: p.code,
@@ -218,7 +223,7 @@ export class HomePage implements OnInit {
   }
 
   constructor() {
-    addIcons({ giftOutline, addCircle, checkmarkCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, star, arrowForward });
+    addIcons({ giftOutline, addCircle, checkmarkCircle, cubeOutline, carOutline, leafOutline, pricetagOutline, ticketOutline, star, arrowForward });
   }
 
   onHeroScroll(ev: Event): void {
@@ -268,6 +273,23 @@ export class HomePage implements OnInit {
       await this.notifications.scheduleOccasionReminders(upcoming);
     } catch {
       // Non-critical — skip silently, Profile will retry next visit.
+    }
+  }
+
+  // Saves the voucher to the account — it then shows first in checkout's
+  // Vouchers list. Copying/typing the code still works without claiming.
+  async claimPromo(promo: PromoCardVm): Promise<void> {
+    if (promo.id === undefined || promo.claimed) return;
+    if (!this.auth.isLoggedIn()) {
+      await this.toast('Log in to claim vouchers');
+      return;
+    }
+    try {
+      await this.promoSvc.claim(promo.id);
+      this.livePromos.update((list) => list.map((p) => (p.id === promo.id ? { ...p, claimed: true } : p)));
+      await this.toast(`Voucher ${promo.code} claimed!`);
+    } catch (err: any) {
+      await this.toast(err?.error?.error ?? "Couldn't claim this voucher. Please try again.");
     }
   }
 
@@ -408,6 +430,11 @@ export class HomePage implements OnInit {
     }
     if (product.quantity <= 0) {
       await this.toast('This item is out of stock');
+      return;
+    }
+    // Items with color/size options need the product sheet so they can be picked.
+    if (product.colors?.length || product.sizes?.length) {
+      await this.openProduct(product);
       return;
     }
     try {

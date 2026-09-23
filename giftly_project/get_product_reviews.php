@@ -32,6 +32,8 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
     .rv-pick i.on { color: #ffb400; }
     .rv-form textarea { width: 100%; min-height: 70px; border: 1.5px solid #eee; border-radius: 12px; padding: 10px 12px; font-family: 'Poppins'; font-size: 13.5px; resize: vertical; outline: none; background: #fff; }
     .rv-form textarea:focus { border-color: #ffc1cc; }
+    .rv-chars { text-align: right; font-size: 12px; color: #999; margin-top: 4px; }
+    .rv-chars.near { color: #e6738f; font-weight: 600; }
     .rv-form button { margin-top: 10px; background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff; border: none; border-radius: 50px; padding: 9px 22px; font-family: 'Poppins'; font-weight: 600; font-size: 13px; cursor: pointer; }
     .rv-form .msg { font-size: 12px; margin-top: 8px; }
 
@@ -75,7 +77,8 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
                 <?php endfor; ?>
             </div>
             <input type="hidden" id="rvRating" value="0">
-            <textarea id="rvComment" maxlength="1500" placeholder="Share an honest thought about this item…"></textarea>
+            <textarea id="rvComment" maxlength="<?php echo REVIEW_COMMENT_MAX; ?>" placeholder="Share an honest thought about this item…"></textarea>
+            <div class="rv-chars" id="rvChars">0/<?php echo REVIEW_COMMENT_MAX; ?></div>
             <button type="button" onclick="rvSubmit()">Post review</button>
             <div class="msg" id="rvMsg"></div>
         </div>

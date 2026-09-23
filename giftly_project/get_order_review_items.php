@@ -58,7 +58,8 @@ while ($it = $items->fetch_assoc()) {
                     <i class="fas fa-star" data-v="<?php echo $i; ?>"></i>
                 <?php endfor; ?>
             </div>
-            <textarea maxlength="1500" placeholder="Optional — what did you think?"></textarea>
+            <textarea maxlength="<?php echo REVIEW_COMMENT_MAX; ?>" placeholder="Optional — what did you think?"></textarea>
+            <div class="rvm-chars">0/<?php echo REVIEW_COMMENT_MAX; ?></div>
             <div>
                 <button type="button" class="save" onclick="rvmSave(this, <?php echo $pid; ?>)">Post review</button>
                 <span class="st"></span>

@@ -40,7 +40,8 @@
         <ion-textarea
           [(ngModel)]="myComment"
           [autoGrow]="true"
-          [maxlength]="1500"
+          [maxlength]="maxComment"
+          [counter]="true"
           rows="3"
           fill="outline"
           placeholder="Share an honest thought about this item…"

@@ -107,8 +107,40 @@ class PromoService {
         ]);
     }
 
-    // GET promos/active — live promo cards for the home page, no auth required.
-    public function activePromos() {
+    // POST promos/claim — { promo_id }. Saves a coded promo to the customer's vouchers.
+    public function claim($input, $headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+            return;
+        }
+        $res = promo_claim($this->conn, $user_id, isset($input['promo_id']) ? intval($input['promo_id']) : 0);
+        if (!$res['ok']) {
+            sendError($res['message'], 400);
+            return;
+        }
+        sendSuccess(['status' => $res['status']], $res['message']);
+    }
+
+    // GET promos/available?scope=products|box&subtotal=&item_count= — the checkout
+    // Vouchers list: live coded promos this customer can still use.
+    public function available($params, $headers) {
+        $user_id = $this->getUserId($headers);
+        if (!$user_id) {
+            sendError('Unauthorized', 401);
+            return;
+        }
+        $scope = (($params['scope'] ?? 'products') === 'box') ? 'box' : 'products';
+        $item_count = isset($params['item_count']) ? intval($params['item_count']) : null;
+        $vouchers = promo_vouchers_for_user($this->conn, $user_id, $scope, (float) ($params['subtotal'] ?? 0), $item_count);
+        sendSuccess(['vouchers' => $vouchers]);
+    }
+
+    // GET promos/active — live promo cards for the home page. Public, but when a
+    // valid token is sent each coded card also says whether it's been claimed.
+    public function activePromos($headers = []) {
+        $user_id = $this->getUserId($headers);
+        $claimed = $user_id ? array_flip(promo_claimed_ids($this->conn, $user_id)) : [];
         $promos = [];
         $hp = $this->conn->query("SELECT * FROM promos
                                   WHERE active = TRUE
@@ -117,7 +149,10 @@ class PromoService {
                                   ORDER BY (code IS NULL), id DESC
                                   LIMIT 4");
         while ($hp && $r = $hp->fetch_assoc()) {
-            $promos[] = $this->homePromoCard($r);
+            $card = $this->homePromoCard($r);
+            $card['id'] = (int) $r['id'];
+            $card['claimed'] = isset($claimed[(int) $r['id']]);
+            $promos[] = $card;
         }
         sendSuccess(['promos' => $promos]);
     }

@@ -369,4 +369,155 @@ if (!function_exists('promo_ensure_schema')) {
     function promo_session_key($scope) {
         return 'promo_code_' . (($scope === 'box') ? 'box' : 'products');
     }
+
+    /* ---------------------------------------------------------------------
+     * Claimable vouchers
+     *
+     * A customer can "claim" a coded promo to save it in their vouchers (shown
+     * first in the checkout Vouchers list). Claiming is a convenience only: it
+     * doesn't reserve stock or use up the usage cap, and typing/copying a code
+     * still works exactly as before — every real limit (per-user, usage cap,
+     * first-order-only, min spend, dates) stays in promo_reason().
+     * ------------------------------------------------------------------- */
+
+    /** Headline / icon / condition text for a promo (the homepage "Special Promotions" card copy). */
+    function promo_card_info($p) {
+        $type = $p['type'];
+        $headline = 'Special offer';
+        $icon = 'fa-gift';
+        if ($type === 'percent') {
+            $headline = rtrim(rtrim(number_format((float) $p['value'], 2), '0'), '.') . '% OFF';
+            $icon = 'fa-percent';
+        } elseif ($type === 'fixed') {
+            $headline = 'PHP ' . number_format((float) $p['value'], 0) . ' OFF';
+            $icon = 'fa-tags';
+        } elseif ($type === 'free_shipping') {
+            $headline = 'FREE SHIPPING';
+            $icon = 'fa-truck';
+        } elseif ($type === 'free_item') {
+            $headline = 'FREE GIFT';
+            $icon = 'fa-gift';
+        }
+        $bits = [];
+        if ((float) $p['min_spend'] > 0) {
+            $bits[] = 'On orders over PHP ' . number_format((float) $p['min_spend'], 0);
+        }
+        if (promo_bool($p['first_order_only'])) $bits[] = 'First order only';
+        if ($type === 'free_item') $bits[] = 'Buy ' . max(1, (int) ($p['free_item_min_qty'] ?? 3)) . '+ items';
+        if (!empty($p['ends_at'])) $bits[] = 'Ends ' . date('M j', strtotime($p['ends_at']));
+        if (empty($bits)) $bits[] = 'On your whole order';
+        return [
+            'headline' => $headline,
+            'icon'     => $icon,
+            'cond'     => implode(' · ', $bits),
+            'code'     => !empty($p['code']) ? strtoupper($p['code']) : '',
+        ];
+    }
+
+    /** SQL for "live right now": active and inside its start/end window (timestamps are UTC). */
+    function promo_live_sql($alias = '') {
+        $a = $alias !== '' ? $alias . '.' : '';
+        return "{$a}active = TRUE"
+             . " AND ({$a}starts_at IS NULL OR {$a}starts_at <= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))"
+             . " AND ({$a}ends_at IS NULL OR {$a}ends_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'))";
+    }
+
+    function promo_claims_ensure_schema($conn) {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        promo_ensure_schema($conn);   // promo_claims references promos(id)
+
+        $c = $conn->query("SELECT to_regclass('public.promo_claims') AS t");
+        if ($c && !empty(($c->fetch_assoc()['t'] ?? null))) return;
+
+        $steps = [
+            "CREATE TABLE IF NOT EXISTS promo_claims (
+                id         SERIAL PRIMARY KEY,
+                user_id    INTEGER NOT NULL,
+                promo_id   INTEGER NOT NULL REFERENCES promos(id) ON DELETE CASCADE,
+                claimed_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+                UNIQUE (user_id, promo_id)
+            )",
+            "CREATE INDEX IF NOT EXISTS idx_promo_claims_user ON promo_claims (user_id)",
+        ];
+        foreach ($steps as $sql) {
+            // The DB shim runs PDO in silent-error mode — log failures or they're invisible.
+            if ($conn->query($sql) === false) error_log('promo_claims_ensure_schema failed: ' . $conn->error);
+        }
+    }
+
+    /** Promo ids this user has claimed. */
+    function promo_claimed_ids($conn, $user_id) {
+        promo_claims_ensure_schema($conn);
+        $uid = (int) $user_id;
+        $ids = [];
+        if ($uid <= 0) return $ids;
+        $r = $conn->query("SELECT promo_id FROM promo_claims WHERE user_id = $uid");
+        while ($r && $row = $r->fetch_assoc()) $ids[] = (int) $row['promo_id'];
+        return $ids;
+    }
+
+    /**
+     * Claim a live, coded promo for a user. Refuses one they could never use
+     * (already used it, first-order-only after ordering, cap reached…).
+     * Returns ['ok' => bool, 'status' => 'claimed'|'already'|'error', 'message' => string].
+     */
+    function promo_claim($conn, $user_id, $promo_id) {
+        promo_claims_ensure_schema($conn);
+        $uid = (int) $user_id;
+        $pid = (int) $promo_id;
+        if ($uid <= 0) return ['ok' => false, 'status' => 'error', 'message' => 'Please log in to claim vouchers.'];
+
+        $r = $conn->query("SELECT * FROM promos WHERE id = $pid AND code IS NOT NULL AND " . promo_live_sql());
+        if (!$r || !$r->num_rows) {
+            return ['ok' => false, 'status' => 'error', 'message' => "That voucher isn't available anymore."];
+        }
+        $p = $r->fetch_assoc();
+        $reason = promo_reason($conn, $p, $uid, $p['applies_to'] ?: 'all', 1e9, 1000000);
+        if ($reason !== '') return ['ok' => false, 'status' => 'error', 'message' => $reason];
+
+        $conn->query("INSERT INTO promo_claims (user_id, promo_id) VALUES ($uid, $pid)
+                      ON CONFLICT (user_id, promo_id) DO NOTHING");
+        $already = ((int) $conn->affected_rows === 0);
+        return [
+            'ok'      => true,
+            'status'  => $already ? 'already' : 'claimed',
+            'message' => $already ? 'You already claimed this voucher.' : 'Voucher claimed!',
+        ];
+    }
+
+    /**
+     * Live coded promos this user could still use — for the checkout "Vouchers"
+     * list (web + API). Each row: id, code, headline, icon, cond, claimed,
+     * usable (bool), reason ('' when usable right now). Ones the user can never
+     * use are left out; one that's only short of the min spend stays, flagged
+     * not-usable with the reason. Claimed vouchers sort first.
+     */
+    function promo_vouchers_for_user($conn, $user_id, $scope = 'products', $subtotal = 0, $item_count = null) {
+        $uid = (int) $user_id;
+        $scope = ($scope === 'box') ? 'box' : 'products';
+        $claimed = array_flip(promo_claimed_ids($conn, $uid));
+        $out = [];
+        $r = $conn->query("SELECT * FROM promos WHERE code IS NOT NULL AND " . promo_live_sql() . " ORDER BY id DESC");
+        while ($r && $p = $r->fetch_assoc()) {
+            if (promo_reason($conn, $p, $uid, $scope, 1e9, 1000000) !== '') continue;
+            $reason = promo_reason($conn, $p, $uid, $scope, (float) $subtotal, $item_count);
+            $card = promo_card_info($p);
+            $out[] = [
+                'id'       => (int) $p['id'],
+                'code'     => $card['code'],
+                'headline' => $card['headline'],
+                'icon'     => $card['icon'],
+                'cond'     => $card['cond'],
+                'claimed'  => isset($claimed[(int) $p['id']]),
+                'usable'   => $reason === '',
+                'reason'   => $reason,
+            ];
+        }
+        usort($out, function ($a, $b) {
+            return [(int) $b['claimed'], (int) $b['usable']] <=> [(int) $a['claimed'], (int) $a['usable']];
+        });
+        return $out;
+    }
 }

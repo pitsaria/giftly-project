@@ -351,6 +351,12 @@ export class ShopPage implements OnInit {
       await this.toast('This item is out of stock');
       return;
     }
+    // Occasion boxes have color/size options — open the product sheet so the
+    // customer picks them, instead of adding a box with no size/color chosen.
+    if (product.colors?.length || product.sizes?.length) {
+      await this.openProduct(product);
+      return;
+    }
     try {
       await this.cart.addToCart(product.id, 1);
       await this.toast(`Added ${product.name} to cart`);

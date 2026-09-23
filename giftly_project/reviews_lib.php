@@ -9,6 +9,10 @@
  * Admins moderate via status: 'published' | 'hidden'.
  */
 
+// Longest review comment. Enforced server-side (website + mobile API) and
+// shown as the "0/1500" counter in both UIs.
+if (!defined('REVIEW_COMMENT_MAX')) define('REVIEW_COMMENT_MAX', 1500);
+
 if (!function_exists('reviews_ensure_schema')) {
 
     function reviews_ensure_schema($conn) {

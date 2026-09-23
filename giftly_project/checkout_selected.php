@@ -24,6 +24,22 @@ $user_id = $_SESSION['user_id'];
 
 include 'header.php';
 
+/** Cart-row ids from a comma list: positive, de-duplicated ints only, so '', '0' and junk all count as "nothing selected". */
+function checkout_ids($raw) {
+    $ids = array_filter(array_map('intval', explode(',', (string) $raw)), function ($i) { return $i > 0; });
+    return array_values(array_unique($ids));
+}
+
+/** Friendly dead-end for a checkout with no usable items (instead of an empty summary with a live Place Order button). */
+function checkout_empty_html() {
+    return '<div style="max-width:560px;margin:150px auto 80px;padding:40px;background:#fff;border-radius:26px;box-shadow:0 10px 40px rgba(0,0,0,0.05);text-align:center;font-family:Poppins,sans-serif;">'
+       . '<div style="font-size:46px;color:#f9a825;margin-bottom:12px;"><i class="fas fa-cart-shopping"></i></div>'
+       . '<h2 style="font-size:21px;color:#222;margin-bottom:8px;">Your checkout items are no longer in your cart</h2>'
+       . '<p style="color:#888;line-height:1.6;margin-bottom:22px;">They may have been removed, ordered already, or sold out. Head back to your cart to pick your items again.</p>'
+       . '<a href="cart.php" style="padding:13px 30px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;">Back to Cart</a>'
+       . '</div>';
+}
+
 // --- FETCH USER'S SAVED PHONE NUMBER ---
 $user_data = $conn->query("SELECT phone FROM users WHERE id = $user_id");
 $user_phone = '';
@@ -40,9 +56,10 @@ $saved_recipients = recip_list_for_user($conn, $user_id);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     
-    $selected_ids = explode(',', $_POST['selected_ids_hidden']);
-    if(empty($selected_ids)) {
-        header("Location: cart.php");
+    $selected_ids = checkout_ids($_POST['selected_ids_hidden'] ?? '');
+    if (empty($selected_ids)) {
+        echo checkout_empty_html();
+        include 'footer.php';
         exit();
     }
 
@@ -485,13 +502,13 @@ exit();
 }
 
 // --- GET ITEMS TO DISPLAY ---
-$selected_ids = isset($_GET['items']) ? explode(',', $_GET['items']) : [];
-if(empty($selected_ids)) {
-    echo "<p style='color:red; text-align:center; padding-top:130px;'>No items selected. <a href='cart.php' style='color:#ff8ba7;'>Go back to cart</a></p>";
+$selected_ids = checkout_ids($_GET['items'] ?? '');
+if (empty($selected_ids)) {
+    echo checkout_empty_html();
     include 'footer.php';
     exit();
 }
-$ids_string = implode(',', array_map('intval', $selected_ids));
+$ids_string = implode(',', $selected_ids);
 $items_query = $conn->query("SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
                                     p.price AS list_price, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price,
                                     p.image, pc.image AS color_image, p.quantity as stock_quantity, p.is_active
@@ -521,6 +538,14 @@ while($row = $items_query->fetch_assoc()){
     $row['subtotal'] = $row['price'] * $row['quantity'];
     $total_sum += $row['subtotal'];
     $items_list[] = $row;
+}
+
+// The ids no longer match anything in this user's cart (order already placed,
+// row removed, sold out…) — don't render an empty summary with a live Place Order button.
+if (empty($items_list) && empty($unavailable_names)) {
+    echo checkout_empty_html();
+    include 'footer.php';
+    exit();
 }
 
 // If a selected item was pulled from sale, send them back to the cart to sort it out.
@@ -1454,6 +1479,13 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
                         <span id="promoNudgeText"></span>
                     <?php endif; ?>
                 </div>
+                <?php
+                // Browsable vouchers: copy a code, claim it to the account, or apply it right here.
+                $vp_scope = 'products';
+                $vp_subtotal = $total_sum;
+                $vp_item_count = array_sum(array_column($items_list, 'quantity'));
+                include 'voucher_panel.php';
+                ?>
             </div>
 
             <div class="os-totals">
@@ -1787,8 +1819,15 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
 
     /* --- CONFIRM ORDER MODAL FUNCTIONS --- */
 function openConfirmModal() {
+    // Every row may have been removed from the summary (qty stepped down to 0).
+    if (currentCartIds().length === 0) {
+        alert('There are no items left in this order. Taking you back to your cart.');
+        window.location.href = 'cart.php';
+        return;
+    }
+
     let form = document.getElementById('orderForm');
-    
+
     // First, validate all required fields
     if (!form.checkValidity()) {
         form.reportValidity();
@@ -2035,6 +2074,14 @@ document.getElementById('stockAlertModal').addEventListener('click', function(e)
             }
         });
         document.getElementById('checkoutGrandTotal').innerText = pesoFmt(total);
+        // Nothing left to buy — grey out Place Order rather than leave it live.
+        var placeBtn = document.querySelector('.btn-checkout-submit');
+        if (placeBtn) {
+            var empty = currentCartIds().length === 0;
+            placeBtn.disabled = empty;
+            placeBtn.style.opacity = empty ? '0.5' : '';
+            placeBtn.style.cursor = empty ? 'not-allowed' : '';
+        }
         refreshPromo();
     }
 

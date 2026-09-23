@@ -3,6 +3,10 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { ReviewData } from './models';
 
+// Longest review comment — same value as REVIEW_COMMENT_MAX in reviews_lib.php,
+// which the API enforces server-side.
+export const REVIEW_COMMENT_MAX = 1500;
+
 // Wraps the api/index.php reviews route.
 // Mirrors get_product_reviews.php (read) and submit_review.php (write).
 @Injectable({ providedIn: 'root' })

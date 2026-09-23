@@ -297,10 +297,25 @@ export interface PromoEval {
 
 // The live "Special Promotions" cards on the home page.
 export interface HomePromo {
+  id: number;
   headline: string;
   icon: string;
   cond: string;
   code: string;
+  // Only meaningful for coded promos when the user is logged in.
+  claimed: boolean;
+}
+
+// One row of the checkout "Vouchers" list (promos/available).
+export interface Voucher {
+  id: number;
+  code: string;
+  headline: string;
+  icon: string;
+  cond: string;
+  claimed: boolean;
+  usable: boolean;
+  reason: string;
 }
 
 // === Gift wrapping & checkout add-ons ===

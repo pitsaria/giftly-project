@@ -1,0 +1,30 @@
+<div class="voucher-panel" *ngIf="vouchers().length">
+  <button type="button" class="voucher-toggle" (click)="open.set(!open())">
+    <span class="vt-title">
+      <ion-icon name="ticket-outline"></ion-icon> Vouchers
+      <small>
+        {{ vouchers().length }} available<ng-container *ngIf="claimedCount()"> · {{ claimedCount() }} claimed</ng-container>
+      </small>
+    </span>
+    <ion-icon name="chevron-down-outline" class="chev" [class.flip]="open()"></ion-icon>
+  </button>
+
+  <div class="voucher-list" *ngIf="open()">
+    <div class="v-row" *ngFor="let v of vouchers()" [class.off]="!v.usable">
+      <div class="v-body">
+        <div class="v-head">
+          {{ v.headline }}
+          <span class="v-badge" *ngIf="v.claimed">Claimed</span>
+        </div>
+        <div class="v-cond">{{ v.cond }}</div>
+        <div class="v-code">{{ v.code }}</div>
+        <div class="v-reason" *ngIf="!v.usable && v.reason">{{ v.reason }}</div>
+      </div>
+      <div class="v-actions">
+        <button type="button" class="v-btn use" *ngIf="v.usable" (click)="useCode.emit(v.code)">Apply</button>
+        <button type="button" class="v-btn" (click)="copy(v)">Copy</button>
+        <button type="button" class="v-btn" *ngIf="!v.claimed" (click)="claim(v)">Claim</button>
+      </div>
+    </div>
+  </div>
+</div>

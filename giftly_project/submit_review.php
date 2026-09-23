@@ -23,7 +23,7 @@ if ($product_id <= 0 || $rating < 1 || $rating > 5) {
     echo json_encode(['status' => 'error', 'message' => 'Please give a star rating.']);
     exit();
 }
-$comment = mb_substr($comment, 0, 1500);
+$comment = mb_substr($comment, 0, REVIEW_COMMENT_MAX);
 
 // One review per customer per product — no editing once posted.
 if (reviews_user_review($conn, $user_id, $product_id)) {

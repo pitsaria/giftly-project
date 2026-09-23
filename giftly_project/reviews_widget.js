@@ -2,7 +2,22 @@
    The reviews fragment (get_product_reviews.php) is injected as innerHTML;
    the page then calls rvBind() to wire the star picker. */
 
+/* Live "0/1500" counter. Reads the limit from the textarea's maxlength so
+   the number only lives in one place (REVIEW_COMMENT_MAX in reviews_lib.php). */
+function rvBindCounter(textarea, counter) {
+    if (!textarea || !counter) return;
+    var max = parseInt(textarea.getAttribute('maxlength'), 10) || 0;
+    function update() {
+        var n = textarea.value.length;
+        counter.textContent = n + '/' + max;
+        counter.classList.toggle('near', max > 0 && n >= max * 0.9);
+    }
+    textarea.addEventListener('input', update);
+    update();
+}
+
 function rvBind() {
+    rvBindCounter(document.getElementById('rvComment'), document.getElementById('rvChars'));
     var pick = document.getElementById('rvPick');
     if (!pick) return;
     var stars = pick.querySelectorAll('i');

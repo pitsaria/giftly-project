@@ -24,35 +24,13 @@ $hp = $conn->query("SELECT * FROM promos
                     LIMIT 4");
 while ($hp && $r = $hp->fetch_assoc()) $home_promos[] = $r;
 
+// Codes this customer has already claimed (their "Claim" buttons show as claimed).
+$home_claimed = isset($_SESSION['user_id']) ? promo_claimed_ids($conn, (int) $_SESSION['user_id']) : [];
+
 function home_promo_card($p) {
-    $type = $p['type'];
-    $headline = 'Special offer';
-    $icon = 'fa-gift';
-    if ($type === 'percent') {
-        $headline = rtrim(rtrim(number_format((float) $p['value'], 2), '0'), '.') . '% OFF';
-        $icon = 'fa-percent';
-    } elseif ($type === 'fixed') {
-        $headline = 'PHP ' . number_format((float) $p['value'], 0) . ' OFF';
-        $icon = 'fa-tags';
-    } elseif ($type === 'free_shipping') {
-        $headline = 'FREE SHIPPING';
-        $icon = 'fa-truck';
-    } elseif ($type === 'free_item') {
-        $headline = 'FREE GIFT';
-        $icon = 'fa-gift';
-    }
-    $bits = [];
-    if ($type === 'free_shipping' && (float) $p['min_spend'] > 0) {
-        $bits[] = 'On orders over PHP ' . number_format((float) $p['min_spend'], 0);
-    } elseif ((float) $p['min_spend'] > 0) {
-        $bits[] = 'On orders over PHP ' . number_format((float) $p['min_spend'], 0);
-    }
-    if (promo_bool($p['first_order_only'])) $bits[] = 'First order only';
-    if ($type === 'free_item') $bits[] = 'Buy ' . max(1, (int) ($p['free_item_min_qty'] ?? 3)) . '+ items';
-    if (!empty($p['ends_at'])) $bits[] = 'Ends ' . date('M j', strtotime($p['ends_at']));
-    if (empty($bits)) $bits[] = 'On your whole order';
-    $cond = implode(' · ', $bits);
-    return ['headline' => $headline, 'icon' => $icon, 'cond' => $cond, 'code' => $p['code'] ? strtoupper($p['code']) : ''];
+    $card = promo_card_info($p);   // shared with the checkout Vouchers list + mobile API
+    $card['id'] = (int) $p['id'];
+    return $card;
 }
 
 // recent real customer reviews for the homepage
@@ -327,6 +305,17 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer; transition: 0.2s;
     }
     .promo-code-chip:hover { background: #fff; transform: translateY(-1px); }
+    .promo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+    .promo-actions .promo-code-chip { margin-top: 0; }
+    .promo-claim-btn {
+        display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer;
+        background: linear-gradient(135deg, #FEA5B6 0%, #ff8ba7 100%); color: #fff;
+        border-radius: 12px; padding: 8px 14px; font-family: 'Poppins', sans-serif;
+        font-size: 13px; font-weight: 700; transition: 0.2s;
+        box-shadow: 0 4px 12px rgba(254, 165, 182, 0.35);
+    }
+    .promo-claim-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .promo-claim-btn.claimed { background: #e8f5e9; color: #2e7d32; box-shadow: none; cursor: default; }
     .promo-code-chip .pcc-code { color: #d81b60; }
     .promo-code-chip .pcc-hint { font-weight: 500; font-size: 11px; color: #888; letter-spacing: 0; }
     .promo-code-chip.copied { background: #e8f5e9; border-color: #a5d6a7; }
@@ -765,8 +754,10 @@ function featBuyNow() {
             .then(r => r.text()).then(t => {
                 if (t.trim() === 'login_required') { featClose(); if (window.openLoginModal) openLoginModal(); return; }
                 fetch('get_cart_id.php?product_id=' + featId).then(r => r.text()).then(cid => {
+                    // get_cart_id.php answers "0" when it can't find the row — don't open an empty checkout.
+                    if (!(parseInt(cid, 10) > 0)) { alert("Couldn't start checkout for this item. Please try again."); return; }
                     featClose();
-                    window.location.href = 'checkout_selected.php?items=' + cid;
+                    window.location.href = 'checkout_selected.php?items=' + parseInt(cid, 10);
                 });
             });
     });
@@ -836,11 +827,18 @@ function featBuyNow() {
             <div class="promo-text">
                 <div class="promo-title"><?php echo htmlspecialchars($__c['headline']); ?></div>
                 <?php if ($__c['cond']): ?><div class="promo-desc"><?php echo htmlspecialchars($__c['cond']); ?></div><?php endif; ?>
-                <?php if ($__c['code']): ?>
-                    <button type="button" class="promo-code-chip" onclick="copyPromoCode(this, '<?php echo htmlspecialchars($__c['code'], ENT_QUOTES); ?>')">
-                        <i class="fas fa-tag"></i> <span class="pcc-code"><?php echo htmlspecialchars($__c['code']); ?></span>
-                        <span class="pcc-hint">Tap to copy</span>
-                    </button>
+                <?php if ($__c['code']):
+                    $__claimed = in_array($__c['id'], $home_claimed, true);
+                ?>
+                    <div class="promo-actions">
+                        <button type="button" class="promo-code-chip" onclick="copyPromoCode(this, '<?php echo htmlspecialchars($__c['code'], ENT_QUOTES); ?>')">
+                            <i class="fas fa-tag"></i> <span class="pcc-code"><?php echo htmlspecialchars($__c['code']); ?></span>
+                            <span class="pcc-hint">Tap to copy</span>
+                        </button>
+                        <button type="button" class="promo-claim-btn<?php echo $__claimed ? ' claimed' : ''; ?>" data-promo-id="<?php echo (int) $__c['id']; ?>" onclick="claimPromo(this)"<?php echo $__claimed ? ' disabled' : ''; ?>>
+                            <i class="fas <?php echo $__claimed ? 'fa-circle-check' : 'fa-ticket'; ?>"></i> <span><?php echo $__claimed ? 'Claimed' : 'Claim'; ?></span>
+                        </button>
+                    </div>
                 <?php else: ?>
                     <div class="promo-auto-chip"><i class="fas fa-bolt"></i> Applied automatically at checkout</div>
                 <?php endif; ?>
@@ -983,6 +981,26 @@ function featBuyNow() {
         alert('Please log in to add items to your cart! 🎁');
         // Open the login modal
         openLoginModal();
+    }
+
+    // Save a voucher to the customer's account (shown first in the checkout Vouchers list).
+    function claimPromo(btn) {
+        var fd = new FormData();
+        fd.append('promo_id', btn.dataset.promoId);
+        fetch('promo_claim.php', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.code === 'login_required') { if (window.openLoginModal) openLoginModal(); return; }
+                if (d.status === 'claimed' || d.status === 'already') {
+                    btn.classList.add('claimed');
+                    btn.disabled = true;
+                    btn.querySelector('span').textContent = 'Claimed';
+                    btn.querySelector('i').className = 'fas fa-circle-check';
+                } else {
+                    alert(d.message || "Couldn't claim this voucher.");
+                }
+            })
+            .catch(function () { alert("Couldn't claim this voucher. Please try again."); });
     }
 
     function copyPromoCode(btn, code) {

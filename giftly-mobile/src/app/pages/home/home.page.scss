@@ -546,6 +546,39 @@ ion-content::part(scroll) {
     }
   }
 
+  .promo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+
+    .promo-code-chip {
+      margin-top: 0;
+    }
+  }
+
+  .promo-claim-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 20px;
+    background: var(--giftly-gradient);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+
+    ion-icon {
+      font-size: 12px;
+    }
+
+    &.claimed {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+  }
+
   .promo-auto-chip {
     margin-top: 8px;
     font-size: 10px;

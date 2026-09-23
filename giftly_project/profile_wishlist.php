@@ -619,6 +619,9 @@ function addToCartFromWishlist(productId, wishlistId) {
                     alert('Please login first');
                 } else if (data.trim() === 'stock_limit_reached') {
                     showCartAlert('Not enough stock available.', 'out-of-stock');
+                } else if (data.trim() === 'variant_required') {
+                    // Occasion boxes need a size/color — send them to the page whose modal has the pickers.
+                    window.location.href = 'occasion-boxes.php?product=' + productId;
                 } else {
                     showWishlistToast('Added to cart! 🛒');
                     if (window.updateCartBadge) window.updateCartBadge();

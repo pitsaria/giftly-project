@@ -1376,8 +1376,10 @@ function buyNow() {
                     fetch('get_cart_id.php?product_id=' + currentModalId)
                     .then(res => res.text())
                     .then(cartId => {
+                        // get_cart_id.php answers "0" when it can't find the row — don't open an empty checkout.
+                        if (!(parseInt(cartId, 10) > 0)) { alert("Couldn't start checkout for this item. Please try again."); return; }
                         closeModal();
-                        window.location.href = 'checkout_selected.php?items=' + cartId;
+                        window.location.href = 'checkout_selected.php?items=' + parseInt(cartId, 10);
                     });
                 }
             });

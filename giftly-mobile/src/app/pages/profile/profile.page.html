@@ -216,7 +216,7 @@
           <div class="w-flag" *ngIf="p.unavailable">No longer available</div>
           <div class="w-actions">
             <button [class.pop]="isJustToggled(p.id)" (click)="toggleWishlist(p.id); $event.stopPropagation()"><ion-icon name="heart"></ion-icon></button>
-            <button [disabled]="p.quantity <= 0 || p.unavailable" (click)="addWishlistItemToCart(p.id); $event.stopPropagation()">Add to Cart</button>
+            <button [disabled]="p.quantity <= 0 || p.unavailable" (click)="addWishlistItemToCart(p); $event.stopPropagation()">Add to Cart</button>
           </div>
         </div>
       </div>

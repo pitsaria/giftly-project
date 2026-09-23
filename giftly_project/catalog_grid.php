@@ -258,7 +258,8 @@ if (isset($_SESSION['user_id'])) {
                 <div class="ci-bottom">
                     <div class="ci-price<?php echo $is_on_sale ? ' on-sale' : ''; ?>" onclick="<?php echo $onClick; ?>"><span class="ci-now">PHP <?php echo number_format($eff_price, 2); ?></span><?php if ($is_on_sale): ?><span class="ci-was">PHP <?php echo number_format($row['price'], 2); ?></span><?php endif; ?></div>
                     <?php if ($inStock): ?>
-                        <button class="ci-add" onclick="event.stopPropagation(); catQuickAdd(<?php echo $id; ?>)">
+                        <?php // Boxes with color/size options open the modal first so the customer picks them; plain items add straight to the cart. ?>
+                        <button class="ci-add" onclick="event.stopPropagation(); <?php echo (!empty($colors_js) || !empty($sizes_js)) ? $onClick : 'catQuickAdd(' . $id . ')'; ?>">
                             <i class="fas fa-shopping-cart"></i> Add
                         </button>
                     <?php else: ?>
@@ -491,6 +492,7 @@ function catQuickAdd(id) {
                     .then(r => r.text()).then(t => {
                         if (t.trim() === 'login_required') { if (window.openLoginModal) openLoginModal(); }
                         else if (t.trim() === 'stock_limit_reached') catShowStock('You have reached the maximum available stock for this item.');
+                        else if (t.trim() === 'variant_required') catShowStock('Please choose a size and color first.');
                         else catToast();
                     });
             });
@@ -530,8 +532,10 @@ function catBuyNow() {
                 if (t.trim() === 'login_required') { catClose(); if (window.openLoginModal) openLoginModal(); return; }
                 if (t.trim() === 'stock_limit_reached') { catShowStock('You have reached the maximum available stock for this item.'); return; }
                 fetch('get_cart_id.php?product_id=' + catId).then(r => r.text()).then(cid => {
+                    // get_cart_id.php answers "0" when it can't find the row — don't open an empty checkout.
+                    if (!(parseInt(cid, 10) > 0)) { alert("Couldn't start checkout for this item. Please try again."); return; }
                     catClose();
-                    window.location.href = 'checkout_selected.php?items=' + cid;
+                    window.location.href = 'checkout_selected.php?items=' + parseInt(cid, 10);
                 });
             });
     });

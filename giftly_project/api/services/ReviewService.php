@@ -70,7 +70,7 @@ class ReviewService {
         if ($product_id <= 0 || $rating < 1 || $rating > 5) {
             sendError('Please give a star rating.');
         }
-        $comment = mb_substr($comment, 0, 1500);
+        $comment = mb_substr($comment, 0, REVIEW_COMMENT_MAX);
 
         if (reviews_user_review($this->conn, $user_id, $product_id)) {
             sendError("You've already reviewed this item.");

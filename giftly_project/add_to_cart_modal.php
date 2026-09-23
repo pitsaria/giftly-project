@@ -55,6 +55,14 @@ if ($color !== '') {
     $cr = $conn->query("SELECT id FROM product_colors WHERE product_id = $product_id AND color_name = '$color_esc'");
     if (!$cr || $cr->num_rows === 0) $color = ''; // not a real color option — ignore it
 }
+// A product that has color/size options can't go in the cart without picking them —
+// otherwise the customer ends up with a box and no idea which size/color it is.
+if (($color === '' && !empty(catalog_get_colors($conn, $product_id)))
+    || ($size === '' && !empty(catalog_get_sizes($conn, $product_id)))) {
+    echo "variant_required";
+    exit();
+}
+
 $color_esc = $conn->real_escape_string($color);
 $size_esc  = $conn->real_escape_string($size);
 $variant_price_sql = $variant_price !== null ? (float) $variant_price : 'NULL';

@@ -728,6 +728,13 @@ unset($_SESSION['box_checkout_error']);
                         <span id="promoNudgeText"></span>
                     <?php endif; ?>
                 </div>
+                <?php
+                // Browsable vouchers: copy a code, claim it to the account, or apply it right here.
+                $vp_scope = 'box';
+                $vp_subtotal = $subtotal;
+                $vp_item_count = (int) $data['item_count'];
+                include 'voucher_panel.php';
+                ?>
             </div>
 
             <div class="co-tot">

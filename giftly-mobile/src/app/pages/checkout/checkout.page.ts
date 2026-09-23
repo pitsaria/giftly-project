@@ -38,6 +38,7 @@ import { describeError } from '../../core/http-error';
 import { formatCardExpiry, formatCardNumber, formatCvc, validateCard } from '../../core/card';
 import { phoneDigitsFromStored } from '../../core/phone-format';
 import { PhPhoneInputComponent } from '../../shared/ph-phone-input/ph-phone-input.component';
+import { VoucherListComponent } from '../../shared/voucher-list/voucher-list.component';
 import { AddressSearchComponent, AddressParts } from '../../shared/address-search/address-search.component';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
@@ -65,6 +66,7 @@ import { ImgUrlPipe } from '../../shared/img-url.pipe';
     IonSelectOption,
     IonSpinner,
     PhPhoneInputComponent,
+    VoucherListComponent,
     AddressSearchComponent,
     ImgUrlPipe,
   ],
@@ -174,6 +176,13 @@ export class CheckoutPage implements OnInit {
       if (profile?.phone) this.senderPhoneDigits = phoneDigitsFromStored(profile.phone);
       const selectedIds = new Set(this.cart.selectedCartIds());
       this.cartItems.set(cart.items.filter((i) => selectedIds.has(i.cart_id)));
+      // The selection lives only in memory, so a reload (or a deep link) loses
+      // it — nothing to check out then, so go pick the items again.
+      if (this.cartItems().length === 0) {
+        await this.toast('Your checkout items are no longer in your cart. Please select them again.');
+        void this.router.navigateByUrl('/cart', { replaceUrl: true });
+        return;
+      }
       this.addons.set(addons);
       this.recipients.set(recipients);
 
@@ -238,6 +247,16 @@ export class CheckoutPage implements OnInit {
     } finally {
       this.applyingCode.set(false);
     }
+  }
+
+  itemCount(): number {
+    return this.cartItems().reduce((sum, i) => sum + i.quantity, 0);
+  }
+
+  // A voucher's "Apply" — runs the same flow as typing the code and tapping Apply.
+  useVoucher(code: string): void {
+    this.promoCodeInput = code;
+    void this.applyPromoCode();
   }
 
   async removePromoCode(): Promise<void> {

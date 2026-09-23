@@ -224,6 +224,7 @@
       <ion-button fill="clear" size="small" [disabled]="applyingCode()" (click)="removePromoCode()">Remove</ion-button>
     </div>
     <p class="promo-error" *ngIf="promoEval()?.code_error">{{ promoEval()!.code_error }}</p>
+    <app-voucher-list scope="box" [subtotal]="box()?.subtotal ?? 0" (useCode)="useVoucher($event)"></app-voucher-list>
 
     <div class="summary">
       <div class="row"><span>Subtotal ({{ b.item_count }} items)</span><span>₱{{ b.subtotal | number: '1.2-2' }}</span></div>

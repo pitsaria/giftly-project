@@ -716,7 +716,13 @@ export class ProfilePage implements OnInit {
     return this.wishlistSvc.justToggled() === productId;
   }
 
-  async addWishlistItemToCart(productId: number): Promise<void> {
+  async addWishlistItemToCart(product: Product): Promise<void> {
+    const productId = product.id;
+    // Occasion boxes need a size/color picked — open the product sheet for that.
+    if (product.colors?.length || product.sizes?.length) {
+      await this.openProduct(product);
+      return;
+    }
     try {
       const cart = await this.cart.getCart();
       if (cart.items.some((i) => i.id === productId)) {
