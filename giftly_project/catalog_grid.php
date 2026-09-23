@@ -332,7 +332,7 @@ if (isset($_SESSION['user_id'])) {
 <div class="cat-stock-overlay" id="catStockModal">
     <div class="cat-stock-box">
         <div class="ico"><i class="fas fa-exclamation-circle"></i></div>
-        <h4>Not enough stock</h4>
+        <h4 id="catStockTitle">Not enough stock</h4>
         <p id="catStockMsg"></p>
         <button onclick="catCloseStock()"><i class="fas fa-check" style="margin-right:8px;"></i> Got it!</button>
     </div>
@@ -485,7 +485,7 @@ function catQty(delta) {
     else if (n > catLimit(catStock)) catShowStock(catStock > CAT_MAX_PER_ORDER ? catLimitMsg(catStock) : 'Only ' + catStock + ' available in stock.');
 }
 
-function catShowStock(msg) { document.getElementById('catStockMsg').innerHTML = msg; document.getElementById('catStockModal').style.display = 'flex'; }
+function catShowStock(msg) { document.getElementById('catStockTitle').textContent = /limit of \d+ per order/i.test(msg) ? 'Limit reached' : 'Not enough stock'; document.getElementById('catStockMsg').innerHTML = msg; document.getElementById('catStockModal').style.display = 'flex'; }
 function catCloseStock() { document.getElementById('catStockModal').style.display = 'none'; }
 document.getElementById('catStockModal').addEventListener('click', function (e) { if (e.target === this) catCloseStock(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { catClose(); catCloseStock(); } });

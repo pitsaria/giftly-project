@@ -874,7 +874,7 @@ function gbRemove(id) {
         <div class="stock-alert-icon">
             <i class="fas fa-exclamation-circle"></i>
         </div>
-        <div class="stock-alert-title">Not Enough Stock</div>
+        <div class="stock-alert-title" id="stockAlertTitle">Not Enough Stock</div>
         <div class="stock-alert-sub" id="stockAlertMessage">
             Sorry, only <strong>22</strong> items available in stock.
         </div>
@@ -968,6 +968,8 @@ function updateQty(cartId, action) {
 
 /* --- STOCK ALERT MODAL CONTROLS --- */
 function showStockAlert(message) {
+    // Per-order cap messages get their own title instead of "Not Enough Stock"
+    document.getElementById('stockAlertTitle').textContent = /limit of \d+ per order/i.test(message) ? 'Limit Reached' : 'Not Enough Stock';
     document.getElementById('stockAlertMessage').innerHTML = message;
     document.getElementById('stockAlertModal').style.display = 'flex';
 }
