@@ -19,6 +19,8 @@ export interface Product {
   price: string;
   image: string;
   quantity: number;
+  // Most one order can take: the per-order cap or stock, whichever is lower.
+  max_per_order?: number;
   category_id: number;
   // Attached by the products list endpoint (published-review aggregates).
   avg_rating?: string;
@@ -67,6 +69,8 @@ export interface CartItem {
   image: string;
   category_id: number;
   stock: number;
+  // Most one order can take of this product (per-order cap or stock, whichever is lower).
+  max_per_order?: number;
   subtotal: number;
   // Product was deactivated by the shop while it sat in the cart.
   is_active?: boolean;
@@ -200,6 +204,7 @@ export interface BoxProduct {
   on_sale: boolean;
   image: string;
   quantity: number;
+  max_per_order?: number;
   category_id: number;
   rating: number;
   rating_count: number;
@@ -214,6 +219,7 @@ export interface BoxLineItem {
   image: string;
   quantity: number;
   stock: number;
+  max_per_order?: number;
   unavailable: 'removed' | 'out_of_stock' | 'low_stock' | 'discontinued' | null;
 }
 

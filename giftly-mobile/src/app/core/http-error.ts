@@ -1,6 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TimeoutError } from 'rxjs';
 
+// The server's own message for a refused request (e.g. "Limit of 5 per order
+// for each item."), or `fallback` when the failure wasn't a server refusal.
+export function serverMessage(err: unknown, fallback: string): string {
+  if (err instanceof HttpErrorResponse && err.error && typeof err.error === 'object' && 'error' in err.error) {
+    const msg = String((err.error as { error: unknown }).error);
+    if (msg) return msg;
+  }
+  return fallback;
+}
+
 // Turns any error thrown by ApiService into a precise, user-visible string
 // (status code + server message) instead of a generic "something went
 // wrong" — so a real failure is diagnosable from what's shown on screen.

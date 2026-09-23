@@ -10,6 +10,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 include 'header.php';
 $user_id = $_SESSION['user_id'];
+// Per-order cap: trim anything over it (e.g. carts filled before the limit existed).
+$cap_warnings = catalog_enforce_order_cap($conn, $user_id);
 ?>
 
 <style>
@@ -426,6 +428,24 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
             <span id="cartTitleCount" class="cart-title-count">(0)</span>
         </h2>
 
+<?php if (!empty($cap_warnings)): ?>
+<div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 16px; padding: 15px 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.1);">
+    <i class="fas fa-exclamation-triangle" style="color: #f9a825; font-size: 20px; margin-top: 2px;"></i>
+    <div style="flex: 1;">
+        <strong style="color: #222; font-size: 15px;">Quantity Limit</strong>
+        <div style="margin-top: 6px; font-size: 14px; color: #555;">
+            <?php foreach ($cap_warnings as $w): ?>
+                <span style="display: block; padding: 3px 0; font-size: 13px; color: #666;">
+                    • <strong><?php echo htmlspecialchars($w['name']); ?></strong>:
+                    <?php echo $w['capped'] ? 'limit of ' . catalog_max_per_order() . ' per order' : 'only ' . (int) $w['allowed'] . ' available'; ?>
+                    — quantity adjusted to <strong><?php echo (int) $w['allowed']; ?></strong>
+                </span>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
         <!-- 🚀 STOCK WARNING - Place this right after the cart title -->
 <?php if (!empty($stock_warnings)): ?>
 <div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 16px; padding: 15px 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.1);">
@@ -544,7 +564,7 @@ $bab_loose_qty = $bab_lc ? intval($bab_lc->fetch_assoc()['q']) : 0;
                     <?php endif; ?>
                     <div class="ci-price">PHP <?php echo number_format($row['price'], 2); ?> each<?php if ((float)$row['price'] < (float)$row['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($row['list_price'], 2); ?></span> <span style="background:#ffe3ea;color:#d81b60;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;">SALE</span><?php endif; ?></div>
                     <div style="font-size: 11px; color: #888; margin-top: 2px;">
-                        Stock: <?php echo $row['stock_quantity']; ?> available
+                        Stock: <?php echo $row['stock_quantity']; ?> available<?php if ((int) $row['stock_quantity'] > catalog_max_per_order()): ?> &middot; Max <?php echo catalog_max_per_order(); ?> per order<?php endif; ?>
                     </div>
                 </div>
 
@@ -1200,7 +1220,9 @@ function proceedToCheckout() {
                 window.location.href = 'checkout_selected.php?items=' + ids.join(',');
             } else if (data.data.has_issues) {
                 let messages = data.data.issues.map(issue => {
-                    if (issue.action === 'removed') {
+                    if (issue.message) {
+                        return issue.message;
+                    } else if (issue.action === 'removed') {
                         return `<strong>${issue.product_name}</strong> is out of stock and has been removed from your cart.`;
                     } else {
                         return `<strong>${issue.product_name}</strong>: Requested ${issue.requested}, only ${issue.available} available. Quantity adjusted to ${issue.new_quantity}.`;

@@ -54,6 +54,8 @@ interface DraftItem {
   image: string;
   qty: number;
   stock: number;
+  // Most one order can take (per-order cap or stock, whichever is lower).
+  max?: number;
 }
 
 // Mirrors giftly_project/build-a-box.php: pick a size, fill it with gifts,
@@ -187,6 +189,7 @@ export class BuildABoxPage implements OnInit {
               image: i.image,
               qty: i.quantity,
               stock: i.stock,
+              max: i.max_per_order ?? i.stock,
             }))
         );
         if (size) await this.loadProducts(true);
@@ -314,7 +317,7 @@ export class BuildABoxPage implements OnInit {
     if (p.quantity <= 0) return this.toast('Out of stock.');
     this.items.set([
       ...this.items(),
-      { product_id: p.id, name: p.name, price: p.price, image: p.image, qty: 1, stock: p.quantity },
+      { product_id: p.id, name: p.name, price: p.price, image: p.image, qty: 1, stock: p.quantity, max: p.max_per_order ?? p.quantity },
     ]);
   }
 
@@ -324,6 +327,7 @@ export class BuildABoxPage implements OnInit {
     const it = next.find((i) => i.product_id === productId);
     if (!it) return;
     if (it.qty >= it.stock) return this.toast(`Only ${it.stock} in stock.`);
+    if (it.qty >= (it.max ?? it.stock)) return this.toast(`Limit of ${it.max} per order for each item.`);
     it.qty++;
     this.items.set(next);
   }

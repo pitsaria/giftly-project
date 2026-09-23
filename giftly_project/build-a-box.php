@@ -868,7 +868,7 @@ function babSyncGridButtons() {
         const item = BAB.state.items.find(i => i.product_id === pid);
         const full = babCount() >= babMax();
         if (item) {
-            const plusDisabled = (item.qty >= stock || full);
+            const plusDisabled = (item.qty >= Math.min(stock, BAB_MAX_PER_ORDER) || full);
             foot.innerHTML = '<div class="bab-mini-qty">' +
                 '<button onclick="babDec(' + pid + ')">&minus;</button>' +
                 '<span>' + item.qty + ' in box</span>' +
@@ -881,6 +881,9 @@ function babSyncGridButtons() {
         }
     });
 }
+
+// Store-wide per-order cap on any one product (the server enforces it too).
+const BAB_MAX_PER_ORDER = <?php echo (int) catalog_max_per_order(); ?>;
 
 function babMax() {
     const card = babFindSizeCard(BAB.state.sizeId);
@@ -909,6 +912,7 @@ function babInc(pid) {
     if (!it) return;
     if (babCount() >= babMax()) { babToast('This box is full'); return; }
     if (it.qty >= it.stock) { babToast('Only ' + it.stock + ' in stock'); return; }
+    if (it.qty >= BAB_MAX_PER_ORDER) { babToast('Limit of ' + BAB_MAX_PER_ORDER + ' per order for each item'); return; }
     it.qty++;
     babMarkDirty(); babRender(); babSyncGridButtons();
 }

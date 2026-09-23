@@ -1074,6 +1074,22 @@ $heartClass = $isInWishlist ? 'active' : '';
     let currentQty = 1;
     let currentStock = 0;
 
+    // Store-wide per-order cap. The server enforces it too; this just keeps the UI honest.
+    const MAX_PER_ORDER = <?php echo (int) catalog_max_per_order(); ?>;
+    // Most a customer can put in one order of this product: the cap, or stock if lower.
+    function orderLimit(stock) { return Math.min(stock, MAX_PER_ORDER); }
+    // Why they can't add more: the cap, or simply running out of stock.
+    function limitMessage(stock) {
+        return stock > MAX_PER_ORDER
+            ? 'Limit of ' + MAX_PER_ORDER + ' per order for each item.'
+            : 'You\'ve reached the maximum available stock (' + stock + ' items) for this product.';
+    }
+    // add_to_cart_modal.php answers plain text on success, JSON {error,message} when it refuses.
+    function cartRefusal(text) {
+        try { const j = JSON.parse(text); if (j && j.error) return j.message || limitMessage(currentStock); } catch (e) {}
+        return null;
+    }
+
     // Quick-view click handling is delegated off a JSON blob in the card's
     // data-modal attribute (set in the PHP loop above) instead of building
     // an onclick="openModal(...)" string per card — that older approach broke
@@ -1170,11 +1186,13 @@ $heartClass = $isInWishlist ? 'active' : '';
     /* --- UPDATE QUANTITY IN MODAL --- */
 function updateQty(change) {
     let newQty = currentQty + change;
-    if (newQty >= 1 && newQty <= currentStock) {
+    if (newQty >= 1 && newQty <= orderLimit(currentStock)) {
         currentQty = newQty;
         document.getElementById('qtyDisplay').innerText = newQty;
-    } else if (newQty > currentStock) {
-        showStockAlert('Not enough stock available. Only ' + currentStock + ' items left.');
+    } else if (newQty > orderLimit(currentStock)) {
+        showStockAlert(currentStock > MAX_PER_ORDER
+            ? limitMessage(currentStock)
+            : 'Not enough stock available. Only ' + currentStock + ' items left.');
     }
 }
 
@@ -1228,12 +1246,12 @@ function quickAdd(id) {
             .then(cartData => {
                 let currentCartQty = cartData.quantity || 0;
                 
-                // Check if user already has maximum stock in cart
-                if (currentCartQty >= availableStock) {
-                    showStockAlert('You\'ve reached the maximum available stock (' + availableStock + ' items) for this product.');
+                // Check if user already has the most they can order (per-order cap or stock) in cart
+                if (currentCartQty >= orderLimit(availableStock)) {
+                    showStockAlert(limitMessage(availableStock));
                     return;
                 }
-                
+
                 // Proceed with adding to cart
                 fetch('add_to_cart_modal.php', {
                     method: 'POST',
@@ -1242,10 +1260,13 @@ function quickAdd(id) {
                 })
                 .then(response => response.text())
                 .then(data => {
+                    const refusal = cartRefusal(data);
                     if(data.trim() === 'login_required') {
                         setTimeout(openLoginModal, 300);
                     } else if(data.trim() === 'stock_limit_reached') {
                         showStockAlert('You\'ve reached the maximum available stock for this product.');
+                    } else if (refusal) {
+                        showStockAlert(refusal);
                     } else {
                         showToast();
                     }
@@ -1278,24 +1299,26 @@ function addFromModal() {
         .then(cartData => {
             let currentCartQty = cartData.quantity || 0;
             
-            // Check if user already has maximum stock in cart
-            if (currentCartQty >= currentStock) {
-                showStockAlert('You\'ve reached the maximum available stock (' + currentStock + ' items) for this product.');
+            // Check if user already has the most they can order (per-order cap or stock) in cart
+            if (currentCartQty >= orderLimit(currentStock)) {
+                showStockAlert(limitMessage(currentStock));
                 return;
             }
-            
+
             let totalAfterAdd = currentCartQty + currentQty;
-            
-            if (totalAfterAdd > currentStock) {
-                let maxCanAdd = currentStock - currentCartQty;
+
+            if (totalAfterAdd > orderLimit(currentStock)) {
+                let maxCanAdd = orderLimit(currentStock) - currentCartQty;
                 if (maxCanAdd <= 0) {
-                    showStockAlert('You\'ve reached the maximum available stock (' + currentStock + ' items) for this product.');
+                    showStockAlert(limitMessage(currentStock));
+                } else if (currentStock > MAX_PER_ORDER) {
+                    showStockAlert('You can only add ' + maxCanAdd + ' more item(s) — limit of ' + MAX_PER_ORDER + ' per order for each item.');
                 } else {
                     showStockAlert('You can only add ' + maxCanAdd + ' more item(s). Only ' + currentStock + ' available in stock.');
                 }
                 return;
             }
-            
+
             // Proceed with adding to cart
             fetch('add_to_cart_modal.php', {
                 method: 'POST',
@@ -1304,11 +1327,14 @@ function addFromModal() {
             })
             .then(response => response.text())
             .then(data => {
+                const refusal = cartRefusal(data);
                 if(data.trim() === 'login_required') {
                     closeModal();
                     setTimeout(openLoginModal, 300);
                 } else if(data.trim() === 'stock_limit_reached') {
                     showStockAlert('You\'ve reached the maximum available stock for this product.');
+                } else if (refusal) {
+                    showStockAlert(refusal);
                 } else {
                     closeModal(); 
                     showToast();
@@ -1341,24 +1367,13 @@ function buyNow() {
         .then(cartData => {
             let currentCartQty = cartData.quantity || 0;
             
-            // Check if user already has maximum stock in cart
-            if (currentCartQty >= currentStock) {
-                showStockAlert('You\'ve reached the maximum available stock (' + currentStock + ' items) for this product.');
+            // "Buy now" replaces whatever is in the cart for this product, so only the
+            // chosen quantity has to fit the limit (the stepper already enforces that).
+            if (currentQty > orderLimit(currentStock)) {
+                showStockAlert(limitMessage(currentStock));
                 return;
             }
-            
-            let totalAfterAdd = currentCartQty + currentQty;
-            
-            if (totalAfterAdd > currentStock) {
-                let maxCanAdd = currentStock - currentCartQty;
-                if (maxCanAdd <= 0) {
-                    showStockAlert('You\'ve reached the maximum available stock (' + currentStock + ' items) for this product.');
-                } else {
-                    showStockAlert('You can only add ' + maxCanAdd + ' more item(s). Only ' + currentStock + ' available in stock.');
-                }
-                return;
-            }
-            
+
             // Proceed with buy now
             fetch('add_to_cart_modal.php', {
                 method: 'POST',
@@ -1367,11 +1382,14 @@ function buyNow() {
             })
             .then(response => response.text())
             .then(data => {
+                const refusal = cartRefusal(data);
                 if(data.trim() === 'login_required') {
                     closeModal();
                     setTimeout(openLoginModal, 300);
                 } else if(data.trim() === 'stock_limit_reached') {
                     showStockAlert('You\'ve reached the maximum available stock for this product.');
+                } else if (refusal) {
+                    showStockAlert(refusal);
                 } else {
                     fetch('get_cart_id.php?product_id=' + currentModalId)
                     .then(res => res.text())

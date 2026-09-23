@@ -101,6 +101,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         }
     }
     
+    // Per-order cap: apply the stock adjustments first, then trim anything still over the limit
+    // (all colors/sizes of one product count together).
+    foreach ($items_to_update as $update_query) {
+        $conn->query($update_query);
+    }
+    $items_to_update = [];
+    foreach (catalog_enforce_order_cap($conn, $user_id, $selected_ids) as $w) {
+        $has_stock_issues = true;
+        $wname = htmlspecialchars($w['name']);
+        $stock_errors[] = $w['capped']
+            ? "{$wname}: Limit of " . catalog_max_per_order() . " per order for each item. Quantity adjusted to {$w['allowed']}."
+            : "{$wname}: Requested {$w['requested']}, only {$w['allowed']} available. Quantity adjusted to {$w['allowed']}.";
+    }
+
     // If there were stock issues, update the cart and show error
     if ($has_stock_issues) {
         // Execute all updates
@@ -229,6 +243,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         }
         $total_amount += $row['price'] * $row['quantity'];
         $items[] = $row;
+    }
+
+    // Authoritative per-order cap, now that the rows are locked: all colors/sizes
+    // of one product together may not exceed the cap (or stock).
+    $qty_by_pid = [];
+    foreach ($items as $it) {
+        $pid = (int) $it['product_id'];
+        if (!isset($qty_by_pid[$pid])) $qty_by_pid[$pid] = ['qty' => 0, 'row' => $it];
+        $qty_by_pid[$pid]['qty'] += (int) $it['quantity'];
+    }
+    $cap_errors = [];
+    foreach ($qty_by_pid as $pp) {
+        if ($pp['qty'] > catalog_order_limit($pp['row']['available_stock'])) $cap_errors[] = $pp['row']['name'];
+    }
+    if (!empty($cap_errors)) {
+        $conn->rollback();
+        echo '<div style="max-width:600px;margin:130px auto 60px;padding:40px;background:#fff;border-radius:30px;box-shadow:0 10px 40px rgba(0,0,0,0.04);text-align:center;font-family:Poppins,sans-serif;">'
+           . '<div style="font-size:60px;color:#f9a825;margin-bottom:20px;"><i class="fas fa-exclamation-triangle"></i></div>'
+           . '<div style="font-size:24px;font-weight:700;color:#222;margin-bottom:10px;">Quantity Limit</div>'
+           . '<p style="color:#888;margin-bottom:15px;">' . htmlspecialchars(implode(', ', $cap_errors)) . ' is over the limit of ' . catalog_max_per_order() . ' per order for each item.</p>'
+           . '<a href="cart.php" style="padding:14px 40px;border-radius:50px;background:linear-gradient(135deg,#FEA5B6 0%,#ff8ba7 100%);color:#fff;text-decoration:none;font-weight:600;display:inline-block;"><i class="fas fa-arrow-left" style="margin-right:8px;"></i> Return to Cart</a>'
+           . '</div>';
+        include 'footer.php';
+        exit();
     }
 
     // Don't create an order with nothing in it.
@@ -509,7 +547,9 @@ if (empty($selected_ids)) {
     exit();
 }
 $ids_string = implode(',', $selected_ids);
-$items_query = $conn->query("SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
+// Per-order cap: never render a checkout that's already over it (e.g. a "Buy now" link with stale quantities).
+catalog_enforce_order_cap($conn, $user_id, $selected_ids);
+$items_query =$conn->query("SELECT c.id as cart_id, c.quantity, c.selected_color, c.selected_size, c.variant_price, p.name,
                                     p.price AS list_price, COALESCE(c.variant_price, " . catalog_price_sql('p.') . ") AS price,
                                     p.image, pc.image AS color_image, p.quantity as stock_quantity, p.is_active
                              FROM carts c
@@ -1443,7 +1483,7 @@ $addresses_query = $conn->query("SELECT * FROM addresses WHERE user_id = $user_i
             <?php endif; ?>
             <div class="os-price">PHP <?php echo number_format($item['price'], 2); ?> each<?php if ((float)$item['price'] < (float)$item['list_price']): ?> <span style="text-decoration:line-through;color:#bbb;">PHP <?php echo number_format($item['list_price'], 2); ?></span><?php endif; ?></div>
             <div style="font-size: 11px; color: #888; margin-top: 2px;">
-                Stock: <?php echo $item['stock_quantity']; ?> available
+                Stock: <?php echo $item['stock_quantity']; ?> available<?php if ((int) $item['stock_quantity'] > catalog_max_per_order()): ?> &middot; Max <?php echo catalog_max_per_order(); ?> per order<?php endif; ?>
             </div>
             
             <div class="os-qty-wrapper">

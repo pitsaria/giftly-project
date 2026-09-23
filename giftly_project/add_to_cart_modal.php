@@ -78,26 +78,36 @@ if ($available_stock <= 0) {
     exit();
 }
 
+if ($quantity < 1) $quantity = 1;
+$order_limit = catalog_order_limit($available_stock);
+
 if ($replace == 1) {
-    // Replace mode - clear every variant of this product from the cart, add just this one
-    $conn->query("DELETE FROM carts WHERE user_id = $user_id AND product_id = $product_id");
-    $new_qty = min($quantity, $available_stock);
-    if ($new_qty > 0) {
-        $conn->query("INSERT INTO carts (user_id, product_id, quantity, selected_color, selected_size, variant_price)
-                      VALUES ($user_id, $product_id, $new_qty, '$color_esc', '$size_esc', $variant_price_sql)");
+    // Replace mode ("Buy now") - clear every variant of this product from the cart, add just this one.
+    // The old rows are replaced, so only the new quantity counts against the limit.
+    $rc = catalog_check_add($available_stock, 0, $quantity);
+    if (!$rc['ok']) {
+        echo json_encode([
+            'error' => 'stock_limit',
+            'message' => $rc['error'],
+            'max_stock' => $order_limit
+        ]);
+        exit();
     }
+    $conn->query("DELETE FROM carts WHERE user_id = $user_id AND product_id = $product_id");
+    $conn->query("INSERT INTO carts (user_id, product_id, quantity, selected_color, selected_size, variant_price)
+                  VALUES ($user_id, $product_id, $quantity, '$color_esc', '$size_esc', $variant_price_sql)");
     echo "success";
     exit();
 }
 
-// Check if adding would exceed available stock
-$total_after_add = $current_cart_qty + $quantity;
-if ($total_after_add > $available_stock) {
-    // Return the stock limit with a specific message
+// Check if adding would exceed available stock or the per-order cap
+$chk = catalog_check_add($available_stock, $current_cart_qty, $quantity);
+if (!$chk['ok']) {
+    // Return the limit with a specific message
     echo json_encode([
         'error' => 'stock_limit',
-        'message' => 'You\'ve reached the maximum available stock for this product. Only ' . $available_stock . ' items available.',
-        'max_stock' => $available_stock
+        'message' => $chk['error'],
+        'max_stock' => $order_limit
     ]);
     exit();
 }

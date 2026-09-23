@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include 'db_connect.php';
+include_once 'catalog_lib.php';
 
 header('Content-Type: application/json');
 
@@ -41,6 +42,15 @@ if (array_key_exists('is_active', $product)
 }
 if ($product['quantity'] <= 0) {
     echo json_encode(['success' => false, 'message' => 'Product out of stock']);
+    exit();
+}
+
+// Stock and the per-order cap both apply across every color/size row of this product
+$sum_q = $conn->query("SELECT COALESCE(SUM(quantity), 0) AS t FROM carts WHERE user_id = $user_id AND product_id = $product_id");
+$in_cart = $sum_q ? intval($sum_q->fetch_assoc()['t']) : 0;
+$chk = catalog_check_add($product['quantity'], $in_cart, 1);
+if (!$chk['ok']) {
+    echo json_encode(['success' => false, 'message' => $chk['error']]);
     exit();
 }
 

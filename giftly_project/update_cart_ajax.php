@@ -29,11 +29,17 @@ $current_qty = intval($cart_item['quantity']);
 $stock_available = intval($cart_item['stock_quantity']);
 
 if ($action == 'increase') {
-    // Check if adding one would exceed stock
-    if ($current_qty + 1 > $stock_available) {
+    // Stock and the per-order cap both apply to the product as a whole, so add
+    // up every color/size row of it in this cart.
+    $sum_q = $conn->query("SELECT COALESCE(SUM(quantity), 0) AS t FROM carts WHERE user_id = $user_id AND product_id = " . intval($cart_item['product_id']));
+    $product_in_cart = $sum_q ? intval($sum_q->fetch_assoc()['t']) : $current_qty;
+    $chk = catalog_check_add($stock_available, $product_in_cart, 1);
+    if (!$chk['ok']) {
         echo json_encode([
-            'success' => false, 
-            'error' => 'Not enough stock available. Only ' . $stock_available . ' items left.'
+            'success' => false,
+            'error' => $chk['error'] === 'Product out of stock'
+                ? 'Not enough stock available. Only ' . $stock_available . ' items left.'
+                : $chk['error']
         ]);
         exit();
     }

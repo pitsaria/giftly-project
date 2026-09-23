@@ -69,7 +69,7 @@
             <div class="stepper" *ngIf="!isUnavailable(item)">
               <button (click)="decrease(item)"><ion-icon name="remove-outline"></ion-icon></button>
               <span>{{ item.quantity }}</span>
-              <button (click)="increase(item)" [disabled]="item.quantity >= item.stock">
+              <button (click)="increase(item)" [disabled]="item.quantity >= (item.max_per_order ?? item.stock)">
                 <ion-icon name="add-outline"></ion-icon>
               </button>
             </div>

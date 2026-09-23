@@ -193,6 +193,22 @@ class OrderService {
                 sendError("$name: only $available left in stock. Please update your cart and try again.");
             }
         }
+        // Per-order cap: every color/size row of one product counts together.
+        $qty_by_pid = [];
+        foreach ($items as $item) {
+            $pid = (int) $item['product_id'];
+            $qty_by_pid[$pid] = ($qty_by_pid[$pid] ?? 0) + (int) $item['quantity'];
+        }
+        foreach ($qty_by_pid as $pid => $q) {
+            $available = isset($stock_by_id[$pid]) ? (int) $stock_by_id[$pid]['quantity'] : 0;
+            if ($q > catalog_order_limit($available)) {
+                $this->conn->rollback();
+                $name = $stock_by_id[$pid]['name'] ?? 'An item';
+                sendError($available < catalog_max_per_order()
+                    ? "$name: only $available left in stock. Please update your cart and try again."
+                    : catalog_cap_message($name) . ' Please update your cart and try again.');
+            }
+        }
 
         // Insert order
         $sql = "INSERT INTO orders (user_id, total_amount, status, fullname, address, city,

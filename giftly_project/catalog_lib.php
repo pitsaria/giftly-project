@@ -9,6 +9,98 @@
 
 if (!function_exists('catalog_ensure_schema')) {
 
+    /**
+     * Store-wide cap on how many of ONE product a customer can buy in a single
+     * order (all colors/sizes of a product count together). Change it here.
+     */
+    function catalog_max_per_order() {
+        return 5;
+    }
+
+    /** What a customer can actually buy of a product right now: the cap, or less if stock is lower. */
+    function catalog_order_limit($stock) {
+        return max(0, min((int) $stock, catalog_max_per_order()));
+    }
+
+    /** Message for a customer who asks for more than the cap. */
+    function catalog_cap_message($name = '') {
+        $n = catalog_max_per_order();
+        return ($name !== '' ? "$name: " : '') . "Limit of $n per order for each item.";
+    }
+
+    /**
+     * Add-to-cart guard shared by every add path: how many more of a product a
+     * customer may add given what's already in their cart. Returns
+     * ['ok'=>bool, 'error'=>string|null, 'allowed'=>int].
+     */
+    function catalog_check_add($stock, $in_cart, $adding, $name = '') {
+        $stock = (int) $stock; $in_cart = (int) $in_cart; $adding = (int) $adding;
+        if ($stock <= 0) {
+            return ['ok' => false, 'error' => 'Product out of stock', 'allowed' => 0];
+        }
+        $allowed = max(0, catalog_order_limit($stock) - $in_cart);
+        if ($adding > $allowed) {
+            $error = $in_cart + $adding > $stock
+                ? "You've reached the maximum available stock for this product. Only $stock items available."
+                : catalog_cap_message($name);
+            return ['ok' => false, 'error' => $error, 'allowed' => $allowed];
+        }
+        return ['ok' => true, 'error' => null, 'allowed' => $allowed];
+    }
+
+    /**
+     * Trim a customer's cart rows so no product exceeds the per-order limit
+     * (cap or stock, whichever is lower), counting every color/size row of a
+     * product together. Pass $cart_ids to only look at the rows going into one
+     * order, or null for the whole cart. Newest rows are trimmed first.
+     * Returns one entry per trimmed product:
+     *   ['name'=>, 'requested'=>, 'allowed'=>, 'capped'=>bool]  (capped = the
+     *   cap is what bit, not stock — the caller words its message accordingly).
+     */
+    function catalog_enforce_order_cap($conn, $user_id, $cart_ids = null) {
+        $user_id = (int) $user_id;
+        $where = "c.user_id = $user_id";
+        if (is_array($cart_ids)) {
+            $ids = implode(',', array_filter(array_map('intval', $cart_ids)));
+            if ($ids === '') return [];
+            $where .= " AND c.id IN ($ids)";
+        }
+        $res = $conn->query("SELECT c.id, c.product_id, c.quantity, p.name, p.quantity AS stock
+                             FROM carts c JOIN products p ON p.id = c.product_id
+                             WHERE $where ORDER BY c.id DESC");
+        if (!$res) return [];
+        $by_product = [];
+        while ($r = $res->fetch_assoc()) {
+            $by_product[(int) $r['product_id']][] = $r;
+        }
+        $adjusted = [];
+        foreach ($by_product as $rows) {
+            $total = array_sum(array_map(function ($r) { return (int) $r['quantity']; }, $rows));
+            $stock = (int) $rows[0]['stock'];
+            $limit = catalog_order_limit($stock);
+            if ($stock <= 0 || $total <= $limit) continue; // out-of-stock rows are handled by the stock checks
+            $excess = $total - $limit;
+            foreach ($rows as $r) { // newest first
+                if ($excess <= 0) break;
+                $q = (int) $r['quantity'];
+                $take = min($q, $excess);
+                if ($q - $take <= 0) {
+                    $conn->query("DELETE FROM carts WHERE id = " . (int) $r['id'] . " AND user_id = $user_id");
+                } else {
+                    $conn->query("UPDATE carts SET quantity = " . ($q - $take) . " WHERE id = " . (int) $r['id'] . " AND user_id = $user_id");
+                }
+                $excess -= $take;
+            }
+            $adjusted[] = [
+                'name'      => $rows[0]['name'],
+                'requested' => $total,
+                'allowed'   => $limit,
+                'capped'    => $stock >= catalog_max_per_order(),
+            ];
+        }
+        return $adjusted;
+    }
+
     /** Add products.product_type / is_active + categories.is_active (idempotent). */
     function catalog_ensure_schema($conn) {
         static $done = false;

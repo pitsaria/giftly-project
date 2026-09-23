@@ -101,6 +101,7 @@ class BoxService {
                 'on_sale'      => $eff < $lst,
                 'image'        => $row['image'],
                 'quantity'     => intval($row['quantity']),
+                'max_per_order' => catalog_order_limit($row['quantity']),
                 'category_id'  => intval($row['category_id']),
                 'rating'       => round((float) $rv['avg'], 1),
                 'rating_count' => (int) $rv['count'],
@@ -228,6 +229,9 @@ class BoxService {
                 sendError($row['name'] . ' is out of stock.');
             }
             if ($qty > $stock) $qty = $stock;
+            if ($qty > catalog_max_per_order()) {
+                sendError(catalog_cap_message($row['name']));
+            }
             $final[$pid] = $qty;
             $total += $qty;
         }
@@ -313,6 +317,8 @@ class BoxService {
                     $stock_errors[] = $av <= 0
                         ? "{$r['name']} is out of stock."
                         : "{$r['name']}: only {$av} left (box needs {$req}).";
+                } elseif ($req > catalog_max_per_order()) {
+                    $stock_errors[] = catalog_cap_message($r['name']) . " Please edit your box.";
                 } else {
                     $items[] = $r;
                 }
@@ -514,6 +520,7 @@ class BoxService {
                 'image'       => $it['image'],
                 'quantity'    => intval($it['quantity']),
                 'stock'       => intval($it['stock']),
+                'max_per_order' => catalog_order_limit($it['stock']),
                 'unavailable' => $it['unavailable'],
             ];
         }

@@ -31,7 +31,7 @@
     <span class="now">₱{{ displayPrice() }}</span>
     <span class="was" *ngIf="product.on_sale && !product.sizes?.length">₱{{ product.list_price }}</span>
   </div>
-  <p class="stock-line" *ngIf="inStock()">{{ product.quantity }} in stock</p>
+  <p class="stock-line" *ngIf="inStock()">{{ product.quantity }} in stock<span *ngIf="cappedByLimit()"> · Max {{ maxQuantity() }} per order</span></p>
   <p class="description">{{ product.description }}</p>
 
   <div class="variant-row" *ngIf="product.colors?.length">
@@ -80,7 +80,7 @@
         [ngModel]="quantity()"
         (ngModelChange)="setQuantity($event)"
         min="1"
-        [max]="product.quantity"
+        [max]="maxQuantity()"
       />
       <button (click)="increase()"><ion-icon name="add-outline"></ion-icon></button>
     </div>

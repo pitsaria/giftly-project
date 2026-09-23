@@ -95,6 +95,7 @@ if ($action === 'save') {
         $stock = intval($row['stock']);
         if ($stock <= 0) bab_fail($row['name'] . ' is out of stock.');
         if ($qty > $stock) $qty = $stock;
+        if ($qty > catalog_max_per_order()) bab_fail(catalog_cap_message($row['name']));
         $final[$pid] = $qty;
         $total += $qty;
     }

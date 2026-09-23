@@ -8,6 +8,7 @@ import { closeOutline, heart, heartOutline, removeOutline, addOutline, star, sha
 import { Share } from '@capacitor/share';
 import { environment } from '../../../environments/environment';
 import { Product } from '../../core/models';
+import { serverMessage } from '../../core/http-error';
 import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { AuthService } from '../../core/auth.service';
@@ -143,14 +144,28 @@ export class ProductDetailComponent implements OnInit {
     if (this.quantity() > 1) this.quantity.update((q) => q - 1);
   }
 
+  // Most one order can take: the store-wide per-order cap, or stock if lower.
+  maxQuantity(): number {
+    return this.product.max_per_order ?? this.product.quantity;
+  }
+
+  // True when the per-order cap (not stock) is what limits this product.
+  cappedByLimit(): boolean {
+    return this.maxQuantity() < this.product.quantity;
+  }
+
   increase(): void {
-    if (this.quantity() < this.product.quantity) this.quantity.update((q) => q + 1);
+    if (this.quantity() < this.maxQuantity()) {
+      this.quantity.update((q) => q + 1);
+    } else if (this.cappedByLimit()) {
+      void this.presentToast(`Limit of ${this.maxQuantity()} per order for each item.`);
+    }
   }
 
   // Typed quantity, same clamp as the +/- stepper.
   setQuantity(value: number): void {
     const n = Math.floor(Number(value) || 1);
-    this.quantity.set(Math.min(Math.max(n, 1), this.product.quantity));
+    this.quantity.set(Math.min(Math.max(n, 1), this.maxQuantity()));
   }
 
   async toggleWishlist(): Promise<void> {
@@ -172,8 +187,8 @@ export class ProductDetailComponent implements OnInit {
       await this.cart.addToCart(this.product.id, this.quantity(), this.selectedColor() ?? undefined, this.selectedSize() ?? undefined);
       await this.presentToast('Added to cart');
       this.dismiss();
-    } catch {
-      await this.presentToast('Could not add to cart. Please try again.');
+    } catch (err) {
+      await this.presentToast(serverMessage(err, 'Could not add to cart. Please try again.'));
     } finally {
       this.adding.set(false);
     }
@@ -202,8 +217,8 @@ export class ProductDetailComponent implements OnInit {
       this.cart.selectedCartIds.set([line.cart_id]);
       this.modalCtrl.dismiss();
       this.router.navigateByUrl('/checkout');
-    } catch {
-      await this.presentToast('Could not start checkout. Please try again.');
+    } catch (err) {
+      await this.presentToast(serverMessage(err, 'Could not start checkout. Please try again.'));
     } finally {
       this.buyingNow.set(false);
     }

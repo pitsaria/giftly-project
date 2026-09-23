@@ -80,6 +80,15 @@ if (!empty($items_to_update)) {
     }
 }
 
+// Per-order cap (all colors/sizes of a product count together)
+$cap_messages = [];
+foreach (catalog_enforce_order_cap($conn, $user_id, $cart_ids) as $w) {
+    $can_proceed = false;
+    $cap_messages[] = $w['capped']
+        ? "<strong>{$w['name']}</strong>: Limit of " . catalog_max_per_order() . " per order for each item. Quantity has been adjusted to {$w['allowed']}."
+        : "<strong>{$w['name']}</strong>: Requested {$w['requested']}, only {$w['allowed']} available. Quantity has been adjusted.";
+}
+
 if ($can_proceed) {
     echo json_encode([
         'success' => true,
@@ -98,6 +107,7 @@ if ($can_proceed) {
             $message_parts[] = "<strong>{$issue['product_name']}</strong>: Requested {$issue['requested']}, only {$issue['available']} available. Quantity has been adjusted.";
         }
     }
+    $message_parts = array_merge($message_parts, $cap_messages);
     $message = "Some items in your cart were adjusted:<br><br>" . implode('<br>', $message_parts);
     
     echo json_encode([

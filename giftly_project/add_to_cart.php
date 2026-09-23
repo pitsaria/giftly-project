@@ -1,13 +1,14 @@
 <?php
 include 'db_connect.php';
+include_once 'catalog_lib.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
-$product_id = $_POST['product_id'];
+$user_id = (int) $_SESSION['user_id'];
+$product_id = intval($_POST['product_id'] ?? 0);
 
 // First, get the current stock of the product
 $product_query = $conn->query("SELECT quantity FROM products WHERE id = $product_id");
@@ -25,19 +26,21 @@ $check = $conn->query("SELECT * FROM carts WHERE user_id = $user_id AND product_
 
 if ($check->num_rows > 0) {
     // Product exists in cart - get current quantity
-    $cart_item = $check->fetch_assoc();
-    $current_cart_qty = $cart_item['quantity'];
+    // All color/size rows of this product count together toward the limit.
+    $sum_q = $conn->query("SELECT COALESCE(SUM(quantity), 0) AS t FROM carts WHERE user_id = $user_id AND product_id = $product_id");
+    $current_cart_qty = $sum_q ? intval($sum_q->fetch_assoc()['t']) : 0;
     
-    // Check if adding one more would exceed stock
-    if ($current_cart_qty + 1 > $available_stock) {
-        // Not enough stock available
-        $error_message = urlencode("Sorry, only $available_stock item(s) available in stock.");
+    // Check if adding one more would exceed stock or the per-order cap
+    $chk = catalog_check_add($available_stock, $current_cart_qty, 1);
+    if (!$chk['ok']) {
+        $error_message = urlencode($chk['error']);
         header("Location: shop.php?error=$error_message");
         exit();
     }
     
-    // Update quantity
-    $conn->query("UPDATE carts SET quantity = quantity + 1 WHERE user_id = $user_id AND product_id = $product_id");
+    // Update quantity (one row only — a product can have several color/size rows)
+    $cart_row = $check->fetch_assoc();
+    $conn->query("UPDATE carts SET quantity = quantity + 1 WHERE id = " . intval($cart_row['id']) . " AND user_id = $user_id");
 } else {
     // Product not in cart yet - check if at least 1 is available
     if ($available_stock < 1) {

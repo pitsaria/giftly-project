@@ -29,7 +29,7 @@ import { CartService } from '../../core/cart.service';
 import { WishlistService } from '../../core/wishlist.service';
 import { PromoService } from '../../core/promo.service';
 import { HapticsService } from '../../core/haptics.service';
-import { describeError } from '../../core/http-error';
+import { describeError, serverMessage } from '../../core/http-error';
 import { ImgUrlPipe } from '../../shared/img-url.pipe';
 
 // Mirrors giftly_project/cart.php.
@@ -202,7 +202,16 @@ export class CartPage implements OnInit {
   }
 
   async increase(item: CartItem): Promise<void> {
-    await this.cart.updateQuantity(item.cart_id, 'increase');
+    try {
+      await this.cart.updateQuantity(item.cart_id, 'increase');
+    } catch (err) {
+      // e.g. the per-order limit, which counts every color/size of a product together
+      const toast = await this.toastCtrl.create({
+        message: serverMessage(err, 'Could not update the quantity. Please try again.'),
+        duration: 2200,
+      });
+      await toast.present();
+    }
     await this.refresh();
   }
 
@@ -265,11 +274,15 @@ export class CartPage implements OnInit {
     const result = await this.cart.verifyStock(selectedIds);
     if (!result.can_proceed) {
       await this.refresh();
-      const anyUnavailable = (result.issues as { unavailable?: boolean }[]).some((i) => i?.unavailable);
+      const issues = result.issues as { unavailable?: boolean; capped?: boolean }[];
+      const anyUnavailable = issues.some((i) => i?.unavailable);
+      const anyCapped = issues.some((i) => i?.capped);
       const toast = await this.toastCtrl.create({
         message: anyUnavailable
           ? 'An item is no longer available — remove it from your cart, then check out again.'
-          : 'Some items had stock changes — please review your cart.',
+          : anyCapped
+            ? 'Some items were over the per-order limit — quantities were adjusted. Please review your cart.'
+            : 'Some items had stock changes — please review your cart.',
         duration: 2800,
       });
       await toast.present();

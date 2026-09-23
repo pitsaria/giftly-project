@@ -1,5 +1,6 @@
 <?php
 include 'db_connect.php';
+include_once 'catalog_lib.php';
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'Not logged in']);
@@ -32,8 +33,8 @@ foreach ($data['items'] as $item) {
     $row = $verify->fetch_assoc();
     $max_stock = intval($row['stock']);
     
-    // Ensure quantity doesn't exceed stock
-    $final_qty = min($new_qty, $max_stock);
+    // Ensure quantity doesn't exceed stock or the per-order cap
+    $final_qty = min($new_qty, catalog_order_limit($max_stock));
     
     if ($final_qty <= 0) {
         // Delete the item

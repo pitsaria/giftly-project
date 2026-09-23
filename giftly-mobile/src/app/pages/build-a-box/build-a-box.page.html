@@ -164,7 +164,7 @@
       <div class="bs-stepper">
         <button (click)="dec(i.product_id)"><ion-icon name="remove-outline"></ion-icon></button>
         <span>{{ i.qty }}</span>
-        <button [disabled]="boxFull() || i.qty >= i.stock" (click)="inc(i.product_id)">
+        <button [disabled]="boxFull() || i.qty >= (i.max ?? i.stock)" (click)="inc(i.product_id)">
           <ion-icon name="add-outline"></ion-icon>
         </button>
       </div>

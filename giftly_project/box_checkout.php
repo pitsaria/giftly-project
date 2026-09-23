@@ -60,6 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 $stock_errors[] = $av <= 0
                     ? "{$r['name']} is out of stock."
                     : "{$r['name']}: only {$av} left (box needs {$req}).";
+            } elseif ($req > catalog_max_per_order()) {
+                $stock_errors[] = catalog_cap_message($r['name']) . " Please edit your box.";
             } else {
                 $items[] = $r;
             }

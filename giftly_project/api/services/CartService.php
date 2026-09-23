@@ -53,6 +53,8 @@ class CartService {
             $row['list_price'] = $row['price'];
             $row['price'] = (string) $row['variant_effective_price'];
             unset($row['variant_effective_price']);
+            // Most a customer can order of this product (per-order cap or stock, whichever is lower)
+            $row['max_per_order'] = catalog_order_limit($row['stock']);
             $subtotal = $unavailable ? 0 : $row['price'] * $row['quantity'];
             $total += $subtotal;
             $row['subtotal'] = $subtotal;
@@ -85,7 +87,13 @@ class CartService {
 
         // Check stock
         $stock_check = $this->conn->query("SELECT quantity FROM products WHERE id = $product_id");
-        $stock = $stock_check->fetch_assoc();
+        $stock = $stock_check ? $stock_check->fetch_assoc() : null;
+        if (!$stock) {
+            sendError('Product not found');
+            return;
+        }
+        $quantity = (int) $quantity;
+        if ($quantity < 1) $quantity = 1;
         if ($stock['quantity'] < $quantity) {
             sendError('Not enough stock available');
             return;
@@ -129,8 +137,9 @@ class CartService {
         // check adds up every variant row already in this user's cart.
         $cart_total_q = $this->conn->query("SELECT COALESCE(SUM(quantity), 0) AS t FROM carts WHERE user_id = $user_id AND product_id = $product_id");
         $current_cart_qty = $cart_total_q ? (int) $cart_total_q->fetch_assoc()['t'] : 0;
-        if ($current_cart_qty + $quantity > $stock['quantity']) {
-            sendError('Cannot add more than available stock');
+        $chk = catalog_check_add($stock['quantity'], $current_cart_qty, $quantity);
+        if (!$chk['ok']) {
+            sendError($chk['error']);
             return;
         }
 
@@ -177,8 +186,14 @@ class CartService {
         $new_qty = $cart_data['quantity'];
         
         if ($action == 'increase') {
-            if ($new_qty + 1 > $cart_data['stock']) {
-                sendError('Not enough stock available. Only ' . $cart_data['stock'] . ' items left.');
+            // Stock and the per-order cap apply to the product as a whole (all colors/sizes)
+            $sum_q = $this->conn->query("SELECT COALESCE(SUM(quantity), 0) AS t FROM carts WHERE user_id = $user_id AND product_id = " . (int) $cart_data['product_id']);
+            $product_in_cart = $sum_q ? (int) $sum_q->fetch_assoc()['t'] : (int) $new_qty;
+            $chk = catalog_check_add($cart_data['stock'], $product_in_cart, 1);
+            if (!$chk['ok']) {
+                sendError($chk['error'] === 'Product out of stock'
+                    ? 'Not enough stock available. Only ' . $cart_data['stock'] . ' items left.'
+                    : $chk['error']);
                 return;
             }
             $new_qty++;
@@ -302,6 +317,23 @@ class CartService {
             foreach ($items_to_update as $update_query) {
                 $this->conn->query($update_query);
             }
+        }
+
+        // Per-order cap (all colors/sizes of a product count together)
+        foreach (catalog_enforce_order_cap($this->conn, $user_id, $cart_ids) as $w) {
+            $can_proceed = false;
+            $stock_issues[] = [
+                'cart_id' => null,
+                'product_name' => $w['name'],
+                'requested' => $w['requested'],
+                'available' => $w['allowed'],
+                'action' => 'adjusted',
+                'new_quantity' => $w['allowed'],
+                'capped' => $w['capped'],
+                'message' => $w['capped']
+                    ? "<strong>{$w['name']}</strong>: Limit of " . catalog_max_per_order() . " per order for each item. Quantity adjusted to {$w['allowed']}."
+                    : "<strong>{$w['name']}</strong>: Requested {$w['requested']}, only {$w['allowed']} available. Quantity adjusted to {$w['allowed']}.",
+            ];
         }
         
         // Return response

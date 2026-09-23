@@ -1,5 +1,6 @@
 <?php
 include 'db_connect.php';
+include_once 'catalog_lib.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -40,12 +41,14 @@ try {
         $requested = intval($row['requested']);
         $available = intval($row['available_stock']);
         
-        if ($requested > $available) {
+        if ($requested > catalog_order_limit($available)) {
             $has_stock_issues = true;
             if ($available <= 0) {
                 $stock_errors[] = "{$row['name']} is out of stock.";
-            } else {
+            } elseif ($requested > $available) {
                 $stock_errors[] = "{$row['name']}: Only {$available} available, but you requested {$requested}.";
+            } else {
+                $stock_errors[] = catalog_cap_message($row['name']);
             }
         } else {
             $items[] = $row;

@@ -20,6 +20,8 @@ class ProductService {
         $row['on_sale'] = catalog_on_sale($row);
         $row['list_price'] = $row['price'];
         $row['price'] = (string) catalog_effective_price($row);
+        // Most one order can take: the per-order cap or stock, whichever is lower.
+        $row['max_per_order'] = catalog_order_limit($row['quantity'] ?? 0);
     }
 
     // Occasion Boxes carry color/size options (mirrors catalog_grid.php's

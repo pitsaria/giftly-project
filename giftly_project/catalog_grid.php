@@ -424,7 +424,8 @@ function catOpen(id, name, desc, image, price, stock, whatsInside, colors, sizes
     const addBtn = document.getElementById('catModalAdd');
     const buyBtn = document.getElementById('catModalBuy');
     if (stock > 0) {
-        stockEl.innerHTML = '<span style="color:#2e7d32;">In stock: ' + stock + ' available</span>';
+        stockEl.innerHTML = '<span style="color:#2e7d32;">In stock: ' + stock + ' available</span>'
+            + (stock > CAT_MAX_PER_ORDER ? ' <span style="color:#888;">&middot; Max ' + CAT_MAX_PER_ORDER + ' per order</span>' : '');
         addBtn.classList.remove('disabled'); buyBtn.classList.remove('disabled');
     } else {
         stockEl.innerHTML = '<span style="color:#d32f2f;">Out of stock</span>';
@@ -463,10 +464,25 @@ function catShare() {
 }
 document.getElementById('catModal').addEventListener('click', function (e) { if (e.target === this) catClose(); });
 
+// Store-wide per-order cap. The server enforces it too; this just keeps the UI honest.
+const CAT_MAX_PER_ORDER = <?php echo (int) catalog_max_per_order(); ?>;
+function catLimit(stock) { return Math.min(stock, CAT_MAX_PER_ORDER); }
+// Why they can't add more: the per-order cap, or simply running out of stock.
+function catLimitMsg(stock) {
+    return stock > CAT_MAX_PER_ORDER
+        ? 'Limit of ' + CAT_MAX_PER_ORDER + ' per order for each item.'
+        : 'You already have the maximum available (' + stock + ') in your cart.';
+}
+// add_to_cart_modal.php answers plain text on success, JSON {error,message} when it refuses.
+function catRefusal(t) {
+    try { const j = JSON.parse(t); if (j && j.error) return j.message || catLimitMsg(catStock); } catch (e) {}
+    return null;
+}
+
 function catQty(delta) {
     let n = catQtyVal + delta;
-    if (n >= 1 && n <= catStock) { catQtyVal = n; document.getElementById('catQtyDisplay').innerText = n; }
-    else if (n > catStock) catShowStock('Only ' + catStock + ' available in stock.');
+    if (n >= 1 && n <= catLimit(catStock)) { catQtyVal = n; document.getElementById('catQtyDisplay').innerText = n; }
+    else if (n > catLimit(catStock)) catShowStock(catStock > CAT_MAX_PER_ORDER ? catLimitMsg(catStock) : 'Only ' + catStock + ' available in stock.');
 }
 
 function catShowStock(msg) { document.getElementById('catStockMsg').innerHTML = msg; document.getElementById('catStockModal').style.display = 'flex'; }
@@ -487,11 +503,12 @@ function catQuickAdd(id) {
             const avail = s.stock || 0;
             if (avail <= 0) { catShowStock('This item is currently out of stock.'); return; }
             fetch('check_cart_quantity.php?product_id=' + id).then(r => r.json()).then(c => {
-                if ((c.quantity || 0) >= avail) { catShowStock('You already have the maximum available (' + avail + ') in your cart.'); return; }
+                if ((c.quantity || 0) >= catLimit(avail)) { catShowStock(catLimitMsg(avail)); return; }
                 fetch('add_to_cart_modal.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'product_id=' + id + '&quantity=1' })
                     .then(r => r.text()).then(t => {
                         if (t.trim() === 'login_required') { if (window.openLoginModal) openLoginModal(); }
                         else if (t.trim() === 'stock_limit_reached') catShowStock('You have reached the maximum available stock for this item.');
+                        else if (catRefusal(t)) catShowStock(catRefusal(t));
                         else if (t.trim() === 'variant_required') catShowStock('Please choose a size and color first.');
                         else catToast();
                     });
@@ -505,9 +522,11 @@ function catAddFromModal() {
     catRequireLogin(() => {
         fetch('check_cart_quantity.php?product_id=' + catId).then(r => r.json()).then(c => {
             const cur = c.quantity || 0;
-            if (cur + catQtyVal > catStock) {
-                const canAdd = catStock - cur;
-                catShowStock(canAdd <= 0 ? 'You already have the maximum available (' + catStock + ') in your cart.' : 'You can only add ' + canAdd + ' more. Only ' + catStock + ' in stock.');
+            if (cur + catQtyVal > catLimit(catStock)) {
+                const canAdd = catLimit(catStock) - cur;
+                catShowStock(canAdd <= 0 ? catLimitMsg(catStock)
+                    : catStock > CAT_MAX_PER_ORDER ? 'You can only add ' + canAdd + ' more — limit of ' + CAT_MAX_PER_ORDER + ' per order for each item.'
+                    : 'You can only add ' + canAdd + ' more. Only ' + catStock + ' in stock.');
                 return;
             }
             var body = 'product_id=' + catId + '&quantity=' + catQtyVal
@@ -516,6 +535,7 @@ function catAddFromModal() {
                 .then(r => r.text()).then(t => {
                     if (t.trim() === 'login_required') { catClose(); if (window.openLoginModal) openLoginModal(); }
                     else if (t.trim() === 'stock_limit_reached') catShowStock('You have reached the maximum available stock for this item.');
+                    else if (catRefusal(t)) catShowStock(catRefusal(t));
                     else { catClose(); catToast(); }
                 });
         });
@@ -531,6 +551,7 @@ function catBuyNow() {
             .then(r => r.text()).then(t => {
                 if (t.trim() === 'login_required') { catClose(); if (window.openLoginModal) openLoginModal(); return; }
                 if (t.trim() === 'stock_limit_reached') { catShowStock('You have reached the maximum available stock for this item.'); return; }
+                if (catRefusal(t)) { catShowStock(catRefusal(t)); return; }
                 fetch('get_cart_id.php?product_id=' + catId).then(r => r.text()).then(cid => {
                     // get_cart_id.php answers "0" when it can't find the row — don't open an empty checkout.
                     if (!(parseInt(cid, 10) > 0)) { alert("Couldn't start checkout for this item. Please try again."); return; }
