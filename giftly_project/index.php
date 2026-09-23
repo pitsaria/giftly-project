@@ -401,9 +401,14 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         .container { padding: 24px 16px; }
         .section-header { font-size: 24px; }
 
-        /* HERO */
+        /* HERO — .carousel-container is a flex ROW by default (desktop:
+           one absolutely-positioned .slide stack + the controls pill on
+           top of it). On mobile the slide becomes a normal-flow column,
+           so the container itself must also switch to column, or the
+           slide and the controls pill end up side-by-side as row siblings
+           instead of stacked. */
         .carousel-wrapper { padding: 0 12px; margin-bottom: 30px; }
-        .carousel-container { height: auto; min-height: 0; padding: 20px 0; }
+        .carousel-container { height: auto; min-height: 0; padding: 20px 0; flex-direction: column; }
         .slide {
             position: relative; opacity: 1; z-index: 1; display: none;
             flex-direction: column; text-align: center; padding: 10px 20px;
@@ -413,7 +418,11 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         .slide-text h1 { font-size: 28px; margin-bottom: 10px; }
         .slide-text p { font-size: 14px; max-width: 100%; margin: 0 auto 20px; }
         .hero-buttons { justify-content: center; flex-wrap: wrap; }
-        .slide-graphic { order: -1; flex: none !important; padding-right: 0 !important; margin-bottom: 16px; }
+        .slide-graphic {
+            order: -1; flex: none !important; height: auto !important;
+            padding-right: 0 !important; justify-content: center !important;
+            margin-bottom: 16px;
+        }
         .slide-graphic img { max-width: 70% !important; max-height: 220px !important; transform: none !important; }
         .carousel-controls { position: static; transform: none; margin: 16px auto 0; width: fit-content; }
 
