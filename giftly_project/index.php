@@ -385,13 +385,57 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
             cursor: pointer; 
             transition: all 0.2s ease; 
         }
-        .btn-secondary:hover { 
-            border-color: #FEA5B6; 
-            color: #FEA5B6; 
+        .btn-secondary:hover {
+            border-color: #FEA5B6;
+            color: #FEA5B6;
             transform: translateY(-2px); /* 🚀 Makes it float! */
             box-shadow: 0 6px 16px rgba(254, 165, 182, 0.2);
         }
 
+    /* --- MOBILE: hero, How It Works, promos and reviews were all built as
+       fixed-width desktop layouts with no responsive fallback, so on a phone
+       the hero image overflowed off-canvas, the How It Works circles
+       overlapped each other (each fixed at 160px inside a 20%-wide column),
+       and the reviews grid squeezed 3 columns into one screen. --- */
+    @media (max-width: 860px) {
+        .container { padding: 24px 16px; }
+        .section-header { font-size: 24px; }
+
+        /* HERO */
+        .carousel-wrapper { padding: 0 12px; margin-bottom: 30px; }
+        .carousel-container { height: auto; min-height: 0; padding: 20px 0; }
+        .slide {
+            position: relative; opacity: 1; z-index: 1; display: none;
+            flex-direction: column; text-align: center; padding: 10px 20px;
+        }
+        .slide.active { display: flex; }
+        .slide-text { padding-right: 0; }
+        .slide-text h1 { font-size: 28px; margin-bottom: 10px; }
+        .slide-text p { font-size: 14px; max-width: 100%; margin: 0 auto 20px; }
+        .hero-buttons { justify-content: center; flex-wrap: wrap; }
+        .slide-graphic { order: -1; flex: none !important; padding-right: 0 !important; margin-bottom: 16px; }
+        .slide-graphic img { max-width: 70% !important; max-height: 220px !important; transform: none !important; }
+        .carousel-controls { position: static; transform: none; margin: 16px auto 0; width: fit-content; }
+
+        /* FEATURED PRODUCTS */
+        .featured-container { padding: 24px 16px; border-radius: 30px; }
+        .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+
+        /* HOW IT WORKS — stack the steps instead of squeezing 160px circles into 20%-wide columns */
+        .works-container { flex-direction: column; padding: 30px 20px; gap: 22px; }
+        .work-step { width: 100%; }
+        .work-icon { width: 96px; height: 96px; font-size: 32px; }
+        .work-arrow { display: none; }
+
+        /* PROMOTIONS */
+        .promo-grid { grid-template-columns: 1fr; gap: 16px; }
+        .promo-card { padding: 24px 22px; min-height: 0; }
+        .promo-title { font-size: 20px; }
+        .promo-desc { max-width: 100%; }
+
+        /* REVIEWS */
+        .review-grid { grid-template-columns: 1fr; padding: 20px; gap: 14px; }
+    }
 </style>
 
     <!-- 1. HERO CAROUSEL -->

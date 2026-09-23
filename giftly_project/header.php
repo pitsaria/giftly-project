@@ -297,7 +297,7 @@ if (isset($_SESSION['user_id'])) {
                 </a>
 
                 <a href="javascript:void(0)" onclick="openLogoutModal()">
-                    <button class="btn-nav-login" style="width: auto; padding: 6px 24px;">
+                    <button class="btn-nav-login">
                         Logout
                     </button>
                 </a>
