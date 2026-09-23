@@ -96,6 +96,8 @@
     margin: 6px 0 4px;
     font-size: 13px;
     color: #555;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   small {
@@ -172,6 +174,8 @@
       font-size: 13px;
       color: #666;
       line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
   }
 }

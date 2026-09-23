@@ -333,8 +333,10 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
     .p-seasonal { background: linear-gradient(135deg, #fff9e6, #fff4d4); }
 
     /* --- REVIEWS --- */
-    .review-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; background: #f8f8fa; padding: 40px; border-radius: 35px; }
-    .review-card { background: #fff; padding: 30px; border-radius: 24px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    /* minmax(0,1fr) + min-width:0: a plain 1fr column grows to fit its widest unbreakable
+       word, so a review like "aaaaaaaa…" with no spaces used to blow the whole grid out. */
+    .review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; background: #f8f8fa; padding: 40px; border-radius: 35px; }
+    .review-card { background: #fff; padding: 30px; border-radius: 24px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); min-width: 0; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
     .r-avatar { width: 60px; height: 60px; border-radius: 50%; background: #ffc1cc; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 24px; }
     .r-avatar i { font-size: 30px; color: #fff; }
     .r-stars { color: #ffc107; font-size: 14px; margin-bottom: 10px; }
@@ -432,7 +434,7 @@ while ($hr && $row = $hr->fetch_assoc()) $home_reviews[] = $row;
         .promo-desc { max-width: 100%; }
 
         /* REVIEWS */
-        .review-grid { grid-template-columns: 1fr; padding: 20px; gap: 14px; }
+        .review-grid { grid-template-columns: minmax(0, 1fr); padding: 20px; gap: 14px; }
     }
 </style>
 

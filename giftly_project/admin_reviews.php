@@ -89,7 +89,7 @@ function admin_stars($n) {
     .rvA-prod img { width: 36px; height: 36px; object-fit: contain; background: #fafafa; border-radius: 8px; padding: 3px; }
     .rvA-stars { color: #ffb400; font-size: 13px; }
     .rvA-meta { font-size: 12px; color: #999; }
-    .rvA-body { font-size: 13.5px; color: #555; line-height: 1.6; white-space: pre-wrap; margin: 6px 0 12px; }
+    .rvA-body { font-size: 13.5px; color: #555; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; margin: 6px 0 12px; }
     .rvA-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .rvA-btn { padding: 6px 14px; border-radius: 50px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Poppins'; }
     .rvA-btn.hide { background: #fff3e0; color: #e65100; }

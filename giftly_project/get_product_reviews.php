@@ -42,7 +42,8 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
     .rv-item .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; }
     .rv-item .who { font-size: 13.5px; font-weight: 700; color: #333; }
     .rv-item .when { font-size: 11px; color: #aaa; }
-    .rv-item .txt { font-size: 13px; color: #666; line-height: 1.6; }
+    .rv-item .txt { font-size: 13px; color: #666; line-height: 1.6; overflow-wrap: anywhere; word-break: break-word; }
+    .rv-item .who { overflow-wrap: anywhere; min-width: 0; }
     .rv-list-scroll { max-height: 260px; overflow-y: auto; }
 </style>
 
@@ -63,7 +64,7 @@ $eligible  = $logged_in ? reviews_eligible_order($conn, $_SESSION['user_id'], $p
             <h5 style="color:#2e7d32;"><i class="fas fa-circle-check"></i> Your review</h5>
             <?php echo reviews_stars((int) $my_review['rating']); ?>
             <?php if (trim($my_review['comment']) !== ''): ?>
-                <div style="font-size:13px;color:#555;line-height:1.6;margin-top:6px;">“<?php echo nl2br(htmlspecialchars($my_review['comment'])); ?>”</div>
+                <div style="font-size:13px;color:#555;line-height:1.6;margin-top:6px;overflow-wrap:anywhere;word-break:break-word;">“<?php echo nl2br(htmlspecialchars($my_review['comment'])); ?>”</div>
             <?php endif; ?>
             <div style="font-size:11px;color:#9bbfa0;margin-top:6px;">Posted <?php echo ph_datetime($my_review['created_at'], 'M j, Y'); ?> · reviews can't be edited</div>
         </div>

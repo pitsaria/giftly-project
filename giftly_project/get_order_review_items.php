@@ -48,7 +48,7 @@ while ($it = $items->fetch_assoc()) {
                 <?php endfor; ?>
             </div>
             <?php if (trim($mine['comment']) !== ''): ?>
-                <div style="font-size:12.5px;color:#666;line-height:1.5;">“<?php echo htmlspecialchars($mine['comment']); ?>”</div>
+                <div style="font-size:12.5px;color:#666;line-height:1.5;overflow-wrap:anywhere;word-break:break-word;">“<?php echo htmlspecialchars($mine['comment']); ?>”</div>
             <?php endif; ?>
             <div style="font-size:11px;color:#2e7d32;margin-top:6px;"><i class="fas fa-circle-check"></i> Reviewed — this can't be changed.</div>
         <?php else: ?>
